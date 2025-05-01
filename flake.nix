@@ -1,5 +1,5 @@
 {
-  description = "Rust project with latest rustc via fenix";
+  description = "A simple CPU path tracing implementation in Rust.";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -14,15 +14,8 @@
           inherit system;
           overlays = [ fenix.overlays.default ];
         };
-
-        rustToolchain = pkgs.fenix.stable.toolchain;
       in {
-        devShells.default = pkgs.mkShell {
-          buildInputs = [ rustToolchain ];
-
-          shellHook = ''
-            export RUST_BACKTRACE=1
-          '';
-        };
+        devShells.default = pkgs.callPackage ./nix/dev-shell.nix { };
+        packages.default = pkgs.callPackage ./nix/toy-cpu-pathtracing.nix { };
       });
 }
