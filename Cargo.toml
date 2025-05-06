@@ -1,5 +1,5 @@
 [workspace]
-members = ["toy-cpu-pathtracing"]
+members = ["toy-cpu-pathtracing", "macros"]
 resolver = "3"
 
 [workspace.package]

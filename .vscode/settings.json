@@ -1,13 +1,16 @@
 {
   "cSpell.words": [
+    "Clippy",
     "fenix",
     "impls",
+    "ipetkov",
     "nixos",
     "nixpkgs",
     "numtide",
     "pathtracing",
     "pkgs",
     "pname",
-    "rustc"
+    "rustc",
+    "tobj"
   ]
 }

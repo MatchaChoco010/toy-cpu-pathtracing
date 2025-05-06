@@ -4,5 +4,8 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+glam = "0.30.3"
 image = "0.25.6"
+macros = { path = "../macros" }
 rayon = "1.10.0"
+tobj = "4.0.3"
