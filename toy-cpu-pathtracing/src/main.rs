@@ -45,18 +45,12 @@ impl Camera {
     }
 }
 
-fn main() {
-    let mut scene = scene::create_scene!(scene1);
+fn add_scene_items_0<Id: scene::SceneId>(scene: &mut scene::Scene<Id>) {
     let geom = scene.load_obj("./toy-cpu-pathtracing/assets/bunny.obj");
     scene.create_primitive(scene::CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
         material_id: scene::MaterialId::new(0),
         transform: math::Transform::identity(),
-    });
-    scene.create_primitive(scene::CreatePrimitiveDesc::GeometryPrimitive {
-        geometry_index: geom,
-        material_id: scene::MaterialId::new(0),
-        transform: math::Transform::translate(glam::vec3(0.0, 1.0, 0.0)),
     });
 
     let geom = scene.load_obj("./toy-cpu-pathtracing/assets/box.obj");
@@ -107,26 +101,65 @@ fn main() {
         material_id: scene::MaterialId::new(0),
         transform: math::Transform::identity(),
     });
+}
 
-    // scene.create_primitive(scene::CreatePrimitiveDesc::SingleTrianglePrimitive {
-    //     positions: [
-    //         math::Point3::new(0.0, 0.0, 0.0),
-    //         math::Point3::new(1.0, 0.0, 0.0),
-    //         math::Point3::new(0.0, 0.0, 1.0),
-    //     ],
-    //     normals: [
-    //         math::Normal::new(0.0, 1.0, 0.0),
-    //         math::Normal::new(0.0, 1.0, 0.0),
-    //         math::Normal::new(0.0, 1.0, 0.0),
-    //     ],
-    //     uvs: [
-    //         glam::Vec2::new(0.0, 0.0),
-    //         glam::Vec2::new(1.0, 0.0),
-    //         glam::Vec2::new(0.0, 1.0),
-    //     ],
-    //     material_id: scene::MaterialId::new(0),
-    //     transform: math::Transform::identity(),
-    // });
+fn add_scene_items_1<Id: scene::SceneId>(scene: &mut scene::Scene<Id>) {
+    let geom = scene.load_obj("./toy-cpu-pathtracing/assets/bunny.obj");
+    scene.create_primitive(scene::CreatePrimitiveDesc::GeometryPrimitive {
+        geometry_index: geom,
+        material_id: scene::MaterialId::new(0),
+        transform: math::Transform::identity(),
+    });
+    scene.create_primitive(scene::CreatePrimitiveDesc::GeometryPrimitive {
+        geometry_index: geom,
+        material_id: scene::MaterialId::new(0),
+        transform: math::Transform::rotation(glam::Quat::from_rotation_y(30_f32.to_radians()))
+            .translate(glam::vec3(-1.0, 1.0, 3.0)),
+    });
+
+    let geom = scene.load_obj("./toy-cpu-pathtracing/assets/yuka.obj");
+    scene.create_primitive(scene::CreatePrimitiveDesc::GeometryPrimitive {
+        geometry_index: geom,
+        material_id: scene::MaterialId::new(0),
+        transform: math::Transform::identity(),
+    });
+
+    scene.create_primitive(scene::CreatePrimitiveDesc::SingleTrianglePrimitive {
+        positions: [
+            math::Point3::new(-2.0, 0.0, 0.0),
+            math::Point3::new(2.0, 0.0, 0.0),
+            math::Point3::new(-2.0, 4.0, 0.0),
+        ],
+        normals: [
+            math::Normal::new(0.0, 0.0, 1.0),
+            math::Normal::new(0.0, 0.0, 1.0),
+            math::Normal::new(0.0, 0.0, 1.0),
+        ],
+        uvs: [
+            glam::Vec2::new(0.0, 0.0),
+            glam::Vec2::new(1.0, 0.0),
+            glam::Vec2::new(0.0, 1.0),
+        ],
+        material_id: scene::MaterialId::new(0),
+        transform: math::Transform::rotation(glam::Quat::from_rotation_y(60_f32.to_radians())),
+    });
+}
+
+fn main() {
+    let argv = std::env::args().collect::<Vec<_>>();
+
+    let mut scene = scene::create_scene!(scene);
+
+    let scene_number = argv
+        .get(1)
+        .map(|arg| arg.parse::<u32>().ok())
+        .flatten()
+        .unwrap_or(0);
+    match scene_number {
+        0 => add_scene_items_0(&mut scene),
+        1 => add_scene_items_1(&mut scene),
+        _ => panic!("Invalid scene number"),
+    }
 
     println!("Start build scene...");
     let start = std::time::Instant::now();

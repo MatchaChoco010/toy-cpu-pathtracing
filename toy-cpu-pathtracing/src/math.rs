@@ -455,22 +455,43 @@ impl<From: CoordinateSystem, To: CoordinateSystem> Transform<From, To> {
 
     /// 平行移動のTransformを作成する。
     #[inline(always)]
-    pub fn translate(translation: Vec3) -> Self {
+    pub fn translation(translation: Vec3) -> Self {
         let matrix = Mat4::from_translation(translation);
         Transform::from_matrix(matrix)
     }
 
     /// 回転のTransformを作成する。
     #[inline(always)]
-    pub fn rotate(rotation: Quat) -> Self {
+    pub fn rotation(rotation: Quat) -> Self {
         let matrix = Mat4::from_quat(rotation);
         Transform::from_matrix(matrix)
     }
 
     /// スケールのTransformを作成する。
     #[inline(always)]
-    pub fn scale(scale: Vec3) -> Self {
+    pub fn scaling(scale: Vec3) -> Self {
         let matrix = Mat4::from_scale(scale);
+        Transform::from_matrix(matrix)
+    }
+
+    /// 平行移動をかけ合わせた新しいTransformを作成する。
+    #[inline(always)]
+    pub fn translate(&self, translation: Vec3) -> Self {
+        let matrix = Mat4::from_translation(translation) * self.matrix;
+        Transform::from_matrix(matrix)
+    }
+
+    /// 回転をかけ合わせた新しいTransformを作成する。
+    #[inline(always)]
+    pub fn rotate(&self, rotation: Quat) -> Self {
+        let matrix = Mat4::from_quat(rotation) * self.matrix;
+        Transform::from_matrix(matrix)
+    }
+
+    /// スケールをかけ合わせた新しいTransformを作成する。
+    #[inline(always)]
+    pub fn scale(&self, scale: Vec3) -> Self {
+        let matrix = Mat4::from_scale(scale) * self.matrix;
         Transform::from_matrix(matrix)
     }
 
