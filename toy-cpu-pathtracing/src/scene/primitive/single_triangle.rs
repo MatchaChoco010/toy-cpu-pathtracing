@@ -2,7 +2,9 @@
 
 use glam::{Vec2, Vec3};
 
-use crate::math::{Bounds, Local, Normal, Point3, Ray, Render, Transform, World};
+use crate::math::{
+    Bounds, Local, Normal, Point3, Ray, Render, Transform, World, intersect_triangle,
+};
 use crate::scene::primitive::{Intersection, PrimitiveGeometry, PrimitiveIndex, PrimitiveTrait};
 use crate::scene::{GeometryRepository, MaterialId, SceneId};
 
@@ -62,9 +64,41 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for SingleTriangle<Id> {
         &self,
         _primitive_index: PrimitiveIndex<Id>,
         _geometry_repository: &GeometryRepository<Id>,
-        _ray: &Ray<Render>,
-        _t_max: f32,
+        ray: &Ray<Render>,
+        t_max: f32,
     ) -> Option<Intersection<Id, Render>> {
-        todo!()
+        let ray = &self.local_to_render.inverse() * ray;
+        let hit = match intersect_triangle(&ray, t_max, self.positions) {
+            Some(hit) => hit,
+            None => return None,
+        };
+
+        let shading_normal = Normal::<Local>::from(
+            self.normals[0].to_vec3() * hit.barycentric[0]
+                + self.normals[1].to_vec3() * hit.barycentric[1]
+                + self.normals[2].to_vec3() * hit.barycentric[2],
+        );
+        let uv = Vec2::new(
+            self.uvs[0].x * hit.barycentric[0]
+                + self.uvs[1].x * hit.barycentric[1]
+                + self.uvs[2].x * hit.barycentric[2],
+            self.uvs[0].y * hit.barycentric[0]
+                + self.uvs[1].y * hit.barycentric[1]
+                + self.uvs[2].y * hit.barycentric[2],
+        );
+
+        Some(Intersection {
+            t_hit: hit.t_hit,
+            interaction: crate::scene::Interaction::Surface {
+                position: &self.local_to_render * hit.position,
+                normal: &self.local_to_render * hit.normal,
+                shading_normal: &self.local_to_render * shading_normal,
+                uv,
+                primitive_index: _primitive_index,
+                geometry_info: super::GeometryInfo::TriangleMesh {
+                    triangle_index: 0, // TODO: 三角形のインデックスを取得する
+                },
+            },
+        })
     }
 }
