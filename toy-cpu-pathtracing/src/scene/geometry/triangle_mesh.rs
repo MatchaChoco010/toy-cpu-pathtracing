@@ -6,7 +6,7 @@ use std::marker::PhantomData;
 
 use glam::{Vec2, Vec3};
 
-use crate::math::{Bounds, Local, Normal, Point3, Ray};
+use crate::math::{Bounds, Local, Normal, Point3, Ray, intersect_triangle};
 use crate::scene::SceneId;
 use crate::scene::bvh::{Bvh, BvhItem, BvhItemData, HitInfo};
 
@@ -69,17 +69,17 @@ impl<Id: SceneId> BvhItem<Local> for Triangle<Id> {
     where
         Id: 'a,
     {
+        // ジオメトリデータを取得
         let positions = [
-            &data.positions[data.indices[self.triangle_index as usize * 3] as usize],
-            &data.positions[data.indices[self.triangle_index as usize * 3 + 1] as usize],
-            &data.positions[data.indices[self.triangle_index as usize * 3 + 2] as usize],
+            data.positions[data.indices[self.triangle_index as usize * 3] as usize],
+            data.positions[data.indices[self.triangle_index as usize * 3 + 1] as usize],
+            data.positions[data.indices[self.triangle_index as usize * 3 + 2] as usize],
         ];
-        let normals = [
-            &data.normals[data.indices[self.triangle_index as usize * 3] as usize],
-            &data.normals[data.indices[self.triangle_index as usize * 3 + 1] as usize],
-            &data.normals[data.indices[self.triangle_index as usize * 3 + 2] as usize],
+        let shading_normals = [
+            data.normals[data.indices[self.triangle_index as usize * 3] as usize],
+            data.normals[data.indices[self.triangle_index as usize * 3 + 1] as usize],
+            data.normals[data.indices[self.triangle_index as usize * 3 + 2] as usize],
         ];
-
         let uvs = if data.uvs.is_empty() {
             let uv = Vec2::new(0.0, 0.0);
             [uv, uv, uv]
@@ -91,63 +91,30 @@ impl<Id: SceneId> BvhItem<Local> for Triangle<Id> {
             ]
         };
 
-        // degenerateしていたらhitしない
-        if positions[0]
-            .vector_to(positions[1])
-            .cross(positions[0].vector_to(positions[2]))
-            .length_squared()
-            == 0.0
-        {
-            return None;
-        }
+        // 三角形の交差判定を行う
+        let hit = match intersect_triangle(ray, t_max, positions) {
+            Some(hit) => hit,
+            None => return None,
+        };
 
-        let p0o = ray.origin.vector_to(positions[0]);
-        let p1o = ray.origin.vector_to(positions[1]);
-        let p2o = ray.origin.vector_to(positions[2]);
-
-        let v0 = ray.dir.dot(p2o.cross(&p1o));
-        let v1 = ray.dir.dot(p0o.cross(&p2o));
-        let v2 = ray.dir.dot(p1o.cross(&p0o));
-
-        if v0 <= 0.0 || v1 <= 0.0 || v2 <= 0.0 {
-            return None;
-        }
-
-        let v = v0 + v1 + v2;
-        let w0 = v0 / v;
-        let w1 = v1 / v;
-        let w2 = v2 / v;
-
-        let position = Point3::from(
-            positions[0].to_vec3() * w0 + positions[1].to_vec3() * w1 + positions[2].to_vec3() * w2,
-        );
-
-        let t_hit = ray.origin.distance(&position);
-        if t_hit > t_max || t_hit < 0.0 {
-            return None;
-        }
-
+        // 交差していれば、交差点の情報を計算する
         let shading_normal = Normal::from(
-            normals[0].to_vec3() * w0 + normals[1].to_vec3() * w1 + normals[2].to_vec3() * w2,
+            shading_normals[0].to_vec3() * hit.barycentric[0]
+                + shading_normals[1].to_vec3() * hit.barycentric[1]
+                + shading_normals[2].to_vec3() * hit.barycentric[2],
         );
-
-        let normal = positions[0]
-            .vector_to(positions[1])
-            .cross(positions[0].vector_to(positions[2]))
-            .normalize();
-        let normal = Normal::from(normal.to_vec3());
-
-        let uv = uvs[0] * w0 + uvs[1] * w1 + uvs[2] * w2;
+        let uv =
+            uvs[0] * hit.barycentric[0] + uvs[1] * hit.barycentric[1] + uvs[2] * hit.barycentric[2];
 
         Some(HitInfo {
-            t_hit,
+            t_hit: hit.t_hit,
             intersection: Intersection {
-                position,
-                normal,
+                position: hit.position,
+                normal: hit.normal,
                 shading_normal,
                 uv,
                 triangle_index: self.triangle_index,
-                t_hit,
+                t_hit: hit.t_hit,
             },
         })
     }
