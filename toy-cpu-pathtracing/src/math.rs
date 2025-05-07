@@ -307,6 +307,23 @@ impl<C: CoordinateSystem> Bounds<C> {
         let max = Point3::from(glam::Vec3::max(self.max.to_vec3(), other.max.to_vec3()));
         Bounds::new(min, max)
     }
+
+    /// 頂点を取得する。
+    #[inline(always)]
+    pub fn vertices(&self) -> [Point3<C>; 8] {
+        let min = self.min.to_vec3();
+        let max = self.max.to_vec3();
+        [
+            Point3::from(glam::Vec3::new(min.x, min.y, min.z)),
+            Point3::from(glam::Vec3::new(max.x, min.y, min.z)),
+            Point3::from(glam::Vec3::new(min.x, max.y, min.z)),
+            Point3::from(glam::Vec3::new(max.x, max.y, min.z)),
+            Point3::from(glam::Vec3::new(min.x, min.y, max.z)),
+            Point3::from(glam::Vec3::new(max.x, min.y, max.z)),
+            Point3::from(glam::Vec3::new(min.x, max.y, max.z)),
+            Point3::from(glam::Vec3::new(max.x, max.y, max.z)),
+        ]
+    }
 }
 impl<C: CoordinateSystem> AsRef<Bounds<C>> for Bounds<C> {
     #[inline(always)]
@@ -384,10 +401,13 @@ fn mul<From: CoordinateSystem, To: CoordinateSystem>(
     lhs: &Transform<From, To>,
     rhs: &Bounds<From>,
 ) -> Bounds<To> {
-    let prev_min = lhs * &rhs.min;
-    let prev_max = lhs * &rhs.max;
-    let min = glam::Vec3::min(prev_min.to_vec3(), prev_max.to_vec3());
-    let max = glam::Vec3::max(prev_min.to_vec3(), prev_max.to_vec3());
+    let mut min = glam::Vec3::splat(f32::INFINITY);
+    let mut max = glam::Vec3::splat(f32::NEG_INFINITY);
+    for vertex in rhs.vertices() {
+        let transformed_vertex = lhs * &vertex;
+        min = min.min(transformed_vertex.to_vec3());
+        max = max.max(transformed_vertex.to_vec3());
+    }
     Bounds::new(Point3::from(min), Point3::from(max))
 }
 #[impl_binary_ops(Mul)]
@@ -540,9 +560,9 @@ pub fn intersect_triangle<C: CoordinateSystem>(
     }
 
     // レイの原点からの頂点へのベクトルを得る。
-    let p0_o = ray.origin.vector_to(&ps[0]).to_vec3();
-    let p1_o = ray.origin.vector_to(&ps[1]).to_vec3();
-    let p2_o = ray.origin.vector_to(&ps[2]).to_vec3();
+    let p0_o = ps[0].to_vec3() - ray.origin.to_vec3();
+    let p1_o = ps[1].to_vec3() - ray.origin.to_vec3();
+    let p2_o = ps[2].to_vec3() - ray.origin.to_vec3();
 
     // レイの方向の最大の成分がzになるように座標系を並び替える。
     let d = ray.dir.to_vec3();
@@ -554,7 +574,7 @@ pub fn intersect_triangle<C: CoordinateSystem>(
     let mut p1_o = glam::vec3(p1_o[kx], p1_o[ky], p1_o[kz]);
     let mut p2_o = glam::vec3(p2_o[kx], p2_o[ky], p2_o[kz]);
 
-    // シアー変形を行う。
+    // xyに関するシアー変形を行う。
     let s_x = -d.x / d.z;
     let s_y = -d.y / d.z;
     let s_z = 1.0 / d.z;
@@ -566,9 +586,9 @@ pub fn intersect_triangle<C: CoordinateSystem>(
     p2_o.y += s_y * p2_o.z;
 
     // エッジ関数の係数を求める。
-    let mut e0 = p1_o.x * p2_o.y - p1_o.y * p2_o.x;
-    let mut e1 = p2_o.x * p0_o.y - p2_o.y * p0_o.x;
-    let mut e2 = p0_o.x * p1_o.y - p0_o.y * p1_o.x;
+    let mut e0 = p2_o.x * p1_o.y - p2_o.y * p1_o.x;
+    let mut e1 = p0_o.x * p2_o.y - p0_o.y * p2_o.x;
+    let mut e2 = p1_o.x * p0_o.y - p1_o.y * p0_o.x;
 
     // 精度が足りないときはf64にフォールバックする。
     if e0 == 0.0 || e1 == 0.0 || e2 == 0.0 {
@@ -594,10 +614,12 @@ pub fn intersect_triangle<C: CoordinateSystem>(
         return None;
     }
 
-    // スケールしたヒット距離を計算しt_maxの範囲内かを比較する。
+    // zのシアー変形を適用する。
     p0_o.z *= s_z;
     p1_o.z *= s_z;
     p2_o.z *= s_z;
+
+    // スケールしたヒット距離を計算し0からt_maxの範囲内かを比較する。
     let t_scaled = e0 * p0_o.z + e1 * p1_o.z + e2 * p2_o.z;
     if det < 0.0 && (t_scaled >= 0.0 || t_scaled < t_max * det) {
         return None;
@@ -637,17 +659,12 @@ pub fn intersect_triangle<C: CoordinateSystem>(
         return None;
     }
 
-    // 交差している点を求める。
+    // 交差した位置を求める。
     let position = Point3::from(
         ps[0].to_vec3() * barycentric[0]
             + ps[1].to_vec3() * barycentric[1]
             + ps[2].to_vec3() * barycentric[2],
     );
-
-    // t_hitが0.0より小さい場合とt_maxより大きい場合は交差していない。
-    if t_hit > t_max || t_hit < 0.0 {
-        return None;
-    }
 
     // 幾何法線を求める。
     let normal = Normal::from(
