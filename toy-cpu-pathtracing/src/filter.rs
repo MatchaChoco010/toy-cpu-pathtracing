@@ -6,10 +6,11 @@ pub struct FilterSample {
 }
 
 /// フィルタ用のトレイト。
-pub trait Filter {
+pub trait Filter: Send + Sync + Clone {
     fn sample(&self, uv: glam::Vec2) -> FilterSample;
 }
 
+#[derive(Debug, Clone)]
 pub struct BoxFilter {
     pub width: f32,
 }

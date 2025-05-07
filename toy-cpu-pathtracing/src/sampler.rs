@@ -6,8 +6,9 @@ pub trait Sampler: Clone {
     fn get_2d(&mut self) -> glam::Vec2;
     fn get_2d_pixel(&mut self) -> glam::Vec2;
 }
-pub trait SamplerFactory<S: Sampler>: Sync + Clone {
-    fn create_sampler(&self, x: u32, y: u32) -> S;
+pub trait SamplerFactory: Send + Sync + Clone {
+    type Sampler: Sampler;
+    fn create_sampler(&self, x: u32, y: u32) -> Self::Sampler;
 }
 
 pub struct RandomSampler {
@@ -51,7 +52,8 @@ impl Clone for RandomSamplerFactory {
         Self
     }
 }
-impl SamplerFactory<RandomSampler> for RandomSamplerFactory {
+impl SamplerFactory for RandomSamplerFactory {
+    type Sampler = RandomSampler;
     fn create_sampler(&self, _x: u32, _y: u32) -> RandomSampler {
         RandomSampler::new()
     }

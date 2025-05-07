@@ -13,18 +13,20 @@ pub struct Camera<F: Filter> {
     direction: Vector3<World>,
     up: Vector3<World>,
     fov: f32,
-    resolution: (u32, u32),
+    width: u32,
+    height: u32,
     filter: F,
 }
 impl<F: Filter> Camera<F> {
     /// 新しいカメラを作成する。
-    pub fn new(fov: f32, resolution: (u32, u32), filter: F) -> Self {
+    pub fn new(fov: f32, width: u32, height: u32, filter: F) -> Self {
         Self {
             position: Point3::new(0.0, 0.0, 0.0),
             direction: Vector3::new(0.0, 0.0, -1.0),
             up: Vector3::new(0.0, 1.0, 0.0),
             fov,
-            resolution,
+            width,
+            height,
             filter,
         }
     }
@@ -44,11 +46,11 @@ impl<F: Filter> Camera<F> {
     /// ピンホールカメラのレイを生成する。
     fn generate_ray(&self, x: f32, y: f32) -> Ray<Render> {
         // カメラ座標系でのレイを生成する。
-        let aspect_ratio = self.resolution.0 as f32 / self.resolution.1 as f32;
+        let aspect_ratio = self.width as f32 / self.height as f32;
         let fov_rad = self.fov.to_radians();
         let scale = (fov_rad / 2.0).tan();
-        let dir_x = (2.0 * x / self.resolution.0 as f32 - 1.0) * aspect_ratio * scale;
-        let dir_y = (1.0 - 2.0 * y / self.resolution.1 as f32) * scale;
+        let dir_x = (2.0 * x / self.width as f32 - 1.0) * aspect_ratio * scale;
+        let dir_y = (1.0 - 2.0 * y / self.height as f32) * scale;
         let ray_direction = glam::Vec3::new(dir_x, dir_y, -1.0).normalize();
 
         // カメラ座標系からレンダリング座標系に変換する。
