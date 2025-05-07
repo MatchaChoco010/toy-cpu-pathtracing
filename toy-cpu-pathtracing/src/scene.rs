@@ -6,6 +6,9 @@ mod light_sampler;
 mod material;
 pub mod primitive;
 
+use crate::camera::Camera;
+use crate::filter::Filter;
+
 pub use geometry::{Geometry, GeometryIndex, GeometryRepository};
 pub use material::MaterialId;
 use primitive::Intersection;
@@ -55,8 +58,9 @@ impl<Id: SceneId> Scene<Id> {
             .create_primitive(&self.geometry_repository, desc)
     }
 
-    pub fn build(&mut self) {
-        // TODO: カメラのWorldToRenderを計算してprimitive_repository.set_world_to_render()を呼ぶ
+    pub fn build<F: Filter>(&mut self, camera: &Camera<F>) {
+        self.primitive_repository
+            .update_world_to_render(&camera.world_to_render());
         self.bvh = Some(PrimitiveBvh::build(
             &mut self.geometry_repository,
             &mut self.primitive_repository,
@@ -69,6 +73,9 @@ impl<Id: SceneId> Scene<Id> {
     }
 
     pub fn intersect(&self, ray: &Ray<Render>, t_max: f32) -> Option<Intersection<Id, Render>> {
+        if self.bvh.is_none() {
+            panic!("BVH is not built");
+        }
         self.bvh.as_ref().unwrap().intersect(
             &self.geometry_repository,
             &self.primitive_repository,

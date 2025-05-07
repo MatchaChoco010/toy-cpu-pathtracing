@@ -4,8 +4,10 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+clap = { version = "4.5.37", features = ["derive"] }
 glam = "0.30.3"
 image = "0.25.6"
 macros = { path = "../macros" }
+rand = "0.9.1"
 rayon = "1.10.0"
 tobj = "4.0.3"
