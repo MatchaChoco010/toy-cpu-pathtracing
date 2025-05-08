@@ -1,3 +1,5 @@
+//! 定義済みのスペクトルを提供するモジュール。
+
 use std::sync::LazyLock;
 
 use super::{BlackBodySpectrum, DenselySampledSpectrum, PiecewiseLinearSpectrum, Spectrum};
@@ -7,6 +9,7 @@ struct CachedSpectrum {
     cie_x: DenselySampledSpectrum,
     cie_y: DenselySampledSpectrum,
     cie_z: DenselySampledSpectrum,
+    cie_y_integral: f32,
     cie_illum_a: DenselySampledSpectrum,
     cie_illum_d5000: DenselySampledSpectrum,
     aces_illum_d60: DenselySampledSpectrum,
@@ -185,6 +188,7 @@ impl CachedSpectrum {
             cie_x,
             cie_y,
             cie_z,
+            cie_y_integral: 106.856895,
             cie_illum_a,
             cie_illum_d5000,
             aces_illum_d60,
@@ -245,6 +249,12 @@ pub fn y() -> Spectrum {
 #[inline(always)]
 pub fn z() -> Spectrum {
     Spectrum::DenselySampled(CACHED_SPECTRUM.cie_z.clone())
+}
+
+/// CIEの定義したXYZマッチン曲線のYの積分値を返す関数。
+#[inline(always)]
+pub fn y_integral() -> f32 {
+    CACHED_SPECTRUM.cie_y_integral
 }
 
 /// CIEの定義した標準光源のA光源に対応するスペクトルを返す関数。

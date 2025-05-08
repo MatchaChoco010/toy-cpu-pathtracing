@@ -1,12 +1,13 @@
 use clap::Parser;
 
 pub mod camera;
+pub mod color;
 pub mod filter;
 pub mod math;
 pub mod renderer;
 pub mod sampler;
 pub mod scene;
-mod scene_loader;
+pub mod scene_loader;
 pub mod spectrum;
 
 use camera::Camera;

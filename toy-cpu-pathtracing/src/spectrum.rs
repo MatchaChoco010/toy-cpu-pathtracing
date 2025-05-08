@@ -47,9 +47,9 @@ pub trait SpectrumTrait: Send + Sync + Clone {
 
 /// スペクトルを表現する列挙型。
 #[enum_methods {
-    fn value(&self, lambda: f32) -> f32,
-    fn max_value(&self) -> f32,
-    fn sample(&self, lambda: &SampledWavelengths) -> SampledSpectrum,
+    pub fn value(&self, lambda: f32) -> f32,
+    pub fn max_value(&self) -> f32,
+    pub fn sample(&self, lambda: &SampledWavelengths) -> SampledSpectrum,
 }]
 #[derive(Clone)]
 pub enum Spectrum {
