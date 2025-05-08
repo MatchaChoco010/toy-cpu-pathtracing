@@ -1,7 +1,12 @@
-use image::{Rgb, RgbImage};
+//! レンダラーの実装を行うモジュール。
+
+use std::path::Path;
+
+use image::{ImageFormat, Rgb, RgbImage};
 use rayon::prelude::*;
 
 use crate::camera::Camera;
+use crate::color::{ColorTrait, SrgbColor};
 use crate::filter::Filter;
 use crate::sampler::{Sampler, SamplerFactory};
 use crate::scene::{Interaction, Scene, SceneId};
@@ -19,40 +24,59 @@ pub struct RendererArgs<'a, Id: SceneId, F: Filter, SF: SamplerFactory> {
 
 /// レンダラーのトレイト。
 pub trait Renderer: Send + Sync + Clone {
+    type Color: ColorTrait;
+
     /// レンダリングを行い、RGBの色を返す。
-    fn render(&mut self, x: u32, y: u32) -> [u8; 3];
+    fn render(&mut self, x: u32, y: u32) -> Self::Color;
 }
 
 /// レンダラーで書き出す画像の構造体。
 pub struct RendererImage<R: Renderer> {
-    img: RgbImage,
+    pixels: Vec<[f32; 3]>,
+    width: u32,
+    height: u32,
     renderer: R,
 }
 impl<R: Renderer> RendererImage<R> {
     /// 新しいレンダラー画像を作成する。
     pub fn new(width: u32, height: u32, renderer: R) -> Self {
-        let img = RgbImage::new(width, height);
-        Self { img, renderer }
+        let pixels = vec![[0.0; 3]; (width * height) as usize];
+        Self {
+            pixels,
+            width,
+            height,
+            renderer,
+        }
     }
 
     /// 画像に対してレンダリングを行う。
     pub fn render(&mut self) {
-        self.img
-            .enumerate_pixels_mut()
-            .collect::<Vec<(u32, u32, &mut Rgb<u8>)>>()
+        self.pixels
             .par_iter_mut()
-            .for_each(|(x, y, pixel)| {
+            .enumerate()
+            .for_each(|(index, pixel)| {
+                let x = index as u32 % self.width;
+                let y = index as u32 / self.width;
                 let mut renderer = self.renderer.clone();
-                let color = renderer.render(*x, *y);
-                pixel[0] = color[0];
-                pixel[1] = color[1];
-                pixel[2] = color[2];
+                let rgb = renderer.render(x, y).rgb();
+                pixel[0] = rgb.x;
+                pixel[1] = rgb.y;
+                pixel[2] = rgb.z;
             });
     }
 
     /// 画像を保存する。
-    pub fn save(&self, filename: &str) {
-        self.img.save(filename).unwrap();
+    pub fn save(&self, path: impl AsRef<Path>) {
+        RgbImage::from_fn(self.width, self.height, |x, y| {
+            let pixel = self.pixels[(y * self.width + x) as usize];
+            Rgb([
+                (pixel[0] * 255.0) as u8,
+                (pixel[1] * 255.0) as u8,
+                (pixel[2] * 255.0) as u8,
+            ])
+        })
+        .save_with_format(path, ImageFormat::Png)
+        .unwrap();
     }
 }
 
@@ -68,7 +92,9 @@ impl<'a, Id: SceneId, F: Filter, SF: SamplerFactory> NormalRenderer<'a, Id, F, S
     }
 }
 impl<'a, Id: SceneId, F: Filter, SF: SamplerFactory> Renderer for NormalRenderer<'a, Id, F, SF> {
-    fn render(&mut self, x: u32, y: u32) -> [u8; 3] {
+    type Color = SrgbColor;
+
+    fn render(&mut self, x: u32, y: u32) -> Self::Color {
         let RendererArgs {
             spp,
             scene,
@@ -101,10 +127,6 @@ impl<'a, Id: SceneId, F: Filter, SF: SamplerFactory> Renderer for NormalRenderer
         }
         let color = acc_color / spp as f32;
 
-        [
-            (color.x * 255.0) as u8,
-            (color.y * 255.0) as u8,
-            (color.z * 255.0) as u8,
-        ]
+        Self::Color::new(color)
     }
 }

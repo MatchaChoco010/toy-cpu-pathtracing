@@ -1,6 +1,7 @@
 {
   "cSpell.words": [
     "Clippy",
+    "Eotf",
     "fenix",
     "illum",
     "impls",
@@ -14,6 +15,7 @@
     "pkgs",
     "pname",
     "rustc",
+    "Srgb",
     "tobj"
   ]
 }
