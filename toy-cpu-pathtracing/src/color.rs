@@ -10,8 +10,7 @@ pub mod tone_map;
 
 use eotf::{Eotf, Gamma2_2, Gamma2_6, GammaRec709, GammaSrgb, Linear, NonLinearEotf};
 use gamut::{
-    Aces2065_1Gamut, AcesCgGamut, AdobeRgbGamut, ColorGamut, DciP3D65Gamut, ItuRBt2020Gamut,
-    SrgbGamut,
+    Aces2065_1Gamut, AcesCgGamut, AdobeRgbGamut, ColorGamut, DciP3D65Gamut, Rec2020Gamut, SrgbGamut,
 };
 use tone_map::{InvertibleToneMap, NoneToneMap, ToneMap};
 
@@ -177,12 +176,12 @@ impl Rec709Color {
 }
 
 /// Rec. 2020色空間の色を表す構造体。
-/// 色域がITU-R BT. 2020でEOTFはRec.709のガンマ関数
-pub type Rec2020Color = Color<ItuRBt2020Gamut, NoneToneMap, GammaRec709>;
+/// 色域がRec. 2020でEOTFはRec.709のガンマ関数
+pub type Rec2020Color = Color<Rec2020Gamut, NoneToneMap, GammaRec709>;
 impl Rec2020Color {
     /// Rec.2020色空間の色を生成する。
     pub fn new(rgb: glam::Vec3) -> Self {
-        Self::create(rgb, ItuRBt2020Gamut::new(), NoneToneMap)
+        Self::create(rgb, Rec2020Gamut::new(), NoneToneMap)
     }
 }
 
