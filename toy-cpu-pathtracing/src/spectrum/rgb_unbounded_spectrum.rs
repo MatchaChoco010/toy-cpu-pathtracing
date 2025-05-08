@@ -1,3 +1,5 @@
+//! RGBから一般の非有界なスペクトルを生成するモジュール。
+
 use crate::spectrum::{LAMBDA_MAX, LAMBDA_MIN, SpectrumTrait};
 
 #[derive(Clone)]

@@ -1,3 +1,5 @@
+//! RGB色から反射率スペクトルを生成するモジュール。
+
 use crate::spectrum::{LAMBDA_MAX, LAMBDA_MIN, SpectrumTrait};
 
 #[derive(Clone)]

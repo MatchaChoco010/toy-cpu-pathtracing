@@ -1,3 +1,5 @@
+//! シーンにオブジェクトを配置する関数を集めたモジュール。
+
 use crate::camera::Camera;
 use crate::filter::Filter;
 use crate::math::{Normal, Point3, Transform, Vector3};

@@ -1,3 +1,5 @@
+//! カメラを定義するモジュール。
+
 use crate::filter::Filter;
 use crate::math::{Point3, Ray, Render, Transform, Vector3, World};
 

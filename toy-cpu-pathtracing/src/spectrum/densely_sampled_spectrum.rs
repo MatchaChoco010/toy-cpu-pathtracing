@@ -1,3 +1,5 @@
+//! 密にサンプルされたスペクトルを定義するモジュール。
+
 use crate::spectrum::{LAMBDA_MAX, LAMBDA_MIN, SpectrumTrait};
 
 use super::Spectrum;
