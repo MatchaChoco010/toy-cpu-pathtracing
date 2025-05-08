@@ -11,6 +11,8 @@ mod rgb_illuminant_spectrum;
 mod rgb_unbounded_spectrum;
 mod sampled_spectrum;
 
+pub mod presets;
+
 pub use black_body_spectrum::*;
 pub use constant_spectrum::*;
 pub use densely_sampled_spectrum::*;
@@ -26,7 +28,7 @@ pub const LAMBDA_MIN: f32 = 360.0;
 pub const LAMBDA_MAX: f32 = 830.0;
 
 /// スペクトルのトレイト。
-pub trait SpectrumTrait {
+pub trait SpectrumTrait: Send + Sync + Clone {
     /// 波長lambda (nm)に対するスペクトル強度の値を取得する。
     fn value(&self, lambda: f32) -> f32;
 
@@ -49,6 +51,7 @@ pub trait SpectrumTrait {
     fn max_value(&self) -> f32,
     fn sample(&self, lambda: &SampledWavelengths) -> SampledSpectrum,
 }]
+#[derive(Clone)]
 pub enum Spectrum {
     Constant(ConstantSpectrum),
     DenselySampled(DenselySampledSpectrum),

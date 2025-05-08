@@ -1,6 +1,7 @@
 use crate::spectrum::SpectrumTrait;
 
 /// 定数スペクトルを表す構造体。
+#[derive(Clone)]
 pub struct ConstantSpectrum {
     c: f32,
 }

@@ -1,6 +1,7 @@
-use crate::spectrum::{LAMBDA_MAX, LAMBDA_MIN, SpectrumTrait};
+use crate::spectrum::SpectrumTrait;
 
 /// 線形補間されたスペクトルを表す構造体。
+#[derive(Clone)]
 pub struct PiecewiseLinearSpectrum {
     lambdas: Vec<f32>,
     values: Vec<f32>,
@@ -9,6 +10,30 @@ impl PiecewiseLinearSpectrum {
     /// 新しい線形補間されたスペクトルを作成する。
     pub fn new(lambdas: Vec<f32>, values: Vec<f32>) -> Self {
         assert_eq!(lambdas.len(), values.len());
+        Self { lambdas, values }
+    }
+
+    /// 波長の配列と値のペアの配列から新しい線形補間されたスペクトルを作成する。
+    pub fn from_lambda_and_value(lambdas: &[f32], values: &[f32]) -> Self {
+        assert_eq!(lambdas.len(), values.len());
+        Self {
+            lambdas: lambdas.to_vec(),
+            values: values.to_vec(),
+        }
+    }
+
+    /// 波長と値が交互に並んだ配列から新しい線形補間されたスペクトルを作成する。
+    pub fn from_interleaved(lambdas_and_values: &[f32]) -> Self {
+        assert_eq!(lambdas_and_values.len() % 2, 0);
+        let len = lambdas_and_values.len() / 2;
+        let (lambdas, values) = lambdas_and_values.chunks_exact(2).fold(
+            (Vec::with_capacity(len), Vec::with_capacity(len)),
+            |(mut lambdas, mut values), chunk| {
+                lambdas.push(chunk[0]);
+                values.push(chunk[1]);
+                (lambdas, values)
+            },
+        );
         Self { lambdas, values }
     }
 }

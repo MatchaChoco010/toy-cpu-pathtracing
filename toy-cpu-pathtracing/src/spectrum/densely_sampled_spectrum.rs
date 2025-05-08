@@ -1,7 +1,10 @@
 use crate::spectrum::{LAMBDA_MAX, LAMBDA_MIN, SpectrumTrait};
 
+use super::Spectrum;
+
 /// 密にサンプリングされたスペクトルを表す構造体。
 /// 1nmごとにサンプリングされたスペクトル強度を格納する。
+#[derive(Clone)]
 pub struct DenselySampledSpectrum {
     /// スペクトルの値を格納するベクタ。
     values: Vec<f32>,
@@ -11,13 +14,25 @@ pub struct DenselySampledSpectrum {
 }
 impl DenselySampledSpectrum {
     /// 新しい密にサンプリングされたスペクトルを作成する。
-    pub fn new(spectrum: &impl SpectrumTrait) -> Self {
-        Self::new_range(spectrum, LAMBDA_MIN, LAMBDA_MAX)
+    pub fn new(values: Vec<f32>, lambda_min: f32, lambda_max: f32) -> Self {
+        assert_eq!(values.len(), (lambda_max - lambda_min) as usize);
+        let max_value = values.iter().cloned().fold(0.0, f32::max);
+        Self {
+            values,
+            lambda_min,
+            lambda_max,
+            max_value,
+        }
+    }
+
+    /// 与えられたスペクトルをサンプリングして、密にサンプリングされたスペクトルを作成する。
+    pub fn from(spectrum: &Spectrum) -> Self {
+        Self::from_range(spectrum, LAMBDA_MIN, LAMBDA_MAX)
     }
 
     /// 指定された波長範囲で与えられたスペクトルをサンプリングして、
-    /// 新しい密にサンプリングされたスペクトルを作成する。
-    pub fn new_range(spectrum: &impl SpectrumTrait, lambda_min: f32, lambda_max: f32) -> Self {
+    /// 密にサンプリングされたスペクトルを作成する。
+    pub fn from_range(spectrum: &Spectrum, lambda_min: f32, lambda_max: f32) -> Self {
         let range = (lambda_max - lambda_min) as usize;
         let mut values = vec![0.0; range];
         let mut max_value = 0.0;
@@ -34,22 +49,6 @@ impl DenselySampledSpectrum {
             lambda_max,
             max_value,
         }
-    }
-
-    pub fn new_x() -> Self {
-        todo!()
-    }
-
-    pub fn new_y() -> Self {
-        todo!()
-    }
-
-    pub fn new_z() -> Self {
-        todo!()
-    }
-
-    pub fn new_d(temperature: f32) -> Self {
-        todo!()
     }
 }
 impl SpectrumTrait for DenselySampledSpectrum {

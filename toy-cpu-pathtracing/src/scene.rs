@@ -8,6 +8,7 @@ pub mod primitive;
 
 use crate::camera::Camera;
 use crate::filter::Filter;
+use crate::math::{Ray, Render};
 
 pub use geometry::{Geometry, GeometryIndex, GeometryRepository};
 pub use material::MaterialId;
@@ -130,5 +131,3 @@ macro_rules! create_scene {
     }};
 }
 pub(crate) use create_scene;
-
-use crate::math::{Ray, Render};

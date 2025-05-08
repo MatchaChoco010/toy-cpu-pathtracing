@@ -17,6 +17,7 @@ fn black_body(lambda: f32, temperature: f32) -> f32 {
 }
 
 /// 黒体スペクトルを表す構造体。
+#[derive(Clone)]
 pub struct BlackBodySpectrum {
     temperature: f32,
 }
@@ -33,6 +34,13 @@ impl SpectrumTrait for BlackBodySpectrum {
     }
 
     fn max_value(&self) -> f32 {
-        black_body(LAMBDA_MIN, self.temperature)
+        let mut max_value = 0.0;
+        for lambda in (LAMBDA_MIN as u32..=LAMBDA_MAX as u32).map(|l| l as f32) {
+            let value = self.value(lambda);
+            if value > max_value {
+                max_value = value;
+            }
+        }
+        max_value
     }
 }
