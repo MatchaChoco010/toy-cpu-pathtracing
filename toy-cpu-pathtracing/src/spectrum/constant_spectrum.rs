@@ -1,3 +1,5 @@
+//! 定数スペクトルを定義するモジュール。
+
 use crate::spectrum::SpectrumTrait;
 
 /// 定数スペクトルを表す構造体。

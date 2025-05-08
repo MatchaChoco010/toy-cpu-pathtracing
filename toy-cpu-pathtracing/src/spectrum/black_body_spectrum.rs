@@ -1,3 +1,5 @@
+//! 黒体放射スペクトルを定義するモジュール。
+
 use crate::spectrum::{LAMBDA_MAX, LAMBDA_MIN, SpectrumTrait};
 
 /// 与えられた波長lambda (nm) と温度temperature (K) に対して、プランクの法則に基づいて黒体放射を計算する。

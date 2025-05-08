@@ -1,3 +1,5 @@
+//! RGBから光源のスペクトルを生成するモジュール。
+
 use crate::spectrum::{LAMBDA_MAX, LAMBDA_MIN, SpectrumTrait};
 
 #[derive(Clone)]

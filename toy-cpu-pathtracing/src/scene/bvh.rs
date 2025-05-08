@@ -1,3 +1,5 @@
+//! Acceleration StructureのBVH (Bounding Volume Hierarchy)を実装するモジュール。
+
 use std::marker::PhantomData;
 
 use crate::math::{Bounds, CoordinateSystem, Ray};
