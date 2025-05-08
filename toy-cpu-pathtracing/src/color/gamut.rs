@@ -121,14 +121,14 @@ impl ColorGamut for AdobeRgbGamut {
     }
 }
 
-/// ITU-R BT.2020の色域を表す。
+/// Rec. 2020の色域を表す。
 #[derive(Clone)]
-pub struct ItuRBt2020Gamut {
+pub struct Rec2020Gamut {
     xyz_to_rgb: glam::Mat3,
     rgb_to_xyz: glam::Mat3,
 }
-impl ColorGamut for ItuRBt2020Gamut {
-    /// ITU-R BT.2020の色域を生成する。
+impl ColorGamut for Rec2020Gamut {
+    /// Rec. 2020の色域を生成する。
     fn new() -> Self {
         let r_xy = glam::vec2(0.7080, 0.2920);
         let g_xy = glam::vec2(0.1700, 0.7970);
