@@ -41,6 +41,7 @@ impl From<Spectrum> for Xyz {
     }
 }
 
+/// 各種色空間の色が実装するトレイト。
 pub trait ColorTrait {
     fn rgb(&self) -> glam::Vec3;
 }
