@@ -15,7 +15,7 @@ use gamut::{
 use tone_map::{InvertibleToneMap, NoneToneMap, ToneMap};
 
 /// スペクトル同士の内積を計算する関数。
-fn inner_product(s1: &Spectrum, s2: &Spectrum) -> f32 {
+fn inner_product(s1: &impl Spectrum, s2: &impl Spectrum) -> f32 {
     let mut sum = 0.0;
     let range = 0..(LAMBDA_MAX - LAMBDA_MIN) as usize;
     for i in range {
@@ -26,12 +26,14 @@ fn inner_product(s1: &Spectrum, s2: &Spectrum) -> f32 {
 }
 
 /// XYZ色空間の色を表す構造体。
+#[derive(Clone)]
 pub struct Xyz {
+    #[allow(dead_code)]
     xyz: glam::Vec3,
 }
-impl From<Spectrum> for Xyz {
+impl<S: Spectrum> From<S> for Xyz {
     /// SpectrumからXyzに変換する。
-    fn from(s: Spectrum) -> Self {
+    fn from(s: S) -> Self {
         let xyz = glam::vec3(
             inner_product(&presets::x(), &s),
             inner_product(&presets::y(), &s),
@@ -42,13 +44,14 @@ impl From<Spectrum> for Xyz {
 }
 
 /// 各種色空間の色が実装するトレイト。
-pub trait ColorTrait {
+pub trait ColorTrait: Sync + Send + Sized + Clone {
     fn rgb(&self) -> glam::Vec3;
 }
 
 /// RGB色空間の色を表す構造体。
 /// ジェネリクスで指定された色域で、
 /// ジェネリクスで指定されたトーンマップとEOTFがかかった後のrgb値を持つ。
+#[derive(Clone)]
 pub struct Color<G: ColorGamut, T: ToneMap, E: Eotf> {
     rgb: glam::Vec3,
     gamut: G,
@@ -57,7 +60,7 @@ pub struct Color<G: ColorGamut, T: ToneMap, E: Eotf> {
 }
 impl<G: ColorGamut, T: ToneMap, E: Eotf> Color<G, T, E> {
     /// Colorを生成する。
-    fn create(rgb: glam::Vec3, gamut: G, tone_map: T) -> Self {
+    const fn create(rgb: glam::Vec3, gamut: G, tone_map: T) -> Self {
         Self {
             rgb,
             gamut,
@@ -71,10 +74,9 @@ impl<G: ColorGamut, T: ToneMap, E: Eotf> Color<G, T, E> {
         self.gamut.rgb_to_xyz(self.rgb)
     }
 
-    /// 別の色域の色から色域を変更する。
-    pub fn from<G2: ColorGamut>(color: Color<G2, T, E>) -> Self {
+    /// 別の色域の色から新しい色域に色域を変更する。
+    pub fn from<G2: ColorGamut>(color: Color<G2, T, E>, gamut: G) -> Self {
         let xyz = color.xyz();
-        let gamut = G::new();
         let rgb = gamut.xyz_to_rgb(xyz);
         Color::create(rgb, gamut, color.tone_map.clone())
     }
@@ -83,14 +85,6 @@ impl<G: ColorGamut, T: ToneMap, E: Eotf> ColorTrait for Color<G, T, E> {
     /// RGB値を取得する。
     fn rgb(&self) -> glam::Vec3 {
         self.rgb
-    }
-}
-impl<G: ColorGamut> From<Xyz> for Color<G, NoneToneMap, Linear> {
-    /// XyzからColorを生成する。
-    fn from(xyz: Xyz) -> Self {
-        let gamut = G::new();
-        let rgb = gamut.xyz_to_rgb(xyz.xyz);
-        Color::create(rgb, gamut, NoneToneMap)
     }
 }
 // トーンマップが逆変換可能な場合。
@@ -134,6 +128,11 @@ impl SrgbColor {
     pub fn new(rgb: glam::Vec3) -> Self {
         Self::create(rgb, SrgbGamut::new(), NoneToneMap)
     }
+
+    /// rgbの値からsRGB色空間の色を生成する。
+    pub const fn from_rgb(rgb: glam::Vec3) -> Self {
+        Self::create(rgb, SrgbGamut::new(), NoneToneMap)
+    }
 }
 
 /// Display P3色空間の色を表す構造体。
@@ -142,6 +141,11 @@ pub type DisplayP3Color = Color<DciP3D65Gamut, NoneToneMap, GammaSrgb>;
 impl DisplayP3Color {
     /// Display P3色空間の色を生成する。
     pub fn new(rgb: glam::Vec3) -> Self {
+        Self::create(rgb, DciP3D65Gamut::new(), NoneToneMap)
+    }
+
+    /// rgbの値からDisplay P3色空間の色を生成する。
+    pub const fn from_rgb(rgb: glam::Vec3) -> Self {
         Self::create(rgb, DciP3D65Gamut::new(), NoneToneMap)
     }
 }

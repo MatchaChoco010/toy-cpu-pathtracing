@@ -1,7 +1,7 @@
 //! EOTF (Electro-Optical Transfer Function) の実装を行うモジュール。
 
 /// EOTFのTransfer Functionを表すトレイト。
-pub trait Eotf {}
+pub trait Eotf: Sync + Send + Clone {}
 
 /// ノンリニアなEOTFのトレイト。
 pub trait NonLinearEotf: Eotf {
@@ -10,6 +10,7 @@ pub trait NonLinearEotf: Eotf {
 }
 
 /// ガンマ2.2のガンマ補正のEOTF。
+#[derive(Clone)]
 pub struct Gamma2_2;
 impl Eotf for Gamma2_2 {}
 impl NonLinearEotf for Gamma2_2 {
@@ -23,6 +24,7 @@ impl NonLinearEotf for Gamma2_2 {
 }
 
 /// ガンマ2.4のガンマ補正のEOTF。
+#[derive(Clone)]
 pub struct Gamma2_4;
 impl Eotf for Gamma2_4 {}
 impl NonLinearEotf for Gamma2_4 {
@@ -36,6 +38,7 @@ impl NonLinearEotf for Gamma2_4 {
 }
 
 /// ガンマ2.6のガンマ補正のEOTF。
+#[derive(Clone)]
 pub struct Gamma2_6;
 impl Eotf for Gamma2_6 {}
 impl NonLinearEotf for Gamma2_6 {
@@ -50,6 +53,7 @@ impl NonLinearEotf for Gamma2_6 {
 
 /// sRGBのガンマ補正のEOTF。
 /// 0.0031308以下の値はリニアに変換され、0.0031308以上の値はガンマ2.4でガンマ補正される。
+#[derive(Clone)]
 pub struct GammaSrgb;
 impl Eotf for GammaSrgb {}
 impl NonLinearEotf for GammaSrgb {
@@ -76,6 +80,7 @@ impl NonLinearEotf for GammaSrgb {
 
 /// Adobe RGBのガンマ補正のEOTF。
 /// AdobeRGBのガンマは563/256≒2.19921875である。
+#[derive(Clone)]
 pub struct GammaAdobeRgb;
 impl Eotf for GammaAdobeRgb {}
 impl NonLinearEotf for GammaAdobeRgb {
@@ -92,6 +97,7 @@ impl NonLinearEotf for GammaAdobeRgb {
 
 /// Rec. 709のガンマ補正のEOTF。
 /// 0.018以下の値はリニアに変換され、0.018以上の値はガンマ2.4でガンマ補正される。
+#[derive(Clone)]
 pub struct GammaRec709;
 impl Eotf for GammaRec709 {}
 impl NonLinearEotf for GammaRec709 {
@@ -118,5 +124,6 @@ impl NonLinearEotf for GammaRec709 {
 
 /// リニアのEOTF。
 /// EOTF変換前の色をそのまま表す際に使う。
+#[derive(Clone)]
 pub struct Linear;
 impl Eotf for Linear {}

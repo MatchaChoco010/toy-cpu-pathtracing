@@ -1,7 +1,7 @@
 //! トーンマッピングのトレイトと実装のモジュール。
 
 /// トーンマッピングのトレイト。
-pub trait ToneMap: Sized + Clone {
+pub trait ToneMap: Sync + Send + Sized + Clone {
     fn transform(&self, color: glam::Vec3) -> glam::Vec3;
 }
 /// トーンマッピングが逆変換を持つ場合のトレイト。
