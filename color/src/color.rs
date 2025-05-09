@@ -38,7 +38,7 @@ pub struct Color<G: ColorGamut, T: ToneMap, E: Eotf> {
 }
 impl<G: ColorGamut, T: ToneMap, E: Eotf> Color<G, T, E> {
     /// Colorを生成する。
-    const fn create(rgb: glam::Vec3, gamut: G, tone_map: T) -> Self {
+    fn create(rgb: glam::Vec3, gamut: G, tone_map: T) -> Self {
         Self {
             rgb,
             gamut,
@@ -57,6 +57,12 @@ impl<G: ColorGamut, T: ToneMap, E: Eotf> Color<G, T, E> {
         let xyz = color.xyz();
         let rgb = gamut.xyz_to_rgb(xyz);
         Color::create(rgb, gamut, color.tone_map.clone())
+    }
+}
+impl<G: ColorGamut, E: Eotf> Color<G, NoneToneMap, E> {
+    /// RGB値を持つColorを生成する。
+    pub fn new(rgb: glam::Vec3) -> Self {
+        Self::create(rgb, G::new(), NoneToneMap)
     }
 }
 impl<G: ColorGamut, T: ToneMap, E: Eotf> ColorTrait for Color<G, T, E> {
@@ -101,91 +107,33 @@ impl<G: ColorGamut> Color<G, NoneToneMap, Linear> {
 /// sRGB色空間の色を表す構造体。
 /// 色域がsRGBでEOTFがsRGBのガンマ関数。
 pub type SrgbColor = Color<SrgbGamut, NoneToneMap, GammaSrgb>;
-impl SrgbColor {
-    /// sRGB色空間の色を生成する。
-    pub fn new(rgb: glam::Vec3) -> Self {
-        Self::create(rgb, SrgbGamut::new(), NoneToneMap)
-    }
-
-    /// rgbの値からsRGB色空間の色を生成する。
-    pub const fn from_rgb(rgb: glam::Vec3) -> Self {
-        Self::create(rgb, SrgbGamut::new(), NoneToneMap)
-    }
-}
 
 /// Display P3色空間の色を表す構造体。
 /// 色域がDisplay P3でEOTFはsRGBのガンマ関数。
 pub type DisplayP3Color = Color<DciP3D65Gamut, NoneToneMap, GammaSrgb>;
-impl DisplayP3Color {
-    /// Display P3色空間の色を生成する。
-    pub fn new(rgb: glam::Vec3) -> Self {
-        Self::create(rgb, DciP3D65Gamut::new(), NoneToneMap)
-    }
-
-    /// rgbの値からDisplay P3色空間の色を生成する。
-    pub const fn from_rgb(rgb: glam::Vec3) -> Self {
-        Self::create(rgb, DciP3D65Gamut::new(), NoneToneMap)
-    }
-}
 
 /// P3-D65色空間の色を表す構造体。
 /// 色域がP3-D65でEOTFはガンマ2.6のガンマ関数。
 pub type P3D65Color = Color<DciP3D65Gamut, NoneToneMap, Gamma2_6>;
-impl P3D65Color {
-    /// P3-D65色空間の色を生成する。
-    pub fn new(rgb: glam::Vec3) -> Self {
-        Self::create(rgb, DciP3D65Gamut::new(), NoneToneMap)
-    }
-}
 
 /// Adobe RGB色空間の色を表す構造体。
 /// 色域とEOTFがAdobe RGBのもの。
 pub type AdobeRGBColor = Color<AdobeRgbGamut, NoneToneMap, Gamma2_2>;
-impl AdobeRGBColor {
-    /// Adobe RGB色空間の色を生成する。
-    pub fn new(rgb: glam::Vec3) -> Self {
-        Self::create(rgb, AdobeRgbGamut::new(), NoneToneMap)
-    }
-}
 
 /// Rec. 709色空間の色を表す構造体。
 /// 色域がsRGBでEOTFはRec. 709のガンマ関数
 pub type Rec709Color = Color<SrgbGamut, NoneToneMap, GammaRec709>;
-impl Rec709Color {
-    /// Rec.709色空間の色を生成する。
-    pub fn new(rgb: glam::Vec3) -> Self {
-        Self::create(rgb, SrgbGamut::new(), NoneToneMap)
-    }
-}
 
 /// Rec. 2020色空間の色を表す構造体。
 /// 色域がRec. 2020でEOTFはRec.709のガンマ関数
 pub type Rec2020Color = Color<Rec2020Gamut, NoneToneMap, GammaRec709>;
-impl Rec2020Color {
-    /// Rec.2020色空間の色を生成する。
-    pub fn new(rgb: glam::Vec3) -> Self {
-        Self::create(rgb, Rec2020Gamut::new(), NoneToneMap)
-    }
-}
 
 /// ACEScg色空間の色を表す構造体。
 /// 色域がACEScgでEOTFはシーンリニアを想定してリニアとする。
 /// ACESのワークフローでディスプレイに表示するにはRRTとODTにあたるトーンマップを適用する必要がある。
 pub type AcesCgColor = Color<AcesCgGamut, NoneToneMap, Linear>;
-impl AcesCgColor {
-    /// ACEScg色空間の色を生成する。
-    pub fn new(rgb: glam::Vec3) -> Self {
-        Self::create(rgb, AcesCgGamut::new(), NoneToneMap)
-    }
-}
 
 /// ACES2065-1色空間の色を表す構造体。
 /// 色域がACES2065-1でEOTFはシーンリニアを想定してリニアとする。
 /// ACESのワークフローでディスプレイに表示するにはRRTとODTにあたるトーンマップを適用する必要がある。
 pub type Aces2065_1Color = Color<Aces2065_1Gamut, NoneToneMap, Linear>;
-impl Aces2065_1Color {
-    /// ACES2065-1色空間の色を生成する。
-    pub fn new(rgb: glam::Vec3) -> Self {
-        Self::create(rgb, Aces2065_1Gamut::new(), NoneToneMap)
-    }
-}
