@@ -3,12 +3,14 @@ name = "spectrum"
 version.workspace = true
 edition.workspace = true
 
-[features]
-default = []
-fast-analysis = []
-
 [dependencies]
 color.workspace = true
 glam.workspace = true
 math.workspace = true
 util_macros.workspace = true
+
+[build-dependencies]
+anyhow.workspace = true
+color.workspace = true
+glam.workspace = true
+math.workspace = true

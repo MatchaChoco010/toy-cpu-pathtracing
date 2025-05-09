@@ -7,6 +7,7 @@ version = "0.1.0"
 edition = "2024"
 
 [workspace.dependencies]
+anyhow = "1.0.98"
 color = { path = "color" }
 glam = "0.30.3"
 math = { path = "math" }

@@ -3,10 +3,6 @@ name = "renderer"
 version.workspace = true
 edition.workspace = true
 
-[features]
-default = []
-fast-analysis = ["spectrum/fast-analysis"]
-
 [dependencies]
 clap = { version = "4.5.37", features = ["derive"] }
 color.workspace = true
