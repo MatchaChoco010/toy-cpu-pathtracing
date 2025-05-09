@@ -1,7 +1,17 @@
 [workspace]
-members = ["toy-cpu-pathtracing", "macros"]
+members = ["color", "math", "renderer", "spectrum", "util_macros"]
 resolver = "3"
 
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
+
+[workspace.dependencies]
+color = { path = "color" }
+glam = "0.30.3"
+math = { path = "math" }
+proc-macro2 = "1.0.95"
+quote = "1.0.40"
+spectrum = { path = "spectrum" }
+syn = { version = "2.0.101", features = ["full", "extra-traits"] }
+util_macros = { path = "util_macros" }

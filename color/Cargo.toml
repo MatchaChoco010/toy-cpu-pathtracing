@@ -1,0 +1,8 @@
+[package]
+name = "color"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+glam.workspace = true
+math.workspace = true
