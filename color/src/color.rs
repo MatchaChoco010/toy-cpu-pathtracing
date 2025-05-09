@@ -2,24 +2,11 @@
 
 use std::marker::PhantomData;
 
-// use crate::spectrum::{LAMBDA_MAX, LAMBDA_MIN, Spectrum, presets};
-
 use crate::eotf::{Eotf, Gamma2_2, Gamma2_6, GammaRec709, GammaSrgb, Linear, NonLinearEotf};
 use crate::gamut::{
     Aces2065_1Gamut, AcesCgGamut, AdobeRgbGamut, ColorGamut, DciP3D65Gamut, Rec2020Gamut, SrgbGamut,
 };
 use crate::tone_map::{InvertibleToneMap, NoneToneMap, ToneMap};
-
-// /// スペクトル同士の内積を計算する関数。
-// fn inner_product(s1: &impl Spectrum, s2: &impl Spectrum) -> f32 {
-//     let mut sum = 0.0;
-//     let range = 0..(LAMBDA_MAX - LAMBDA_MIN) as usize;
-//     for i in range {
-//         let lambda = LAMBDA_MIN + i as f32;
-//         sum += s1.value(lambda) * s2.value(lambda);
-//     }
-//     sum
-// }
 
 /// XYZ色空間の色を表す構造体。
 #[derive(Clone)]
@@ -27,17 +14,12 @@ pub struct Xyz {
     #[allow(dead_code)]
     xyz: glam::Vec3,
 }
-// impl<S: Spectrum> From<S> for Xyz {
-//     /// SpectrumからXyzに変換する。
-//     fn from(s: S) -> Self {
-//         let xyz = glam::vec3(
-//             inner_product(&presets::x(), &s),
-//             inner_product(&presets::y(), &s),
-//             inner_product(&presets::z(), &s),
-//         ) / presets::y_integral();
-//         Self { xyz }
-//     }
-// }
+impl From<glam::Vec3> for Xyz {
+    /// XYZ値を持つXyzを生成する。
+    fn from(xyz: glam::Vec3) -> Self {
+        Self { xyz }
+    }
+}
 
 /// 各種色空間の色が実装するトレイト。
 pub trait ColorTrait: Sync + Send + Sized + Clone {
