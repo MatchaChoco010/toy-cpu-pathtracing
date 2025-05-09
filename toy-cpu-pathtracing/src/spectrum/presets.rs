@@ -2,14 +2,13 @@
 
 use std::sync::LazyLock;
 
-use super::{BlackBodySpectrum, DenselySampledSpectrum, PiecewiseLinearSpectrum, Spectrum};
+use crate::spectrum::{BlackBodySpectrum, DenselySampledSpectrum, PiecewiseLinearSpectrum};
 
 /// 定義済みのスペクトルをDenselySampledSpectrumとしてキャッシュするための構造体。
 struct CachedSpectrum {
     cie_x: DenselySampledSpectrum,
     cie_y: DenselySampledSpectrum,
     cie_z: DenselySampledSpectrum,
-    cie_y_integral: f32,
     cie_illum_a: DenselySampledSpectrum,
     cie_illum_d5000: DenselySampledSpectrum,
     aces_illum_d60: DenselySampledSpectrum,
@@ -50,145 +49,114 @@ struct CachedSpectrum {
 }
 impl CachedSpectrum {
     fn init() -> Self {
-        let cie_x = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_lambda_and_value(&CIE_LAMBDA, &CIE_X),
+        let cie_x = DenselySampledSpectrum::from(&PiecewiseLinearSpectrum::from_lambda_and_value(
+            &CIE_LAMBDA,
+            &CIE_X,
         ));
-        let cie_y = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_lambda_and_value(&CIE_LAMBDA, &CIE_Y),
+        let cie_y = DenselySampledSpectrum::from(&PiecewiseLinearSpectrum::from_lambda_and_value(
+            &CIE_LAMBDA,
+            &CIE_Y,
         ));
-        let cie_z = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_lambda_and_value(&CIE_LAMBDA, &CIE_Z),
-        ));
-
-        let cie_illum_a = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_interleaved(CIE_ILLUM_A),
-        ));
-
-        let cie_illum_d5000 = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_interleaved(CIE_ILLUM_D5000),
+        let cie_z = DenselySampledSpectrum::from(&PiecewiseLinearSpectrum::from_lambda_and_value(
+            &CIE_LAMBDA,
+            &CIE_Z,
         ));
 
-        let aces_illum_d60 = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_interleaved(ACES_ILLUM_D60),
-        ));
+        let cie_illum_a =
+            DenselySampledSpectrum::from(&PiecewiseLinearSpectrum::from_interleaved(CIE_ILLUM_A));
 
-        let cie_illum_d6500 = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_interleaved(CIE_ILLUM_D6500),
-        ));
+        let cie_illum_d5000 = DenselySampledSpectrum::from(
+            &PiecewiseLinearSpectrum::from_interleaved(CIE_ILLUM_D5000),
+        );
 
-        let cie_illum_f1 = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_interleaved(CIE_ILLUM_F1),
-        ));
-        let cie_illum_f2 = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_interleaved(CIE_ILLUM_F2),
-        ));
-        let cie_illum_f3 = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_interleaved(CIE_ILLUM_F3),
-        ));
-        let cie_illum_f4 = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_interleaved(CIE_ILLUM_F4),
-        ));
-        let cie_illum_f5 = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_interleaved(CIE_ILLUM_F5),
-        ));
-        let cie_illum_f6 = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_interleaved(CIE_ILLUM_F6),
-        ));
-        let cie_illum_f7 = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_interleaved(CIE_ILLUM_F7),
-        ));
-        let cie_illum_f8 = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_interleaved(CIE_ILLUM_F8),
-        ));
-        let cie_illum_f9 = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_interleaved(CIE_ILLUM_F9),
-        ));
-        let cie_illum_f10 = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_interleaved(CIE_ILLUM_F10),
-        ));
-        let cie_illum_f11 = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_interleaved(CIE_ILLUM_F11),
-        ));
-        let cie_illum_f12 = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_interleaved(CIE_ILLUM_F12),
-        ));
+        let aces_illum_d60 = DenselySampledSpectrum::from(
+            &PiecewiseLinearSpectrum::from_interleaved(ACES_ILLUM_D60),
+        );
 
-        let ag_eta = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_interleaved(AG_ETA),
-        ));
-        let ag_k = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_interleaved(AG_K),
-        ));
+        let cie_illum_d6500 = DenselySampledSpectrum::from(
+            &PiecewiseLinearSpectrum::from_interleaved(CIE_ILLUM_D6500),
+        );
 
-        let al_eta = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_interleaved(AL_ETA),
-        ));
-        let al_k = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_interleaved(AL_K),
-        ));
+        let cie_illum_f1 =
+            DenselySampledSpectrum::from(&PiecewiseLinearSpectrum::from_interleaved(CIE_ILLUM_F1));
+        let cie_illum_f2 =
+            DenselySampledSpectrum::from(&PiecewiseLinearSpectrum::from_interleaved(CIE_ILLUM_F2));
+        let cie_illum_f3 =
+            DenselySampledSpectrum::from(&PiecewiseLinearSpectrum::from_interleaved(CIE_ILLUM_F3));
+        let cie_illum_f4 =
+            DenselySampledSpectrum::from(&PiecewiseLinearSpectrum::from_interleaved(CIE_ILLUM_F4));
+        let cie_illum_f5 =
+            DenselySampledSpectrum::from(&PiecewiseLinearSpectrum::from_interleaved(CIE_ILLUM_F5));
+        let cie_illum_f6 =
+            DenselySampledSpectrum::from(&PiecewiseLinearSpectrum::from_interleaved(CIE_ILLUM_F6));
+        let cie_illum_f7 =
+            DenselySampledSpectrum::from(&PiecewiseLinearSpectrum::from_interleaved(CIE_ILLUM_F7));
+        let cie_illum_f8 =
+            DenselySampledSpectrum::from(&PiecewiseLinearSpectrum::from_interleaved(CIE_ILLUM_F8));
+        let cie_illum_f9 =
+            DenselySampledSpectrum::from(&PiecewiseLinearSpectrum::from_interleaved(CIE_ILLUM_F9));
+        let cie_illum_f10 =
+            DenselySampledSpectrum::from(&PiecewiseLinearSpectrum::from_interleaved(CIE_ILLUM_F10));
+        let cie_illum_f11 =
+            DenselySampledSpectrum::from(&PiecewiseLinearSpectrum::from_interleaved(CIE_ILLUM_F11));
+        let cie_illum_f12 =
+            DenselySampledSpectrum::from(&PiecewiseLinearSpectrum::from_interleaved(CIE_ILLUM_F12));
 
-        let au_eta = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_interleaved(AU_ETA),
-        ));
-        let au_k = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_interleaved(AU_K),
-        ));
+        let ag_eta =
+            DenselySampledSpectrum::from(&PiecewiseLinearSpectrum::from_interleaved(AG_ETA));
+        let ag_k = DenselySampledSpectrum::from(&PiecewiseLinearSpectrum::from_interleaved(AG_K));
 
-        let cu_eta = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_interleaved(CU_ETA),
-        ));
-        let cu_k = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_interleaved(CU_K),
-        ));
+        let al_eta =
+            DenselySampledSpectrum::from(&PiecewiseLinearSpectrum::from_interleaved(AL_ETA));
+        let al_k = DenselySampledSpectrum::from(&PiecewiseLinearSpectrum::from_interleaved(AL_K));
 
-        let cu_zn_eta = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_interleaved(CU_ZN_ETA),
-        ));
-        let cu_zn_k = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_interleaved(CU_ZN_K),
-        ));
+        let au_eta =
+            DenselySampledSpectrum::from(&PiecewiseLinearSpectrum::from_interleaved(AU_ETA));
+        let au_k = DenselySampledSpectrum::from(&PiecewiseLinearSpectrum::from_interleaved(AU_K));
 
-        let mg_o_eta = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_interleaved(MG_O_ETA),
-        ));
-        let mg_o_k = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_interleaved(MG_O_K),
-        ));
+        let cu_eta =
+            DenselySampledSpectrum::from(&PiecewiseLinearSpectrum::from_interleaved(CU_ETA));
+        let cu_k = DenselySampledSpectrum::from(&PiecewiseLinearSpectrum::from_interleaved(CU_K));
 
-        let ti_o2_eta = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_interleaved(TI_O2_ETA),
-        ));
-        let ti_o2_k = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_interleaved(TI_O2_K),
-        ));
+        let cu_zn_eta =
+            DenselySampledSpectrum::from(&PiecewiseLinearSpectrum::from_interleaved(CU_ZN_ETA));
+        let cu_zn_k =
+            DenselySampledSpectrum::from(&PiecewiseLinearSpectrum::from_interleaved(CU_ZN_K));
 
-        let glass_bk7_eta = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_interleaved(GLASS_BK7_ETA),
-        ));
-        let glass_baf10_eta = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_interleaved(GLASS_BAF10_ETA),
-        ));
-        let glass_fk51a_eta = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_interleaved(GLASS_FK51A_ETA),
-        ));
-        let glass_lasf9_eta = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_interleaved(GLASS_LASF9_ETA),
-        ));
-        let glass_sf5_eta = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_interleaved(GLASS_SF5_ETA),
-        ));
-        let glass_sf10_eta = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_interleaved(GLASS_SF10_ETA),
-        ));
-        let glass_sf11_eta = DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-            PiecewiseLinearSpectrum::from_interleaved(GLASS_SF11_ETA),
-        ));
+        let mg_o_eta =
+            DenselySampledSpectrum::from(&PiecewiseLinearSpectrum::from_interleaved(MG_O_ETA));
+        let mg_o_k =
+            DenselySampledSpectrum::from(&PiecewiseLinearSpectrum::from_interleaved(MG_O_K));
+
+        let ti_o2_eta =
+            DenselySampledSpectrum::from(&PiecewiseLinearSpectrum::from_interleaved(TI_O2_ETA));
+        let ti_o2_k =
+            DenselySampledSpectrum::from(&PiecewiseLinearSpectrum::from_interleaved(TI_O2_K));
+
+        let glass_bk7_eta =
+            DenselySampledSpectrum::from(&PiecewiseLinearSpectrum::from_interleaved(GLASS_BK7_ETA));
+        let glass_baf10_eta = DenselySampledSpectrum::from(
+            &PiecewiseLinearSpectrum::from_interleaved(GLASS_BAF10_ETA),
+        );
+        let glass_fk51a_eta = DenselySampledSpectrum::from(
+            &PiecewiseLinearSpectrum::from_interleaved(GLASS_FK51A_ETA),
+        );
+        let glass_lasf9_eta = DenselySampledSpectrum::from(
+            &PiecewiseLinearSpectrum::from_interleaved(GLASS_LASF9_ETA),
+        );
+        let glass_sf5_eta =
+            DenselySampledSpectrum::from(&PiecewiseLinearSpectrum::from_interleaved(GLASS_SF5_ETA));
+        let glass_sf10_eta = DenselySampledSpectrum::from(
+            &PiecewiseLinearSpectrum::from_interleaved(GLASS_SF10_ETA),
+        );
+        let glass_sf11_eta = DenselySampledSpectrum::from(
+            &PiecewiseLinearSpectrum::from_interleaved(GLASS_SF11_ETA),
+        );
 
         Self {
             cie_x,
             cie_y,
             cie_z,
-            cie_y_integral: 106.856895,
             cie_illum_a,
             cie_illum_d5000,
             aces_illum_d60,
@@ -235,52 +203,57 @@ static CACHED_SPECTRUM: LazyLock<CachedSpectrum> = LazyLock::new(CachedSpectrum:
 
 /// CIEの定義したXYZマッチン曲線のXに対応するスペクトルを返す関数。
 #[inline(always)]
-pub fn x() -> Spectrum {
-    Spectrum::DenselySampled(CACHED_SPECTRUM.cie_x.clone())
+pub fn x() -> DenselySampledSpectrum {
+    CACHED_SPECTRUM.cie_x.clone()
 }
 
 /// CIEの定義したXYZマッチン曲線のYに対応するスペクトルを返す関数。
 #[inline(always)]
-pub fn y() -> Spectrum {
-    Spectrum::DenselySampled(CACHED_SPECTRUM.cie_y.clone())
+pub fn y() -> DenselySampledSpectrum {
+    CACHED_SPECTRUM.cie_y.clone()
 }
 
 /// CIEの定義したXYZマッチン曲線のZに対応するスペクトルを返す関数。
 #[inline(always)]
-pub fn z() -> Spectrum {
-    Spectrum::DenselySampled(CACHED_SPECTRUM.cie_z.clone())
+pub fn z() -> DenselySampledSpectrum {
+    CACHED_SPECTRUM.cie_z.clone()
 }
 
 /// CIEの定義したXYZマッチン曲線のYの積分値を返す関数。
-#[inline(always)]
-pub fn y_integral() -> f32 {
-    CACHED_SPECTRUM.cie_y_integral
+pub const fn y_integral() -> f32 {
+    106.856895
 }
 
 /// CIEの定義した標準光源のA光源に対応するスペクトルを返す関数。
 #[inline(always)]
-pub fn cie_illum_a() -> Spectrum {
-    Spectrum::DenselySampled(CACHED_SPECTRUM.cie_illum_a.clone())
+pub fn cie_illum_a() -> DenselySampledSpectrum {
+    CACHED_SPECTRUM.cie_illum_a.clone()
 }
 
 /// CIEの定義した標準光源のD光源に対応するスペクトルを返す関数。
 /// およそ6504Kを与えるとほぼD65の光源になる。
 #[inline(always)]
-pub fn cie_d(temperature: f32) -> Spectrum {
+pub fn cie_d(temperature: f32) -> DenselySampledSpectrum {
     // temperatureをCCTに変換する。
     let cct = temperature / 1.4388 / 1.4380;
 
     // CCTが4000K未満の場合はCIE D光源は定義されていないので黒体放射を返す。
     if cct < 4000.0 {
-        return Spectrum::BlackBody(BlackBodySpectrum::new(cct));
+        return DenselySampledSpectrum::from(&BlackBodySpectrum::new(cct));
     }
 
     // CCTからxyに変換する。
     let x;
     if cct < 7000.0 {
-        x = -4.607 * 1e9 / cct.powi(3) + 2.9678 * 1e6 / cct.sqrt() + 0.09911 * 1e3 / cct + 0.244063;
+        x = -4.607 * 1e9 / cct.powi(3)
+            + 2.9678 * 1e6 / (cct * cct)
+            + 0.09911 * 1e3 / cct
+            + 0.244063;
     } else {
-        x = -2.0064 * 1e9 / cct.powi(3) + 1.9018 * 1e6 / cct.sqrt() + 0.24748 * 1e3 / cct + 0.23704;
+        x = -2.0064 * 1e9 / cct.powi(3)
+            + 1.9018 * 1e6 / (cct * cct)
+            + 0.24748 * 1e3 / cct
+            + 0.23704;
     }
     let y = -3.0 * x * x + 2.870 * x - 0.275;
 
@@ -294,35 +267,36 @@ pub fn cie_d(temperature: f32) -> Spectrum {
         values[i] = (CIE_S0[i] + CIE_S1[i] * m1 + CIE_S2[i] * m2) * 0.01;
     }
 
-    Spectrum::DenselySampled(DenselySampledSpectrum::from(&Spectrum::PiecewiseLinear(
-        PiecewiseLinearSpectrum::from_lambda_and_value(&CIE_S_LAMBDA, &values),
-    )))
+    DenselySampledSpectrum::from(&PiecewiseLinearSpectrum::from_lambda_and_value(
+        &CIE_S_LAMBDA,
+        &values,
+    ))
 }
 
 /// CIEのD光源5000Kに対応するスペクトルを返す関数。
 #[inline(always)]
-pub fn cie_illum_d5000() -> Spectrum {
-    Spectrum::DenselySampled(CACHED_SPECTRUM.cie_illum_d5000.clone())
+pub fn cie_illum_d5000() -> DenselySampledSpectrum {
+    CACHED_SPECTRUM.cie_illum_d5000.clone()
 }
 
 /// ACESのD60光源に対応するスペクトルを返す関数。
 #[inline(always)]
-pub fn aces_illum_d60() -> Spectrum {
-    Spectrum::DenselySampled(CACHED_SPECTRUM.aces_illum_d60.clone())
+pub fn aces_illum_d60() -> DenselySampledSpectrum {
+    CACHED_SPECTRUM.aces_illum_d60.clone()
 }
 
 /// CIEのD光源6500Kに対応するスペクトルを返す関数。
 #[inline(always)]
-pub fn cie_illum_d6500() -> Spectrum {
-    Spectrum::DenselySampled(CACHED_SPECTRUM.cie_illum_d6500.clone())
+pub fn cie_illum_d6500() -> DenselySampledSpectrum {
+    CACHED_SPECTRUM.cie_illum_d6500.clone()
 }
 
 /// CIEの定義した標準光源のF光源に対応するスペクトルを返す関数。
 /// 蛍光灯に対応する。
 #[inline(always)]
-pub fn cie_f<const INDEX: u8>() -> Spectrum {
+pub fn cie_f<const INDEX: u8>() -> DenselySampledSpectrum {
     assert!(INDEX <= 12);
-    Spectrum::DenselySampled(match INDEX {
+    match INDEX {
         1 => CACHED_SPECTRUM.cie_illum_f1.clone(),
         2 => CACHED_SPECTRUM.cie_illum_f2.clone(),
         3 => CACHED_SPECTRUM.cie_illum_f3.clone(),
@@ -336,133 +310,133 @@ pub fn cie_f<const INDEX: u8>() -> Spectrum {
         11 => CACHED_SPECTRUM.cie_illum_f11.clone(),
         12 => CACHED_SPECTRUM.cie_illum_f12.clone(),
         _ => unreachable!(),
-    })
+    }
 }
 
 /// 銀の屈折率を返す関数。
 #[inline(always)]
-pub fn ag_eta() -> Spectrum {
-    Spectrum::DenselySampled(CACHED_SPECTRUM.ag_eta.clone())
+pub fn ag_eta() -> DenselySampledSpectrum {
+    CACHED_SPECTRUM.ag_eta.clone()
 }
 
 /// 銀の消衰率を返す関数。
 #[inline(always)]
-pub fn ag_k() -> Spectrum {
-    Spectrum::DenselySampled(CACHED_SPECTRUM.ag_k.clone())
+pub fn ag_k() -> DenselySampledSpectrum {
+    CACHED_SPECTRUM.ag_k.clone()
 }
 
 /// アルミニウムの屈折率を返す関数。
 #[inline(always)]
-pub fn al_eta() -> Spectrum {
-    Spectrum::DenselySampled(CACHED_SPECTRUM.al_eta.clone())
+pub fn al_eta() -> DenselySampledSpectrum {
+    CACHED_SPECTRUM.al_eta.clone()
 }
 
 /// アルミニウムの消衰率を返す関数。
 #[inline(always)]
-pub fn al_k() -> Spectrum {
-    Spectrum::DenselySampled(CACHED_SPECTRUM.al_k.clone())
+pub fn al_k() -> DenselySampledSpectrum {
+    CACHED_SPECTRUM.al_k.clone()
 }
 
 /// 金の屈折率を返す関数。
 #[inline(always)]
-pub fn au_eta() -> Spectrum {
-    Spectrum::DenselySampled(CACHED_SPECTRUM.au_eta.clone())
+pub fn au_eta() -> DenselySampledSpectrum {
+    CACHED_SPECTRUM.au_eta.clone()
 }
 
 /// 金の消衰率を返す関数。
 #[inline(always)]
-pub fn au_k() -> Spectrum {
-    Spectrum::DenselySampled(CACHED_SPECTRUM.au_k.clone())
+pub fn au_k() -> DenselySampledSpectrum {
+    CACHED_SPECTRUM.au_k.clone()
 }
 
 /// 銅の屈折率を返す関数。
 #[inline(always)]
-pub fn cu_eta() -> Spectrum {
-    Spectrum::DenselySampled(CACHED_SPECTRUM.cu_eta.clone())
+pub fn cu_eta() -> DenselySampledSpectrum {
+    CACHED_SPECTRUM.cu_eta.clone()
 }
 
 /// 銅の消衰率を返す関数。
 #[inline(always)]
-pub fn cu_k() -> Spectrum {
-    Spectrum::DenselySampled(CACHED_SPECTRUM.cu_k.clone())
+pub fn cu_k() -> DenselySampledSpectrum {
+    CACHED_SPECTRUM.cu_k.clone()
 }
 
 /// 真鍮の屈折率を返す関数。
 #[inline(always)]
-pub fn cu_zn_eta() -> Spectrum {
-    Spectrum::DenselySampled(CACHED_SPECTRUM.cu_zn_eta.clone())
+pub fn cu_zn_eta() -> DenselySampledSpectrum {
+    CACHED_SPECTRUM.cu_zn_eta.clone()
 }
 
 /// 真鍮の消衰率を返す関数。
 #[inline(always)]
-pub fn cu_zn_k() -> Spectrum {
-    Spectrum::DenselySampled(CACHED_SPECTRUM.cu_zn_k.clone())
+pub fn cu_zn_k() -> DenselySampledSpectrum {
+    CACHED_SPECTRUM.cu_zn_k.clone()
 }
 
 /// 酸化マグネシウムの屈折率を返す関数。
 #[inline(always)]
-pub fn mg_o_eta() -> Spectrum {
-    Spectrum::DenselySampled(CACHED_SPECTRUM.mg_o_eta.clone())
+pub fn mg_o_eta() -> DenselySampledSpectrum {
+    CACHED_SPECTRUM.mg_o_eta.clone()
 }
 
 /// 酸化マグネシウムの消衰率を返す関数。
 #[inline(always)]
-pub fn mg_o_k() -> Spectrum {
-    Spectrum::DenselySampled(CACHED_SPECTRUM.mg_o_k.clone())
+pub fn mg_o_k() -> DenselySampledSpectrum {
+    CACHED_SPECTRUM.mg_o_k.clone()
 }
 
 /// 二酸化チタンの屈折率を返す関数。
 #[inline(always)]
-pub fn ti_o2_eta() -> Spectrum {
-    Spectrum::DenselySampled(CACHED_SPECTRUM.ti_o2_eta.clone())
+pub fn ti_o2_eta() -> DenselySampledSpectrum {
+    CACHED_SPECTRUM.ti_o2_eta.clone()
 }
 
 /// 二酸化チタンの消衰率を返す関数。
 #[inline(always)]
-pub fn ti_o2_k() -> Spectrum {
-    Spectrum::DenselySampled(CACHED_SPECTRUM.ti_o2_k.clone())
+pub fn ti_o2_k() -> DenselySampledSpectrum {
+    CACHED_SPECTRUM.ti_o2_k.clone()
 }
 
 /// BK7ガラスの屈折率を返す関数。
 #[inline(always)]
-pub fn glass_bk7_eta() -> Spectrum {
-    Spectrum::DenselySampled(CACHED_SPECTRUM.glass_bk7_eta.clone())
+pub fn glass_bk7_eta() -> DenselySampledSpectrum {
+    CACHED_SPECTRUM.glass_bk7_eta.clone()
 }
 
 /// BAF10ガラスの屈折率を返す関数。
 #[inline(always)]
-pub fn glass_baf10_eta() -> Spectrum {
-    Spectrum::DenselySampled(CACHED_SPECTRUM.glass_baf10_eta.clone())
+pub fn glass_baf10_eta() -> DenselySampledSpectrum {
+    CACHED_SPECTRUM.glass_baf10_eta.clone()
 }
 
 /// FK51Aガラスの屈折率を返す関数。
 #[inline(always)]
-pub fn glass_fk51a_eta() -> Spectrum {
-    Spectrum::DenselySampled(CACHED_SPECTRUM.glass_fk51a_eta.clone())
+pub fn glass_fk51a_eta() -> DenselySampledSpectrum {
+    CACHED_SPECTRUM.glass_fk51a_eta.clone()
 }
 
 /// LASF9ガラスの屈折率を返す関数。
 #[inline(always)]
-pub fn glass_lasf9_eta() -> Spectrum {
-    Spectrum::DenselySampled(CACHED_SPECTRUM.glass_lasf9_eta.clone())
+pub fn glass_lasf9_eta() -> DenselySampledSpectrum {
+    CACHED_SPECTRUM.glass_lasf9_eta.clone()
 }
 
 /// SF5ガラスの屈折率を返す関数。
 #[inline(always)]
-pub fn glass_sf5_eta() -> Spectrum {
-    Spectrum::DenselySampled(CACHED_SPECTRUM.glass_sf5_eta.clone())
+pub fn glass_sf5_eta() -> DenselySampledSpectrum {
+    CACHED_SPECTRUM.glass_sf5_eta.clone()
 }
 
 /// SF10ガラスの屈折率を返す関数。
 #[inline(always)]
-pub fn glass_sf10_eta() -> Spectrum {
-    Spectrum::DenselySampled(CACHED_SPECTRUM.glass_sf10_eta.clone())
+pub fn glass_sf10_eta() -> DenselySampledSpectrum {
+    CACHED_SPECTRUM.glass_sf10_eta.clone()
 }
 
 /// SF11ガラスの屈折率を返す関数。
 #[inline(always)]
-pub fn glass_sf11_eta() -> Spectrum {
-    Spectrum::DenselySampled(CACHED_SPECTRUM.glass_sf11_eta.clone())
+pub fn glass_sf11_eta() -> DenselySampledSpectrum {
+    CACHED_SPECTRUM.glass_sf11_eta.clone()
 }
 
 // 以下のスペクトルデータはpbrt-v4のもの。

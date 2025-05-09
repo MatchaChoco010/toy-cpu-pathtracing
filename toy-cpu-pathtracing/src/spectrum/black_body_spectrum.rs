@@ -1,6 +1,6 @@
 //! 黒体放射スペクトルを定義するモジュール。
 
-use crate::spectrum::{LAMBDA_MAX, LAMBDA_MIN, SpectrumTrait};
+use crate::spectrum::{LAMBDA_MAX, LAMBDA_MIN, Spectrum};
 
 /// 与えられた波長lambda (nm) と温度temperature (K) に対して、プランクの法則に基づいて黒体放射を計算する。
 fn black_body(lambda: f32, temperature: f32) -> f32 {
@@ -30,7 +30,7 @@ impl BlackBodySpectrum {
         Self { temperature }
     }
 }
-impl SpectrumTrait for BlackBodySpectrum {
+impl Spectrum for BlackBodySpectrum {
     fn value(&self, lambda: f32) -> f32 {
         black_body(lambda, self.temperature)
     }

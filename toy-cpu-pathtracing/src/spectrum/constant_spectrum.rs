@@ -1,6 +1,6 @@
 //! 定数スペクトルを定義するモジュール。
 
-use crate::spectrum::SpectrumTrait;
+use crate::spectrum::Spectrum;
 
 /// 定数スペクトルを表す構造体。
 #[derive(Clone)]
@@ -13,7 +13,7 @@ impl ConstantSpectrum {
         Self { c }
     }
 }
-impl SpectrumTrait for ConstantSpectrum {
+impl Spectrum for ConstantSpectrum {
     fn value(&self, _lambda: f32) -> f32 {
         self.c
     }

@@ -1,7 +1,5 @@
 //! スペクトルに関するモジュール。
 
-use macros::enum_methods;
-
 mod black_body_spectrum;
 mod constant_spectrum;
 mod densely_sampled_spectrum;
@@ -12,6 +10,7 @@ mod rgb_unbounded_spectrum;
 mod sampled_spectrum;
 
 pub mod presets;
+pub mod rgb_sigmoid_polynomial;
 
 pub use black_body_spectrum::*;
 pub use constant_spectrum::*;
@@ -28,7 +27,7 @@ pub const LAMBDA_MIN: f32 = 360.0;
 pub const LAMBDA_MAX: f32 = 830.0;
 
 /// スペクトルのトレイト。
-pub trait SpectrumTrait: Send + Sync + Clone {
+pub trait Spectrum {
     /// 波長lambda (nm)に対するスペクトル強度の値を取得する。
     fn value(&self, lambda: f32) -> f32;
 
@@ -43,21 +42,4 @@ pub trait SpectrumTrait: Send + Sync + Clone {
         }
         SampledSpectrum::from(values)
     }
-}
-
-/// スペクトルを表現する列挙型。
-#[enum_methods {
-    pub fn value(&self, lambda: f32) -> f32,
-    pub fn max_value(&self) -> f32,
-    pub fn sample(&self, lambda: &SampledWavelengths) -> SampledSpectrum,
-}]
-#[derive(Clone)]
-pub enum Spectrum {
-    Constant(ConstantSpectrum),
-    DenselySampled(DenselySampledSpectrum),
-    PiecewiseLinear(PiecewiseLinearSpectrum),
-    RgbAlbedo(RgbAlbedoSpectrum),
-    RgbUnbounded(RgbUnboundedSpectrum),
-    RgbIlluminant(RgbIlluminantSpectrum),
-    BlackBody(BlackBodySpectrum),
 }

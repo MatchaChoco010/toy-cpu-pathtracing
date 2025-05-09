@@ -1,6 +1,6 @@
 //! 線形補間されたスペクトルを定義するモジュール。
 
-use crate::spectrum::SpectrumTrait;
+use crate::spectrum::Spectrum;
 
 /// 線形補間されたスペクトルを表す構造体。
 #[derive(Clone)]
@@ -39,7 +39,7 @@ impl PiecewiseLinearSpectrum {
         Self { lambdas, values }
     }
 }
-impl SpectrumTrait for PiecewiseLinearSpectrum {
+impl Spectrum for PiecewiseLinearSpectrum {
     fn value(&self, lambda: f32) -> f32 {
         if self.lambdas.is_empty() {
             return 0.0;
