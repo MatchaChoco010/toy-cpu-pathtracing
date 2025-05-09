@@ -1,0 +1,8 @@
+[package]
+name = "math"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+glam.workspace = true
+util_macros.workspace = true
