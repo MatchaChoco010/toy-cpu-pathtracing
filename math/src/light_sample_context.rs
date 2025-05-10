@@ -2,13 +2,13 @@
 
 use util_macros::impl_binary_ops;
 
-use crate::{CoordinateSystem, Normal, Transform, Vector3};
+use crate::{CoordinateSystem, Normal, Point3, Transform};
 
 /// ライト上をサンプルするためのコンテキスト。
 /// サンプルする際のシェーディング点の情報を持つ。
 #[derive(Debug, Clone)]
 pub struct LightSampleContext<C: CoordinateSystem> {
-    pub position: Vector3<C>,
+    pub position: Point3<C>,
     pub normal: Normal<C>,
     pub shading_normal: Normal<C>,
 }

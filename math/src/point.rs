@@ -11,6 +11,11 @@ pub struct Point3<C: CoordinateSystem> {
     _marker: PhantomData<C>,
 }
 impl<C: CoordinateSystem> Point3<C> {
+    pub const ZERO: Self = Self {
+        vec: glam::Vec3::ZERO,
+        _marker: PhantomData,
+    };
+
     /// Point3を作成する。
     #[inline(always)]
     pub fn new(x: f32, y: f32, z: f32) -> Self {
