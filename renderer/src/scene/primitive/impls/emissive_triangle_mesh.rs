@@ -8,8 +8,8 @@ use spectrum::{SampledSpectrum, SampledWavelengths};
 use crate::scene::{
     Geometry, GeometryIndex, GeometryRepository, MaterialId, Scene, SceneId,
     primitive::{
-        Interaction, Intersection, LightSampleRadiance, PrimitiveAreaLight, PrimitiveGeometry,
-        PrimitiveIndex, PrimitiveLight, PrimitiveNonDeltaLight, PrimitiveTrait,
+        GeometryInfo, Interaction, Intersection, LightSampleRadiance, PrimitiveAreaLight,
+        PrimitiveGeometry, PrimitiveIndex, PrimitiveLight, PrimitiveNonDeltaLight, PrimitiveTrait,
     },
 };
 
@@ -92,7 +92,7 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for EmissiveTriangleMesh<Id> {
                         shading_normal: intersection.shading_normal,
                         uv: intersection.uv,
                         primitive_index,
-                        geometry_info: super::GeometryInfo::TriangleMesh {
+                        geometry_info: GeometryInfo::TriangleMesh {
                             triangle_index: intersection.triangle_index,
                         },
                     },
