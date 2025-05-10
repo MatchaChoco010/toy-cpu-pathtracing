@@ -4,6 +4,8 @@ use std::env;
 use std::fs::File;
 use std::io::Write;
 
+use rayon::prelude::*;
+
 use color::{
     Xyz,
     gamut::{
@@ -356,7 +358,7 @@ fn eval_residual<G: ColorGamut>(
     coefficients: [f32; 3],
     rgb: glam::Vec3,
     lambda_table: &[f32; N_CIE_FINE_SAMPLES],
-    xyz_table: &[[f32; N_CIE_FINE_SAMPLES]; 3],
+    xyz_table: &[[f32; 3]; N_CIE_FINE_SAMPLES],
 ) -> glam::Vec3 {
     let mut out_xyz = [0.0; 3];
     for i in 0..N_CIE_FINE_SAMPLES {
@@ -369,9 +371,9 @@ fn eval_residual<G: ColorGamut>(
         let sigmoid_value = sigmoid(value);
 
         // スペクトルをXYZに変換する。
-        out_xyz[0] += xyz_table[0][i] * sigmoid_value;
-        out_xyz[1] += xyz_table[1][i] * sigmoid_value;
-        out_xyz[2] += xyz_table[2][i] * sigmoid_value;
+        out_xyz[0] += xyz_table[i][0] * sigmoid_value;
+        out_xyz[1] += xyz_table[i][1] * sigmoid_value;
+        out_xyz[2] += xyz_table[i][2] * sigmoid_value;
     }
 
     // XYZからLabに変換する。
@@ -393,7 +395,7 @@ fn eval_jacobian<G: ColorGamut>(
     coefficients: [f32; 3],
     rgb: glam::Vec3,
     lambda_table: &[f32; N_CIE_FINE_SAMPLES],
-    xyz_table: &[[f32; N_CIE_FINE_SAMPLES]; 3],
+    xyz_table: &[[f32; 3]; N_CIE_FINE_SAMPLES],
 ) -> glam::Mat3 {
     const RGB2SPEC_EPSILON: f32 = 1e-4;
 
@@ -422,7 +424,7 @@ fn eval_jacobian<G: ColorGamut>(
 fn calculate_coefficients<G: ColorGamut>(
     rgb: glam::Vec3,
     lambda_table: &[f32; N_CIE_FINE_SAMPLES],
-    xyz_table: &[[f32; N_CIE_FINE_SAMPLES]; 3],
+    xyz_table: &[[f32; 3]; N_CIE_FINE_SAMPLES],
 ) -> [f32; 3] {
     const ITERATION: usize = 1;
 
@@ -479,68 +481,68 @@ fn init_table<G: ColorGamut>(
     }
 
     // 事前にXYZからRGBに変換するための重みのテーブルを作っておく。
-    let mut lambda_table = [0.0; N_CIE_FINE_SAMPLES];
-    let mut xyz_table = [[0.0; N_CIE_FINE_SAMPLES]; 3];
-    for i in 0..N_CIE_FINE_SAMPLES {
-        let lambda = LAMBDA_MIN as f32 + H * i as f32;
-        lambda_table[i] = lambda;
-        let x = cie_interpret(&CIE_X, lambda);
-        let y = cie_interpret(&CIE_Y, lambda);
-        let z = cie_interpret(&CIE_Z, lambda);
+    let (lambda_table, xyz_table): (Vec<_>, Vec<_>) = (0..N_CIE_FINE_SAMPLES)
+        .into_par_iter()
+        .map(|i| {
+            // lambda_tableとxyz_tableを計算する。
+            let lambda = LAMBDA_MIN as f32 + H * i as f32;
+            let x = cie_interpret(&CIE_X, lambda);
+            let y = cie_interpret(&CIE_Y, lambda);
+            let z = cie_interpret(&CIE_Z, lambda);
 
-        // シンプソンの3/8公式で重みを計算する。
-        let mut weight = 3.0 / 8.0 * H;
-        if i == 0 || i == N_CIE_FINE_SAMPLES - 1 {
-            // do nothing
-        } else if (i - 1) % 3 == 2 {
-            weight *= 2.0;
-        } else {
-            weight *= 3.0;
-        }
-
-        xyz_table[0][i] = x * weight;
-        xyz_table[1][i] = y * weight;
-        xyz_table[2][i] = z * weight;
-    }
-
-    for max_component in 0..3 {
-        for zi in 0..TABLE_SIZE {
-            for yi in 0..TABLE_SIZE {
-                for xi in 0..TABLE_SIZE {
-                    // RGBの成分を計算する。
-                    let z = z_nodes[zi];
-                    let y = yi as f32 / (TABLE_SIZE - 1) as f32 * z;
-                    let x = xi as f32 / (TABLE_SIZE - 1) as f32 * z;
-                    let r;
-                    let g;
-                    let b;
-                    match max_component {
-                        0 => {
-                            r = z;
-                            g = x * z;
-                            b = y * z;
-                        }
-                        1 => {
-                            r = y * z;
-                            g = z;
-                            b = x * z;
-                        }
-                        2 => {
-                            r = x * z;
-                            g = y * z;
-                            b = z;
-                        }
-                        _ => unreachable!(),
-                    }
-                    let rgb = glam::vec3(r, g, b);
-
-                    // テーブルに格納する。
-                    table[max_component][zi][yi][xi] =
-                        calculate_coefficients::<G>(rgb, &lambda_table, &xyz_table);
-                }
+            // シンプソンの3/8公式で重みを計算する。
+            let mut weight = 3.0 / 8.0 * H;
+            if i == 0 || i == N_CIE_FINE_SAMPLES - 1 {
+                // do nothing
+            } else if (i - 1) % 3 == 2 {
+                weight *= 2.0;
+            } else {
+                weight *= 3.0;
             }
-        }
-    }
+
+            (lambda, [x * weight, y * weight, z * weight])
+        })
+        .unzip();
+    let lambda_table = lambda_table.try_into().unwrap();
+    let xyz_table = xyz_table.try_into().unwrap();
+
+    // 事前計算テーブルを計算する。
+    (0..(3 * TABLE_SIZE * TABLE_SIZE * TABLE_SIZE))
+        .into_par_iter()
+        .map(|i| {
+            // インデックスを計算する。
+            let max_component = i / (TABLE_SIZE * TABLE_SIZE * TABLE_SIZE);
+            let zi = (i / (TABLE_SIZE * TABLE_SIZE)) % TABLE_SIZE;
+            let yi = (i / TABLE_SIZE) % TABLE_SIZE;
+            let xi = i % TABLE_SIZE;
+
+            // RGBの成分を計算する。
+            let z = z_nodes[zi];
+            let y = yi as f32 / (TABLE_SIZE - 1) as f32 * z;
+            let x = xi as f32 / (TABLE_SIZE - 1) as f32 * z;
+            let rgb = match max_component {
+                0 => glam::vec3(z, x * z, y * z),
+                1 => glam::vec3(y * z, z, x * z),
+                2 => glam::vec3(x * z, y * z, z),
+                _ => unreachable!(),
+            };
+
+            // 係数を計算する。
+            calculate_coefficients::<G>(rgb, &lambda_table, &xyz_table)
+        })
+        .enumerate()
+        .collect::<Vec<_>>()
+        .into_iter()
+        .for_each(|(i, item)| {
+            // インデックスを計算する。
+            let max_component = i / (TABLE_SIZE * TABLE_SIZE * TABLE_SIZE);
+            let zi = (i / (TABLE_SIZE * TABLE_SIZE)) % TABLE_SIZE;
+            let yi = (i / TABLE_SIZE) % TABLE_SIZE;
+            let xi = i % TABLE_SIZE;
+
+            // テーブルに格納する。
+            table[max_component][zi][yi][xi] = item;
+        });
 }
 
 /// ファイルにテーブルの定義を書き出す。
