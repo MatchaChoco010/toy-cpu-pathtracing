@@ -2,6 +2,8 @@
 
 use std::marker::PhantomData;
 
+use util_macros::impl_binary_ops;
+
 use crate::CoordinateSystem;
 
 /// 座標系Cでのベクトルを表す構造体。
@@ -11,6 +13,11 @@ pub struct Vector3<C: CoordinateSystem> {
     _marker: PhantomData<C>,
 }
 impl<C: CoordinateSystem> Vector3<C> {
+    pub const ZERO: Self = Self {
+        vec: glam::Vec3::ZERO,
+        _marker: PhantomData,
+    };
+
     /// Vector3を作成する。
     #[inline(always)]
     pub fn new(x: f32, y: f32, z: f32) -> Self {
@@ -67,4 +74,12 @@ impl<C: CoordinateSystem> AsRef<Vector3<C>> for Vector3<C> {
     fn as_ref(&self) -> &Vector3<C> {
         &self
     }
+}
+#[impl_binary_ops(Mul)]
+fn mul<C: CoordinateSystem>(lhs: &Vector3<C>, rhs: &f32) -> Vector3<C> {
+    Vector3::from(lhs.vec * rhs)
+}
+#[impl_binary_ops(Mul)]
+fn mul<C: CoordinateSystem>(lhs: &f32, rhs: &Vector3<C>) -> Vector3<C> {
+    Vector3::from(lhs * rhs.vec)
 }

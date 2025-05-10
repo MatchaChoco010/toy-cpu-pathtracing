@@ -2,7 +2,7 @@
 
 use std::f32::consts::PI;
 
-use math::{LightSampleContext, Local, Render, Transform, World};
+use math::{LightSampleContext, Local, Point3, Render, Transform, World};
 use spectrum::{SampledSpectrum, SampledWavelengths, Spectrum};
 
 use crate::{
@@ -74,15 +74,26 @@ impl<Id: SceneId> Primitive<Id> for PointLight {
 }
 impl<Id: SceneId> PrimitiveLight<Id> for PointLight {
     fn phi(&self, lambda: &SampledWavelengths) -> SampledSpectrum {
+        // 放射強度を全天球で積分する。
         4.0 * PI * self.intensity * self.spectrum.sample(lambda)
     }
 }
 impl<Id: SceneId> PrimitiveDeltaLight<Id> for PointLight {
     fn calculate_irradiance(
         &self,
-        _light_sample_context: &LightSampleContext<Render>,
-        _lambda: &SampledWavelengths,
+        light_sample_context: &LightSampleContext<Render>,
+        lambda: &SampledWavelengths,
     ) -> LightIrradiance {
-        todo!()
+        // Render空間でのライトの方向と距離の二乗とcos成分を計算する。
+        let position = &self.local_to_render * Point3::ZERO;
+        let distance_vec = light_sample_context.position.vector_to(position);
+        let wi = distance_vec.normalize();
+        let distance_squared = distance_vec.length_squared();
+        let cos_theta = wi.dot(light_sample_context.normal);
+
+        // 放射照度を計算する。
+        let irradiance =
+            self.intensity * self.spectrum.sample(lambda) * cos_theta / distance_squared;
+        LightIrradiance { irradiance }
     }
 }

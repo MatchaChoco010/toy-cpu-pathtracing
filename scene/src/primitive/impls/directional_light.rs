@@ -1,6 +1,8 @@
 //! 指向性ライトのプリミティブの実装のモジュール。
 
-use math::{Bounds, LightSampleContext, Local, Render, Transform, World};
+use std::f32::consts::PI;
+
+use math::{Bounds, LightSampleContext, Local, Render, Transform, Vector3, World};
 use spectrum::{SampledSpectrum, SampledWavelengths, Spectrum};
 
 use crate::{
@@ -75,6 +77,8 @@ impl<Id: SceneId> Primitive<Id> for DirectionalLight {
 }
 impl<Id: SceneId> PrimitiveLight<Id> for DirectionalLight {
     fn phi(&self, lambda: &SampledWavelengths) -> SampledSpectrum {
+        // シーンの断面積の雑な近似としてシーンのバウンディングスフィアの断面の円の面積をつかう。
+        // 垂直放射照度intensityと照射した面積を掛け合わせることで放射束phiを計算する。
         let area = self.area.expect("preprocess not called!");
         self.intensity * area * self.spectrum.sample(lambda)
     }
@@ -84,16 +88,22 @@ impl<Id: SceneId> PrimitiveLight<Id> for DirectionalLight {
         // 垂直放射照度intensityと照射した面積を掛け合わせることで放射束phiが求まる。
         // ここではシーン全体のバウンディングスフィアの断面を照射面積の近似とする。
         let (_center, radius) = bounds.bounding_sphere();
-        let area = std::f32::consts::PI * radius * radius;
+        let area = PI * radius * radius;
         self.area = Some(area);
     }
 }
 impl<Id: SceneId> PrimitiveDeltaLight<Id> for DirectionalLight {
     fn calculate_irradiance(
         &self,
-        _light_sample_context: &LightSampleContext<Render>,
-        _lambda: &SampledWavelengths,
+        light_sample_context: &LightSampleContext<Render>,
+        lambda: &SampledWavelengths,
     ) -> LightIrradiance {
-        todo!()
+        // Render空間でのライトの方向とcos成分を計算する。
+        let wi = (&self.local_to_render * Vector3::new(0.0, 0.0, 1.0)).normalize();
+        let cos_theta = wi.dot(light_sample_context.normal);
+
+        // 放射照度を計算する。
+        let irradiance = self.intensity * self.spectrum.sample(lambda) * cos_theta;
+        LightIrradiance { irradiance }
     }
 }
