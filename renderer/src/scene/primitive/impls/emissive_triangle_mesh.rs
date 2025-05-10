@@ -6,10 +6,11 @@ use math::{Bounds, LightSampleContext, Local, Ray, Render, Transform, World};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::scene::{
-    Geometry, GeometryIndex, GeometryRepository, MaterialId, Scene, SceneId,
+    Geometry, GeometryIndex, GeometryRepository, MaterialId, PrimitiveRepository, SceneId,
     primitive::{
-        GeometryInfo, Interaction, Intersection, LightSampleRadiance, PrimitiveAreaLight,
-        PrimitiveGeometry, PrimitiveIndex, PrimitiveLight, PrimitiveNonDeltaLight, PrimitiveTrait,
+        GeometryInfo, Interaction, Intersection, LightSampleRadiance, Primitive,
+        PrimitiveAreaLight, PrimitiveDeltaLight, PrimitiveGeometry, PrimitiveIndex,
+        PrimitiveInfiniteLight, PrimitiveLight, PrimitiveNonDeltaLight,
     },
 };
 
@@ -26,7 +27,8 @@ pub struct EmissiveTriangleMesh<Id: SceneId> {
 impl<Id: SceneId> EmissiveTriangleMesh<Id> {
     /// 新しい放射面を含む三角形メッシュのプリミティブを作成する。
     pub fn new(
-        scene: &Scene<Id>,
+        geometry_repository: &GeometryRepository<Id>,
+        primitive_repository: &PrimitiveRepository<Id>,
         geometry_index: GeometryIndex<Id>,
         material_id: MaterialId<Id>,
         local_to_world: Transform<Local, World>,
@@ -43,9 +45,41 @@ impl<Id: SceneId> EmissiveTriangleMesh<Id> {
         // }
     }
 }
-impl<Id: SceneId> PrimitiveTrait for EmissiveTriangleMesh<Id> {
+impl<Id: SceneId> Primitive<Id> for EmissiveTriangleMesh<Id> {
     fn update_world_to_render(&mut self, world_to_render: &Transform<World, Render>) {
         self.local_to_render = world_to_render * &self.local_to_world;
+    }
+
+    fn as_geometry(&self) -> Option<&dyn PrimitiveGeometry<Id>> {
+        Some(self)
+    }
+
+    fn as_geometry_mut(&mut self) -> Option<&mut dyn PrimitiveGeometry<Id>> {
+        Some(self)
+    }
+
+    fn as_light(&self) -> Option<&dyn PrimitiveLight<Id>> {
+        Some(self)
+    }
+
+    fn as_light_mut(&mut self) -> Option<&mut dyn PrimitiveLight<Id>> {
+        Some(self)
+    }
+
+    fn as_non_delta_light(&self) -> Option<&dyn PrimitiveNonDeltaLight<Id>> {
+        Some(self)
+    }
+
+    fn as_delta_light(&self) -> Option<&dyn PrimitiveDeltaLight<Id>> {
+        None
+    }
+
+    fn as_area_light(&self) -> Option<&dyn PrimitiveAreaLight<Id>> {
+        Some(self)
+    }
+
+    fn as_infinite_light(&self) -> Option<&dyn PrimitiveInfiniteLight<Id>> {
+        None
     }
 }
 impl<Id: SceneId> PrimitiveGeometry<Id> for EmissiveTriangleMesh<Id> {
@@ -100,7 +134,7 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for EmissiveTriangleMesh<Id> {
         })
     }
 }
-impl<Id: SceneId> PrimitiveLight for EmissiveTriangleMesh<Id> {
+impl<Id: SceneId> PrimitiveLight<Id> for EmissiveTriangleMesh<Id> {
     fn phi(&self, lambda: &SampledWavelengths) -> f32 {
         todo!()
         // area_sumとmaterialのエネルギーを使って、光源としての総エネルギーを計算する

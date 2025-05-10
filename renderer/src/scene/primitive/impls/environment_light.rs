@@ -10,8 +10,8 @@ use spectrum::{SampledSpectrum, SampledWavelengths};
 use crate::scene::{
     GeometryRepository, SceneId,
     primitive::{
-        Interaction, LightSampleRadiance, PrimitiveInfiniteLight, PrimitiveLight,
-        PrimitiveNonDeltaLight, PrimitiveTrait,
+        Interaction, LightSampleRadiance, Primitive, PrimitiveAreaLight, PrimitiveDeltaLight,
+        PrimitiveGeometry, PrimitiveInfiniteLight, PrimitiveLight, PrimitiveNonDeltaLight,
     },
 };
 
@@ -35,12 +35,44 @@ impl EnvironmentLight {
         // }
     }
 }
-impl PrimitiveTrait for EnvironmentLight {
+impl<Id: SceneId> Primitive<Id> for EnvironmentLight {
     fn update_world_to_render(&mut self, world_to_render: &Transform<World, Render>) {
         self.local_to_render = world_to_render * &self.local_to_world;
     }
+
+    fn as_geometry(&self) -> Option<&dyn PrimitiveGeometry<Id>> {
+        None
+    }
+
+    fn as_geometry_mut(&mut self) -> Option<&mut dyn PrimitiveGeometry<Id>> {
+        None
+    }
+
+    fn as_light(&self) -> Option<&dyn PrimitiveLight<Id>> {
+        Some(self)
+    }
+
+    fn as_light_mut(&mut self) -> Option<&mut dyn PrimitiveLight<Id>> {
+        Some(self)
+    }
+
+    fn as_non_delta_light(&self) -> Option<&dyn PrimitiveNonDeltaLight<Id>> {
+        Some(self)
+    }
+
+    fn as_delta_light(&self) -> Option<&dyn PrimitiveDeltaLight<Id>> {
+        None
+    }
+
+    fn as_area_light(&self) -> Option<&dyn PrimitiveAreaLight<Id>> {
+        None
+    }
+
+    fn as_infinite_light(&self) -> Option<&dyn PrimitiveInfiniteLight<Id>> {
+        Some(self)
+    }
 }
-impl PrimitiveLight for EnvironmentLight {
+impl<Id: SceneId> PrimitiveLight<Id> for EnvironmentLight {
     fn phi(&self, lambda: &SampledWavelengths) -> f32 {
         self.phi
     }

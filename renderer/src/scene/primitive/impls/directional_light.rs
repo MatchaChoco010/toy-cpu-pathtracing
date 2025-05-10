@@ -5,7 +5,10 @@ use spectrum::SampledWavelengths;
 
 use crate::scene::{
     SceneId,
-    primitive::{LightIrradiance, PrimitiveDeltaLight, PrimitiveLight, PrimitiveTrait},
+    primitive::{
+        LightIrradiance, Primitive, PrimitiveAreaLight, PrimitiveDeltaLight, PrimitiveGeometry,
+        PrimitiveInfiniteLight, PrimitiveLight, PrimitiveNonDeltaLight,
+    },
 };
 
 /// 指向性ライトのプリミティブの構造体。
@@ -27,12 +30,44 @@ impl DirectionalLight {
         }
     }
 }
-impl PrimitiveTrait for DirectionalLight {
+impl<Id: SceneId> Primitive<Id> for DirectionalLight {
     fn update_world_to_render(&mut self, world_to_render: &Transform<World, Render>) {
         self.local_to_render = world_to_render * &self.local_to_world;
     }
+
+    fn as_geometry(&self) -> Option<&dyn PrimitiveGeometry<Id>> {
+        None
+    }
+
+    fn as_geometry_mut(&mut self) -> Option<&mut dyn PrimitiveGeometry<Id>> {
+        None
+    }
+
+    fn as_light(&self) -> Option<&dyn PrimitiveLight<Id>> {
+        Some(self)
+    }
+
+    fn as_light_mut(&mut self) -> Option<&mut dyn PrimitiveLight<Id>> {
+        Some(self)
+    }
+
+    fn as_non_delta_light(&self) -> Option<&dyn PrimitiveNonDeltaLight<Id>> {
+        None
+    }
+
+    fn as_delta_light(&self) -> Option<&dyn PrimitiveDeltaLight<Id>> {
+        Some(self)
+    }
+
+    fn as_area_light(&self) -> Option<&dyn PrimitiveAreaLight<Id>> {
+        None
+    }
+
+    fn as_infinite_light(&self) -> Option<&dyn PrimitiveInfiniteLight<Id>> {
+        None
+    }
 }
-impl PrimitiveLight for DirectionalLight {
+impl<Id: SceneId> PrimitiveLight<Id> for DirectionalLight {
     fn phi(&self, lambda: &SampledWavelengths) -> f32 {
         let area = self.area.expect("preprocess not called!");
         self.intensity * area
