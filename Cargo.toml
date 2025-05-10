@@ -13,6 +13,7 @@ glam = "0.30.3"
 math = { path = "math" }
 proc-macro2 = "1.0.95"
 quote = "1.0.40"
+rayon = "1.10.0"
 spectrum = { path = "spectrum" }
 syn = { version = "2.0.101", features = ["full", "extra-traits"] }
 util_macros = { path = "util_macros" }

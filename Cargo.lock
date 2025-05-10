@@ -976,6 +976,7 @@ dependencies = [
  "color",
  "glam",
  "math",
+ "rayon",
  "util_macros",
 ]
 
