@@ -4,7 +4,9 @@ use math::{Bounds, Local, Ray, Render, Transform, World};
 
 use crate::scene::{
     Geometry, GeometryIndex, GeometryRepository, MaterialId, SceneId,
-    primitive::{Interaction, Intersection, PrimitiveGeometry, PrimitiveIndex, PrimitiveTrait},
+    primitive::{
+        GeometryInfo, Interaction, Intersection, PrimitiveGeometry, PrimitiveIndex, PrimitiveTrait,
+    },
 };
 
 /// 三角形メッシュのプリミティブの構造体。
@@ -78,7 +80,7 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for TriangleMesh<Id> {
                         shading_normal: intersection.shading_normal,
                         uv: intersection.uv,
                         primitive_index,
-                        geometry_info: super::GeometryInfo::TriangleMesh {
+                        geometry_info: GeometryInfo::TriangleMesh {
                             triangle_index: intersection.triangle_index,
                         },
                     },

@@ -6,7 +6,7 @@ use math::{Bounds, Local, Normal, Point3, Ray, Render, Transform, World, interse
 
 use crate::scene::{
     GeometryRepository, MaterialId, SceneId,
-    primitive::{Intersection, PrimitiveGeometry, PrimitiveIndex, PrimitiveTrait},
+    primitive::{GeometryInfo, Intersection, PrimitiveGeometry, PrimitiveIndex, PrimitiveTrait},
 };
 
 /// 三角形のプリミティブの構造体。
@@ -96,7 +96,7 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for SingleTriangle<Id> {
                 shading_normal: &self.local_to_render * shading_normal,
                 uv,
                 primitive_index: _primitive_index,
-                geometry_info: super::GeometryInfo::TriangleMesh {
+                geometry_info: GeometryInfo::TriangleMesh {
                     triangle_index: 0, // TODO: 三角形のインデックスを取得する
                 },
             },
