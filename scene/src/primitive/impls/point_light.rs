@@ -1,7 +1,9 @@
 //! 点光源のプリミティブの実装のモジュール。
 
+use std::f32::consts::PI;
+
 use math::{LightSampleContext, Local, Render, Transform, World};
-use spectrum::SampledWavelengths;
+use spectrum::{SampledSpectrum, SampledWavelengths, Spectrum};
 
 use crate::{
     LightIrradiance, SceneId,
@@ -13,15 +15,21 @@ use crate::{
 
 /// 点光源のプリミティブの構造体。
 pub struct PointLight {
-    phi: f32,
+    intensity: f32,
+    spectrum: Box<dyn Spectrum>,
     local_to_world: Transform<Local, World>,
     local_to_render: Transform<Local, Render>,
 }
 impl PointLight {
     /// 新しい点光源のプリミティブを作成する。
-    pub fn new(intensity: f32, local_to_world: Transform<Local, World>) -> Self {
+    pub fn new(
+        intensity: f32,
+        spectrum: Box<dyn Spectrum>,
+        local_to_world: Transform<Local, World>,
+    ) -> Self {
         Self {
-            phi: intensity,
+            intensity,
+            spectrum,
             local_to_world,
             local_to_render: Transform::identity(),
         }
@@ -65,8 +73,8 @@ impl<Id: SceneId> Primitive<Id> for PointLight {
     }
 }
 impl<Id: SceneId> PrimitiveLight<Id> for PointLight {
-    fn phi(&self, lambda: &SampledWavelengths) -> f32 {
-        self.phi
+    fn phi(&self, lambda: &SampledWavelengths) -> SampledSpectrum {
+        4.0 * PI * self.intensity * self.spectrum.sample(lambda)
     }
 }
 impl<Id: SceneId> PrimitiveDeltaLight<Id> for PointLight {

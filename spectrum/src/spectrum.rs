@@ -27,7 +27,7 @@ pub const LAMBDA_MIN: f32 = 360.0;
 pub const LAMBDA_MAX: f32 = 830.0;
 
 /// スペクトルのトレイト。
-pub trait Spectrum {
+pub trait Spectrum: Send + Sync {
     /// 波長lambda (nm)に対するスペクトル強度の値を取得する。
     fn value(&self, lambda: f32) -> f32;
 

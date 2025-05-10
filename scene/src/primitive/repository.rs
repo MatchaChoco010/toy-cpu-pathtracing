@@ -1,6 +1,5 @@
 //! プリミティブを保持するリポジトリの実装。
 
-use std::any::Any;
 use std::marker::PhantomData;
 
 use math::{Render, Transform, World};
@@ -101,20 +100,30 @@ impl<Id: SceneId> PrimitiveRepository<Id> {
             }
             CreatePrimitiveDesc::PointLightPrimitive {
                 intensity,
+                spectrum,
                 transform,
-            } => Box::new(primitive::impls::PointLight::new(intensity, transform)),
+            } => Box::new(primitive::impls::PointLight::new(
+                intensity, spectrum, transform,
+            )),
             CreatePrimitiveDesc::SpotLightPrimitive {
-                angle,
+                angle_inner,
+                angle_outer,
                 intensity,
+                spectrum,
                 transform,
             } => Box::new(primitive::impls::SpotLight::new(
-                angle, intensity, transform,
+                angle_inner,
+                angle_outer,
+                intensity,
+                spectrum,
+                transform,
             )),
             CreatePrimitiveDesc::DirectionalLightPrimitive {
                 intensity,
+                spectrum,
                 transform,
             } => Box::new(primitive::impls::DirectionalLight::new(
-                intensity, transform,
+                intensity, spectrum, transform,
             )),
             CreatePrimitiveDesc::EnvironmentLightPrimitive {
                 intensity,

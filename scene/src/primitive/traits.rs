@@ -64,7 +64,7 @@ pub trait PrimitiveGeometry<Id: SceneId>: Primitive<Id> {
 /// ライトタイプのPrimitiveを表すトレイト。
 pub trait PrimitiveLight<Id: SceneId>: Primitive<Id> {
     /// サンプルした波長の中で最大となるライトのスペクトル放射束。
-    fn phi(&self, lambda: &SampledWavelengths) -> f32;
+    fn phi(&self, lambda: &SampledWavelengths) -> SampledSpectrum;
 
     /// シーン全体のバウンディングボックスを与えてプリプロセスを行う。
     fn preprocess(&mut self, _scene_bounds: &Bounds<Render>) {

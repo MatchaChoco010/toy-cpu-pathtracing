@@ -1,7 +1,7 @@
 //! 指向性ライトのプリミティブの実装のモジュール。
 
 use math::{Bounds, LightSampleContext, Local, Render, Transform, World};
-use spectrum::SampledWavelengths;
+use spectrum::{SampledSpectrum, SampledWavelengths, Spectrum};
 
 use crate::{
     LightIrradiance, SceneId,
@@ -15,15 +15,21 @@ use crate::{
 /// 指向性ライトの方向はローカル座標系のZ+軸方向である。
 pub struct DirectionalLight {
     intensity: f32,
+    spectrum: Box<dyn Spectrum>,
     area: Option<f32>,
     local_to_world: Transform<Local, World>,
     local_to_render: Transform<Local, Render>,
 }
 impl DirectionalLight {
     /// 指向性ライトの新しいインスタンスを作成する。
-    pub fn new(intensity: f32, local_to_world: Transform<Local, World>) -> Self {
+    pub fn new(
+        intensity: f32,
+        spectrum: Box<dyn Spectrum>,
+        local_to_world: Transform<Local, World>,
+    ) -> Self {
         Self {
             intensity,
+            spectrum,
             area: None,
             local_to_world,
             local_to_render: Transform::identity(),
@@ -68,9 +74,9 @@ impl<Id: SceneId> Primitive<Id> for DirectionalLight {
     }
 }
 impl<Id: SceneId> PrimitiveLight<Id> for DirectionalLight {
-    fn phi(&self, lambda: &SampledWavelengths) -> f32 {
+    fn phi(&self, lambda: &SampledWavelengths) -> SampledSpectrum {
         let area = self.area.expect("preprocess not called!");
-        self.intensity * area
+        self.intensity * area * self.spectrum.sample(lambda)
     }
 
     fn preprocess(&mut self, bounds: &Bounds<Render>) {
