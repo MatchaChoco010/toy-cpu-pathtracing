@@ -2,8 +2,6 @@
 
 use std::path::Path;
 
-use glam::Vec2;
-
 use math::{LightSampleContext, Local, Ray, Render, Transform, World};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
@@ -85,7 +83,7 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EnvironmentLight {
         _light_sample_context: &LightSampleContext<Render>,
         _lambda: &SampledWavelengths,
         _s: f32,
-        _uv: Vec2,
+        _uv: glam::Vec2,
     ) -> LightSampleRadiance<Id, Render> {
         todo!()
     }

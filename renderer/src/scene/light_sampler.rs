@@ -1,4 +1,4 @@
-//! ライトサンプリングに利用する構造体などを定義するモジュール。
+//! シーンのライトのサンプリングに利用する構造体などを定義するモジュール。
 
 use math::{Bounds, Render};
 use spectrum::SampledWavelengths;

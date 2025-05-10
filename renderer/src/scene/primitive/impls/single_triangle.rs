@@ -1,7 +1,5 @@
 //! 三角形のプリミティブの実装のモジュール。
 
-use glam::{Vec2, Vec3};
-
 use math::{Bounds, Local, Normal, Point3, Ray, Render, Transform, World, intersect_triangle};
 
 use crate::scene::{
@@ -17,7 +15,7 @@ use crate::scene::{
 pub struct SingleTriangle<Id: SceneId> {
     positions: [Point3<Local>; 3],
     normals: [Normal<Local>; 3],
-    uvs: [Vec2; 3],
+    uvs: [glam::Vec2; 3],
     material_id: MaterialId<Id>,
     local_to_world: Transform<Local, World>,
     local_to_render: Transform<Local, Render>,
@@ -27,7 +25,7 @@ impl<Id: SceneId> SingleTriangle<Id> {
     pub fn new(
         positions: [Point3<Local>; 3],
         normals: [Normal<Local>; 3],
-        uvs: [Vec2; 3],
+        uvs: [glam::Vec2; 3],
         material_id: MaterialId<Id>,
         local_to_world: Transform<Local, World>,
     ) -> Self {
@@ -41,7 +39,6 @@ impl<Id: SceneId> SingleTriangle<Id> {
         }
     }
 }
-
 impl<Id: SceneId> Primitive<Id> for SingleTriangle<Id> {
     fn update_world_to_render(&mut self, world_to_render: &Transform<World, Render>) {
         self.local_to_render = world_to_render * &self.local_to_world;
@@ -81,8 +78,8 @@ impl<Id: SceneId> Primitive<Id> for SingleTriangle<Id> {
 }
 impl<Id: SceneId> PrimitiveGeometry<Id> for SingleTriangle<Id> {
     fn bounds(&self, _geometry_repository: &GeometryRepository<Id>) -> Bounds<Render> {
-        let mut min = Vec3::splat(f32::INFINITY);
-        let mut max = Vec3::splat(f32::NEG_INFINITY);
+        let mut min = glam::Vec3::splat(f32::INFINITY);
+        let mut max = glam::Vec3::splat(f32::NEG_INFINITY);
         for position in &self.positions {
             let point = &self.local_to_render * position;
             min = min.min(point.to_vec3());
@@ -115,7 +112,7 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for SingleTriangle<Id> {
                 + self.normals[1].to_vec3() * hit.barycentric[1]
                 + self.normals[2].to_vec3() * hit.barycentric[2],
         );
-        let uv = Vec2::new(
+        let uv = glam::Vec2::new(
             self.uvs[0].x * hit.barycentric[0]
                 + self.uvs[1].x * hit.barycentric[1]
                 + self.uvs[2].x * hit.barycentric[2],

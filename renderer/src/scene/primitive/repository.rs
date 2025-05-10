@@ -1,11 +1,12 @@
 //! プリミティブを保持するリポジトリの実装。
 
+use std::any::Any;
 use std::marker::PhantomData;
 
 use math::{Render, Transform, World};
 
 use crate::scene::{
-    Geometry, GeometryRepository, SceneId,
+    GeometryRepository, SceneId,
     primitive::{CreatePrimitiveDesc, Primitive, impls::*},
 };
 
@@ -45,22 +46,26 @@ impl<Id: SceneId> PrimitiveRepository<Id> {
                 material_id,
                 transform,
             } => {
-                let geometry = geometry_repository.get(geometry_index);
-                match geometry {
-                    Geometry::TriangleMesh(_) => {
-                        // TODO: materialがemissiveか判断する
-                        if true {
-                            Box::new(TriangleMesh::new(geometry_index, material_id, transform))
-                        } else {
-                            Box::new(EmissiveTriangleMesh::new(
-                                geometry_repository,
-                                self,
-                                geometry_index,
-                                material_id,
-                                transform,
-                            ))
-                        }
+                let geometry: &dyn Any = geometry_repository.get(geometry_index);
+
+                if geometry.downcast_ref::<TriangleMesh<Id>>().is_some() {
+                    // ジオメトリがTriangleMeshの場合。
+
+                    // TODO: materialがemissiveか判断する
+                    if true {
+                        Box::new(TriangleMesh::new(geometry_index, material_id, transform))
+                    } else {
+                        Box::new(EmissiveTriangleMesh::new(
+                            geometry_repository,
+                            self,
+                            geometry_index,
+                            material_id,
+                            transform,
+                        ))
                     }
+                } else {
+                    // 未実装のジオメトリ。
+                    unimplemented!("Geometry type not supported");
                 }
             }
             CreatePrimitiveDesc::SingleTrianglePrimitive {
