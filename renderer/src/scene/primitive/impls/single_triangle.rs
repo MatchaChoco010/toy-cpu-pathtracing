@@ -6,7 +6,11 @@ use math::{Bounds, Local, Normal, Point3, Ray, Render, Transform, World, interse
 
 use crate::scene::{
     GeometryRepository, MaterialId, SceneId,
-    primitive::{GeometryInfo, Intersection, PrimitiveGeometry, PrimitiveIndex, PrimitiveTrait},
+    primitive::{
+        GeometryInfo, Intersection, Primitive, PrimitiveAreaLight, PrimitiveDeltaLight,
+        PrimitiveGeometry, PrimitiveIndex, PrimitiveInfiniteLight, PrimitiveLight,
+        PrimitiveNonDeltaLight,
+    },
 };
 
 /// 三角形のプリミティブの構造体。
@@ -38,9 +42,41 @@ impl<Id: SceneId> SingleTriangle<Id> {
     }
 }
 
-impl<Id: SceneId> PrimitiveTrait for SingleTriangle<Id> {
+impl<Id: SceneId> Primitive<Id> for SingleTriangle<Id> {
     fn update_world_to_render(&mut self, world_to_render: &Transform<World, Render>) {
         self.local_to_render = world_to_render * &self.local_to_world;
+    }
+
+    fn as_geometry(&self) -> Option<&dyn PrimitiveGeometry<Id>> {
+        Some(self)
+    }
+
+    fn as_geometry_mut(&mut self) -> Option<&mut dyn PrimitiveGeometry<Id>> {
+        Some(self)
+    }
+
+    fn as_light(&self) -> Option<&dyn PrimitiveLight<Id>> {
+        None
+    }
+
+    fn as_light_mut(&mut self) -> Option<&mut dyn PrimitiveLight<Id>> {
+        None
+    }
+
+    fn as_non_delta_light(&self) -> Option<&dyn PrimitiveNonDeltaLight<Id>> {
+        None
+    }
+
+    fn as_delta_light(&self) -> Option<&dyn PrimitiveDeltaLight<Id>> {
+        None
+    }
+
+    fn as_area_light(&self) -> Option<&dyn PrimitiveAreaLight<Id>> {
+        None
+    }
+
+    fn as_infinite_light(&self) -> Option<&dyn PrimitiveInfiniteLight<Id>> {
+        None
     }
 }
 impl<Id: SceneId> PrimitiveGeometry<Id> for SingleTriangle<Id> {

@@ -23,7 +23,7 @@ pub use primitive::{
 /// シーンのマーカー用のトレイト。
 /// シーンには別のシーンから作ったインデックスを他のシーンで使えなくするためにマーカー型を使う。
 /// これはそのマーカー型が満たすべきトレイト。
-pub trait SceneId: Send + Sync + std::fmt::Debug + Clone + Copy + PartialEq + Eq {}
+pub trait SceneId: Send + Sync + std::fmt::Debug + Clone + Copy + PartialEq + Eq + 'static {}
 
 /// シーンのデータを表す構造体。
 ///

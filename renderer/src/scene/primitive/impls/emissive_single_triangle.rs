@@ -11,8 +11,9 @@ use spectrum::{SampledSpectrum, SampledWavelengths};
 use crate::scene::{
     GeometryRepository, MaterialId, SceneId,
     primitive::{
-        GeometryInfo, Interaction, Intersection, LightSampleRadiance, PrimitiveAreaLight,
-        PrimitiveGeometry, PrimitiveIndex, PrimitiveLight, PrimitiveNonDeltaLight, PrimitiveTrait,
+        GeometryInfo, Interaction, Intersection, LightSampleRadiance, Primitive,
+        PrimitiveAreaLight, PrimitiveDeltaLight, PrimitiveGeometry, PrimitiveIndex,
+        PrimitiveInfiniteLight, PrimitiveLight, PrimitiveNonDeltaLight,
     },
 };
 
@@ -44,9 +45,41 @@ impl<Id: SceneId> EmissiveSingleTriangle<Id> {
         }
     }
 }
-impl<Id: SceneId> PrimitiveTrait for EmissiveSingleTriangle<Id> {
+impl<Id: SceneId> Primitive<Id> for EmissiveSingleTriangle<Id> {
     fn update_world_to_render(&mut self, world_to_render: &Transform<World, Render>) {
         self.local_to_render = world_to_render * &self.local_to_world;
+    }
+
+    fn as_geometry(&self) -> Option<&dyn PrimitiveGeometry<Id>> {
+        Some(self)
+    }
+
+    fn as_geometry_mut(&mut self) -> Option<&mut dyn PrimitiveGeometry<Id>> {
+        Some(self)
+    }
+
+    fn as_light(&self) -> Option<&dyn PrimitiveLight<Id>> {
+        Some(self)
+    }
+
+    fn as_light_mut(&mut self) -> Option<&mut dyn PrimitiveLight<Id>> {
+        Some(self)
+    }
+
+    fn as_non_delta_light(&self) -> Option<&dyn PrimitiveNonDeltaLight<Id>> {
+        Some(self)
+    }
+
+    fn as_delta_light(&self) -> Option<&dyn PrimitiveDeltaLight<Id>> {
+        None
+    }
+
+    fn as_area_light(&self) -> Option<&dyn PrimitiveAreaLight<Id>> {
+        Some(self)
+    }
+
+    fn as_infinite_light(&self) -> Option<&dyn PrimitiveInfiniteLight<Id>> {
+        None
     }
 }
 impl<Id: SceneId> PrimitiveGeometry<Id> for EmissiveSingleTriangle<Id> {
@@ -109,7 +142,7 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for EmissiveSingleTriangle<Id> {
         })
     }
 }
-impl<Id: SceneId> PrimitiveLight for EmissiveSingleTriangle<Id> {
+impl<Id: SceneId> PrimitiveLight<Id> for EmissiveSingleTriangle<Id> {
     fn phi(&self, lambda: &SampledWavelengths) -> f32 {
         todo!()
     }

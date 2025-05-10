@@ -22,7 +22,7 @@ impl<Id: SceneId> PrimitiveIndex<Id> {
 
 /// プリミティブを保持するリポジトリの構造体。
 pub struct PrimitiveRepository<Id: SceneId> {
-    primitives: Vec<Primitive<Id>>,
+    primitives: Vec<Box<dyn Primitive<Id>>>,
 }
 impl<Id: SceneId> PrimitiveRepository<Id> {
     /// 新しいプリミティブリポジトリを作成する。
@@ -39,7 +39,7 @@ impl<Id: SceneId> PrimitiveRepository<Id> {
         desc: CreatePrimitiveDesc<Id>,
     ) -> PrimitiveIndex<Id> {
         let primitive_index = PrimitiveIndex(self.primitives.len(), PhantomData);
-        let primitive = match desc {
+        let primitive: Box<dyn Primitive<Id>> = match desc {
             CreatePrimitiveDesc::GeometryPrimitive {
                 geometry_index,
                 material_id,
@@ -49,11 +49,17 @@ impl<Id: SceneId> PrimitiveRepository<Id> {
                 match geometry {
                     Geometry::TriangleMesh(_) => {
                         // TODO: materialがemissiveか判断する
-                        Primitive::TriangleMesh(TriangleMesh::new(
-                            geometry_index,
-                            material_id,
-                            transform,
-                        ))
+                        if true {
+                            Box::new(TriangleMesh::new(geometry_index, material_id, transform))
+                        } else {
+                            Box::new(EmissiveTriangleMesh::new(
+                                geometry_repository,
+                                self,
+                                geometry_index,
+                                material_id,
+                                transform,
+                            ))
+                        }
                     }
                 }
             }
@@ -65,48 +71,54 @@ impl<Id: SceneId> PrimitiveRepository<Id> {
                 transform,
             } => {
                 // TODO: materialがemissiveか判断する
-                Primitive::SingleTriangle(SingleTriangle::new(
-                    positions,
-                    normals,
-                    uvs,
-                    material_id,
-                    transform,
-                ))
+                if true {
+                    Box::new(SingleTriangle::new(
+                        positions,
+                        normals,
+                        uvs,
+                        material_id,
+                        transform,
+                    ))
+                } else {
+                    Box::new(EmissiveSingleTriangle::new(
+                        positions,
+                        normals,
+                        uvs,
+                        material_id,
+                        transform,
+                    ))
+                }
             }
             CreatePrimitiveDesc::PointLightPrimitive {
                 intensity,
                 transform,
-            } => Primitive::PointLight(PointLight::new(intensity, transform)),
+            } => Box::new(PointLight::new(intensity, transform)),
             CreatePrimitiveDesc::SpotLightPrimitive {
                 angle,
                 intensity,
                 transform,
-            } => Primitive::SpotLight(SpotLight::new(angle, intensity, transform)),
+            } => Box::new(SpotLight::new(angle, intensity, transform)),
             CreatePrimitiveDesc::DirectionalLightPrimitive {
                 intensity,
                 transform,
-            } => Primitive::DirectionalLight(DirectionalLight::new(intensity, transform)),
+            } => Box::new(DirectionalLight::new(intensity, transform)),
             CreatePrimitiveDesc::EnvironmentLightPrimitive {
                 intensity,
                 texture_path,
                 transform,
-            } => Primitive::EnvironmentLight(EnvironmentLight::new(
-                intensity,
-                texture_path,
-                transform,
-            )),
+            } => Box::new(EnvironmentLight::new(intensity, texture_path, transform)),
         };
         self.primitives.push(primitive);
         primitive_index
     }
 
     /// プリミティブを取得する。
-    pub fn get(&self, index: PrimitiveIndex<Id>) -> &Primitive<Id> {
+    pub fn get(&self, index: PrimitiveIndex<Id>) -> &Box<dyn Primitive<Id>> {
         &self.primitives[index.0]
     }
 
     /// プリミティブを可変参照で取得する。
-    pub fn get_mut(&mut self, index: PrimitiveIndex<Id>) -> &mut Primitive<Id> {
+    pub fn get_mut(&mut self, index: PrimitiveIndex<Id>) -> &mut Box<dyn Primitive<Id>> {
         &mut self.primitives[index.0]
     }
 

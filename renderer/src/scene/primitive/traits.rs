@@ -4,22 +4,44 @@ use glam::Vec2;
 
 use math::{Bounds, LightSampleContext, Ray, Render, Transform, World};
 use spectrum::{SampledSpectrum, SampledWavelengths};
-use util_macros::enum_methods;
 
 use crate::scene::{
     GeometryRepository, MaterialId, SceneId,
-    primitive::{
-        Interaction, Intersection, LightIrradiance, LightSampleRadiance, PrimitiveIndex, impls::*,
-    },
+    primitive::{Interaction, Intersection, LightIrradiance, LightSampleRadiance, PrimitiveIndex},
 };
 
 /// プリミティブのトレイト。
-pub trait PrimitiveTrait {
+pub trait Primitive<Id: SceneId>: Send + Sync {
     /// カメラから計算されるワールド座標系からレンダリング用の座標系への変換をPrimitiveに設定する。
     fn update_world_to_render(&mut self, transform: &Transform<World, Render>);
+
+    /// プリミティブをジオメトリプリミティブに変換する。
+    fn as_geometry(&self) -> Option<&dyn PrimitiveGeometry<Id>>;
+
+    /// プリミティブを可変参照でジオメトリプリミティブに変換する。
+    fn as_geometry_mut(&mut self) -> Option<&mut dyn PrimitiveGeometry<Id>>;
+
+    /// プリミティブをライトプリミティブに変換する。
+    fn as_light(&self) -> Option<&dyn PrimitiveLight<Id>>;
+
+    /// プリミティブを可変参照でライトプリミティブに変換する。
+    fn as_light_mut(&mut self) -> Option<&mut dyn PrimitiveLight<Id>>;
+
+    /// プリミティブを非デルタライトプリミティブに変換する。
+    fn as_non_delta_light(&self) -> Option<&dyn PrimitiveNonDeltaLight<Id>>;
+
+    /// プリミティブをデルタライトプリミティブに変換する。
+    fn as_delta_light(&self) -> Option<&dyn PrimitiveDeltaLight<Id>>;
+
+    /// プリミティブを面積光源プリミティブに変換する。
+    fn as_area_light(&self) -> Option<&dyn PrimitiveAreaLight<Id>>;
+
+    /// プリミティブを無限光源プリミティブに変換する。
+    fn as_infinite_light(&self) -> Option<&dyn PrimitiveInfiniteLight<Id>>;
 }
+
 /// ジオメトリタイプのPrimitiveを表すトレイト。
-pub trait PrimitiveGeometry<Id: SceneId>: PrimitiveTrait {
+pub trait PrimitiveGeometry<Id: SceneId>: Primitive<Id> {
     /// バウンディングボックスを取得する。
     fn bounds(&self, _geometry_repository: &GeometryRepository<Id>) -> Bounds<Render>;
 
@@ -42,7 +64,7 @@ pub trait PrimitiveGeometry<Id: SceneId>: PrimitiveTrait {
 }
 
 /// ライトタイプのPrimitiveを表すトレイト。
-pub trait PrimitiveLight: PrimitiveTrait {
+pub trait PrimitiveLight<Id: SceneId>: Primitive<Id> {
     /// サンプルした波長の中で最大となるライトのスペクトル放射束。
     fn phi(&self, lambda: &SampledWavelengths) -> f32;
 
@@ -51,8 +73,9 @@ pub trait PrimitiveLight: PrimitiveTrait {
         // デフォルト実装は何もしない
     }
 }
+
 /// DeltaではないライトのPrimitiveを表すトレイト。
-pub trait PrimitiveNonDeltaLight<Id: SceneId>: PrimitiveLight {
+pub trait PrimitiveNonDeltaLight<Id: SceneId>: PrimitiveLight<Id> {
     /// ライト上の点とそのスペクトル放射輝度のサンプリングを行う。
     fn sample_radiance(
         &self,
@@ -71,8 +94,9 @@ pub trait PrimitiveNonDeltaLight<Id: SceneId>: PrimitiveLight {
         _interaction: &Interaction<Id, Render>,
     ) -> f32;
 }
+
 /// DeltaなライトのPrimitiveを表すトレイト。
-pub trait PrimitiveDeltaLight<Id: SceneId>: PrimitiveLight {
+pub trait PrimitiveDeltaLight<Id: SceneId>: PrimitiveLight<Id> {
     /// 与えた波長でのスペクトル放射照度の計算を行う。
     fn calculate_irradiance(
         &self,
@@ -80,6 +104,7 @@ pub trait PrimitiveDeltaLight<Id: SceneId>: PrimitiveLight {
         _lambda: &SampledWavelengths,
     ) -> LightIrradiance;
 }
+
 /// 面積光源のPrimitiveを表すトレイト。
 pub trait PrimitiveAreaLight<Id: SceneId>: PrimitiveNonDeltaLight<Id> {
     /// 与えた波長における交差点でのスペクトル放射輝度を計算する。
@@ -90,6 +115,7 @@ pub trait PrimitiveAreaLight<Id: SceneId>: PrimitiveNonDeltaLight<Id> {
         _lambda: &SampledWavelengths,
     ) -> SampledSpectrum;
 }
+
 /// 無限光源のPrimitiveを表すトレイト。
 pub trait PrimitiveInfiniteLight<Id: SceneId>: PrimitiveNonDeltaLight<Id> {
     /// 与えた波長における特定方向でのスペクトル放射輝度を計算する。
@@ -98,107 +124,4 @@ pub trait PrimitiveInfiniteLight<Id: SceneId>: PrimitiveNonDeltaLight<Id> {
         _ray: &Ray<Render>,
         _lambda: &SampledWavelengths,
     ) -> SampledSpectrum;
-}
-
-/// プリミティブを表す列挙型。
-/// プリミティブは、三角形メッシュ、単一の三角形、点光源、環境光源などを表す。
-#[enum_methods {
-    pub fn update_world_to_render(&mut self, transform: &Transform<World, Render>),
-}]
-pub enum Primitive<Id: SceneId> {
-    TriangleMesh(TriangleMesh<Id>),
-    SingleTriangle(SingleTriangle<Id>),
-    EmissiveTriangleMesh(EmissiveTriangleMesh<Id>),
-    EmissiveSingleTriangle(EmissiveSingleTriangle<Id>),
-    PointLight(PointLight),
-    DirectionalLight(DirectionalLight),
-    SpotLight(SpotLight),
-    EnvironmentLight(EnvironmentLight),
-}
-
-impl<Id: SceneId> Primitive<Id> {
-    /// プリミティブをジオメトリプリミティブに変換する。
-    pub fn as_geometry(&self) -> Option<&dyn PrimitiveGeometry<Id>> {
-        match self {
-            Primitive::TriangleMesh(mesh) => Some(mesh),
-            Primitive::SingleTriangle(triangle) => Some(triangle),
-            Primitive::EmissiveTriangleMesh(mesh) => Some(mesh),
-            Primitive::EmissiveSingleTriangle(triangle) => Some(triangle),
-            _ => None,
-        }
-    }
-
-    /// プリミティブを可変参照でジオメトリプリミティブに変換する。
-    pub fn as_geometry_mut(&mut self) -> Option<&mut dyn PrimitiveGeometry<Id>> {
-        match self {
-            Primitive::TriangleMesh(mesh) => Some(mesh),
-            Primitive::SingleTriangle(triangle) => Some(triangle),
-            Primitive::EmissiveTriangleMesh(mesh) => Some(mesh),
-            Primitive::EmissiveSingleTriangle(triangle) => Some(triangle),
-            _ => None,
-        }
-    }
-
-    /// プリミティブをライトプリミティブに変換する。
-    pub fn as_light(&self) -> Option<&dyn PrimitiveLight> {
-        match self {
-            Primitive::EmissiveTriangleMesh(light) => Some(light),
-            Primitive::EmissiveSingleTriangle(light) => Some(light),
-            Primitive::PointLight(light) => Some(light),
-            Primitive::DirectionalLight(light) => Some(light),
-            Primitive::SpotLight(light) => Some(light),
-            Primitive::EnvironmentLight(light) => Some(light),
-            _ => None,
-        }
-    }
-
-    /// プリミティブを可変参照でライトプリミティブに変換する。
-    pub fn as_light_mut(&mut self) -> Option<&mut dyn PrimitiveLight> {
-        match self {
-            Primitive::EmissiveTriangleMesh(light) => Some(light),
-            Primitive::EmissiveSingleTriangle(light) => Some(light),
-            Primitive::PointLight(light) => Some(light),
-            Primitive::DirectionalLight(light) => Some(light),
-            Primitive::SpotLight(light) => Some(light),
-            Primitive::EnvironmentLight(light) => Some(light),
-            _ => None,
-        }
-    }
-
-    /// プリミティブを非デルタライトプリミティブに変換する。
-    pub fn as_non_delta_light(&self) -> Option<&dyn PrimitiveNonDeltaLight<Id>> {
-        match self {
-            Primitive::EmissiveTriangleMesh(light) => Some(light),
-            Primitive::EmissiveSingleTriangle(light) => Some(light),
-            Primitive::EnvironmentLight(light) => Some(light),
-            _ => None,
-        }
-    }
-
-    /// プリミティブをデルタライトプリミティブに変換する。
-    pub fn as_delta_light(&self) -> Option<&dyn PrimitiveDeltaLight<Id>> {
-        match self {
-            Primitive::PointLight(light) => Some(light),
-            Primitive::DirectionalLight(light) => Some(light),
-            Primitive::SpotLight(light) => Some(light),
-            _ => None,
-        }
-    }
-
-    /// プリミティブを面積光源プリミティブに変換する。
-    pub fn as_area_light(&self) -> Option<&dyn PrimitiveAreaLight<Id>> {
-        match self {
-            Primitive::EmissiveTriangleMesh(light) => Some(light),
-            Primitive::EmissiveSingleTriangle(light) => Some(light),
-            _ => None,
-        }
-    }
-
-    /// プリミティブを無限光源プリミティブに変換する。
-    pub fn as_infinite_light(&self) -> Option<&dyn PrimitiveInfiniteLight<Id>> {
-        match self {
-            Primitive::EnvironmentLight(light) => Some(light),
-            _ => None,
-        }
-    }
 }
