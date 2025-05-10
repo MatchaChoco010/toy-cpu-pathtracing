@@ -1,3 +1,14 @@
 # math
 
-A crate that implements math-related functions necessary for creating renderers.
+レンダラーを実装するのに必要な数学関連の実装をまとめたクレート。
+
+以下の実装を含む:
+- 座標系をマーカーで指定できる以下のオブジェクトの実装
+  - 点
+  - ベクトル
+  - 法線
+  - 座標変換行列
+  - バウンディングボックス
+  - レイ
+  - シェーディング点
+- 定義域からはみ出してもNaNを返さない数学関数の実装

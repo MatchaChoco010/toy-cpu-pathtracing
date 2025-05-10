@@ -14,18 +14,25 @@ use sampler::RandomSamplerFactory;
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
+    /// Scene number to render
     #[arg(long, default_value_t = 0)]
     scene: u32,
+    /// Number of samples per pixel
     #[arg(short, long, default_value_t = 64)]
     spp: u32,
+    /// Filter type: [box, ]
     #[arg(long, default_value = "box")]
     filter: String,
+    /// Sampler type: [random, ]
     #[arg(long, default_value = "random")]
     sampler: String,
+    /// Renderer type: [normal, ]
     #[arg(long, default_value = "normal")]
     renderer: String,
+    /// Output image width
     #[arg(short, long, default_value_t = 800)]
     width: u32,
+    /// Output image height
     #[arg(short, long, default_value_t = 600)]
     height: u32,
 }
