@@ -10,6 +10,7 @@ use math::{
     World,
 };
 use spectrum::{SampledSpectrum, SampledWavelengths};
+use util_macros::{enum_methods, impl_binary_ops};
 
 mod directional_light;
 mod emissive_single_triangle;
@@ -28,7 +29,6 @@ use point_light::PointLight;
 use single_triangle::SingleTriangle;
 use spot_light::SpotLight;
 use triangle_mesh::TriangleMesh;
-use util_macros::{enum_methods, impl_binary_ops};
 
 use crate::scene::{
     Geometry, GeometryIndex, GeometryRepository, MaterialId, SceneId,
