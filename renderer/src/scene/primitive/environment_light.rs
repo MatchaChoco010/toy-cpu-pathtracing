@@ -7,11 +7,13 @@ use glam::Vec2;
 use math::{LightSampleContext, Local, Ray, Render, Transform, World};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
-use crate::scene::primitive::{
-    Interaction, LightSampleRadiance, PrimitiveInfiniteLight, PrimitiveLight,
-    PrimitiveNonDeltaLight, PrimitiveTrait,
+use crate::scene::{
+    GeometryRepository, SceneId,
+    primitive::{
+        Interaction, LightSampleRadiance, PrimitiveInfiniteLight, PrimitiveLight,
+        PrimitiveNonDeltaLight, PrimitiveTrait,
+    },
 };
-use crate::scene::{GeometryRepository, SceneId};
 
 /// 環境ライトのプリミティブの構造体。
 pub struct EnvironmentLight {

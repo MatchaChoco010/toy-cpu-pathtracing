@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 
 use crate::eotf::{Eotf, Gamma2_2, Gamma2_6, GammaRec709, GammaSrgb, Linear, NonLinearEotf};
 use crate::gamut::{
-    Aces2065_1Gamut, AcesCgGamut, AdobeRgbGamut, ColorGamut, DciP3D65Gamut, Rec2020Gamut, SrgbGamut,
+    GamutAces2065_1, GamutAcesCg, GamutAdobeRgb, ColorGamut, GamutDciP3D65, GamutSrgb, GamutRec2020, xy_to_xyz,
 };
 use crate::tone_map::{InvertibleToneMap, NoneToneMap, ToneMap};
 
@@ -14,6 +14,31 @@ pub struct Xyz {
     #[allow(dead_code)]
     xyz: glam::Vec3,
 }
+impl Xyz {
+    /// XYZからLabに変換する関数。
+    pub fn xyz_to_lab(&self) -> glam::Vec3 {
+        let xyz = self.xyz;
+        fn f(t: f32) -> f32 {
+            if t > 0.008856 {
+                t.powf(1.0 / 3.0)
+            } else {
+                (t * 903.3 + 16.0) / 116.0
+            }
+        }
+        let w = glam::vec2(0.34567, 0.35850);
+        let w_xyz = xy_to_xyz(w);
+
+        let xr = xyz.x / w_xyz.x;
+        let yr = xyz.y / w_xyz.y;
+        let zr = xyz.z / w_xyz.z;
+
+        let l = 116.0 * f(yr) - 16.0;
+        let a = 500.0 * (f(xr) - f(yr));
+        let b = 200.0 * (f(yr) - f(zr));
+
+        glam::vec3(l, a, b)
+    }
+}
 impl From<glam::Vec3> for Xyz {
     /// XYZ値を持つXyzを生成する。
     fn from(xyz: glam::Vec3) -> Self {
@@ -22,21 +47,25 @@ impl From<glam::Vec3> for Xyz {
 }
 
 /// 各種色空間の色が実装するトレイト。
-pub trait ColorTrait: Sync + Send + Sized + Clone {
+pub trait Color: Sync + Send + Clone {
+    /// RGB値を取得する。
     fn rgb(&self) -> glam::Vec3;
+
+    /// XYZ値を取得する。
+    fn xyz(&self) -> glam::Vec3;
 }
 
 /// RGB色空間の色を表す構造体。
 /// ジェネリクスで指定された色域で、
 /// ジェネリクスで指定されたトーンマップとEOTFがかかった後のrgb値を持つ。
 #[derive(Clone)]
-pub struct Color<G: ColorGamut, T: ToneMap, E: Eotf> {
+pub struct ColorImpl<G: ColorGamut, T: ToneMap, E: Eotf> {
     rgb: glam::Vec3,
     gamut: G,
     tone_map: T,
     _eotf: PhantomData<E>,
 }
-impl<G: ColorGamut, T: ToneMap, E: Eotf> Color<G, T, E> {
+impl<G: ColorGamut, T: ToneMap, E: Eotf> ColorImpl<G, T, E> {
     /// Colorを生成する。
     fn create(rgb: glam::Vec3, gamut: G, tone_map: T) -> Self {
         Self {
@@ -47,93 +76,103 @@ impl<G: ColorGamut, T: ToneMap, E: Eotf> Color<G, T, E> {
         }
     }
 
-    /// XYZ値を取得する。
+    /// 別の色域の色から新しい色域に色域を変更する。
+    pub fn from<FromGamut: ColorGamut>(color: &ColorImpl<FromGamut, T, E>) -> Self {
+        let gamut = G::new();
+        let xyz = color.xyz();
+        let rgb = gamut.xyz_to_rgb(xyz);
+        ColorImpl::create(rgb, gamut, color.tone_map.clone())
+    }
+}
+impl<G: ColorGamut, T: ToneMap, E: Eotf> Color for ColorImpl<G, T, E> {
+    fn rgb(&self) -> glam::Vec3 {
+        self.rgb
+    }
+
     fn xyz(&self) -> glam::Vec3 {
         self.gamut.rgb_to_xyz(self.rgb)
     }
-
-    /// 別の色域の色から新しい色域に色域を変更する。
-    pub fn from<G2: ColorGamut>(color: Color<G2, T, E>, gamut: G) -> Self {
-        let xyz = color.xyz();
-        let rgb = gamut.xyz_to_rgb(xyz);
-        Color::create(rgb, gamut, color.tone_map.clone())
-    }
 }
-impl<G: ColorGamut, E: Eotf> Color<G, NoneToneMap, E> {
+
+// トーンマップが指定されていない場合、RGBの値から直接色を指定できる。
+// 必要があればその後トーンマップを適用する。
+impl<G: ColorGamut, E: Eotf> ColorImpl<G, NoneToneMap, E> {
     /// RGB値を持つColorを生成する。
     pub fn new(rgb: glam::Vec3) -> Self {
         Self::create(rgb, G::new(), NoneToneMap)
     }
 }
-impl<G: ColorGamut, T: ToneMap, E: Eotf> ColorTrait for Color<G, T, E> {
-    /// RGB値を取得する。
-    fn rgb(&self) -> glam::Vec3 {
-        self.rgb
-    }
-}
-// トーンマップが逆変換可能な場合。
-impl<G: ColorGamut, T: InvertibleToneMap, E: Eotf> Color<G, T, E> {
+
+// トーンマップが指定されておりトーンマップが逆変換可能な場合、
+// トーンマップの逆変換を掛けてトーンマップ未指定の色を取得できる。
+impl<G: ColorGamut, T: InvertibleToneMap, E: Eotf> ColorImpl<G, T, E> {
     /// トーンマップの逆変換を行う。
-    pub fn invert_tone_map(&self) -> Color<G, NoneToneMap, E> {
+    pub fn invert_tone_map(&self) -> ColorImpl<G, NoneToneMap, E> {
         let rgb = self.tone_map.inverse_transform(self.rgb);
-        Color::create(rgb, self.gamut.clone(), NoneToneMap)
+        ColorImpl::create(rgb, self.gamut.clone(), NoneToneMap)
     }
 }
-// EOTFを掛けた後の色の場合。
-impl<G: ColorGamut, T: ToneMap, E: NonLinearEotf> Color<G, T, E> {
+
+// EOTFを掛けた後の色の場合、EOTFの逆関数を掛けてリニアな色に変換できる。
+// いわゆるデガンマ処理。
+impl<G: ColorGamut, T: ToneMap, E: NonLinearEotf> ColorImpl<G, T, E> {
     /// EOTFの逆変換を適用する。
-    pub fn invert_eotf(&self) -> Color<G, T, Linear> {
+    pub fn invert_eotf(&self) -> ColorImpl<G, T, Linear> {
         let rgb = E::inverse_transform(self.rgb);
-        Color::create(rgb, self.gamut.clone(), self.tone_map.clone())
+        ColorImpl::create(rgb, self.gamut.clone(), self.tone_map.clone())
     }
 }
-// EOTFを掛ける前の色の場合。
-impl<G: ColorGamut, T: ToneMap> Color<G, T, Linear> {
+
+// EOTFを掛ける前の色の場合、EOTFを適用した色に変換できる。
+// いわゆるガンマ処理。
+impl<G: ColorGamut, T: ToneMap> ColorImpl<G, T, Linear> {
     /// EOTFを適用する。
-    pub fn apply_eotf<E: NonLinearEotf>(&self) -> Color<G, T, E> {
+    pub fn apply_eotf<E: NonLinearEotf>(&self) -> ColorImpl<G, T, E> {
         let rgb = E::transform(self.rgb);
-        Color::create(rgb, self.gamut.clone(), self.tone_map.clone())
+        ColorImpl::create(rgb, self.gamut.clone(), self.tone_map.clone())
     }
 }
-// EOTFが適用前でさらにトーンマップが指定されていない場合。
-impl<G: ColorGamut> Color<G, NoneToneMap, Linear> {
+
+// EOTFが適用前でさらにトーンマップが指定されていない場合、
+// トーンマップ適用処理を行ってトーンマップ後の色を取得できる。
+impl<G: ColorGamut> ColorImpl<G, NoneToneMap, Linear> {
     /// トーンマップを適用する。
-    pub fn apply_tone_map<T: ToneMap>(&self, tone_map: T) -> Color<G, T, Linear> {
+    pub fn apply_tone_map<T: ToneMap>(&self, tone_map: T) -> ColorImpl<G, T, Linear> {
         let rgb = tone_map.transform(self.rgb);
-        Color::create(rgb, self.gamut.clone(), tone_map)
+        ColorImpl::create(rgb, self.gamut.clone(), tone_map)
     }
 }
 
 /// sRGB色空間の色を表す構造体。
 /// 色域がsRGBでEOTFがsRGBのガンマ関数。
-pub type SrgbColor = Color<SrgbGamut, NoneToneMap, GammaSrgb>;
+pub type ColorSrgb = ColorImpl<GamutSrgb, NoneToneMap, GammaSrgb>;
 
 /// Display P3色空間の色を表す構造体。
 /// 色域がDisplay P3でEOTFはsRGBのガンマ関数。
-pub type DisplayP3Color = Color<DciP3D65Gamut, NoneToneMap, GammaSrgb>;
+pub type ColorDisplayP3 = ColorImpl<GamutDciP3D65, NoneToneMap, GammaSrgb>;
 
 /// P3-D65色空間の色を表す構造体。
 /// 色域がP3-D65でEOTFはガンマ2.6のガンマ関数。
-pub type P3D65Color = Color<DciP3D65Gamut, NoneToneMap, Gamma2_6>;
+pub type ColorP3D65 = ColorImpl<GamutDciP3D65, NoneToneMap, Gamma2_6>;
 
 /// Adobe RGB色空間の色を表す構造体。
 /// 色域とEOTFがAdobe RGBのもの。
-pub type AdobeRGBColor = Color<AdobeRgbGamut, NoneToneMap, Gamma2_2>;
+pub type ColorAdobeRGB = ColorImpl<GamutAdobeRgb, NoneToneMap, Gamma2_2>;
 
 /// Rec. 709色空間の色を表す構造体。
 /// 色域がsRGBでEOTFはRec. 709のガンマ関数
-pub type Rec709Color = Color<SrgbGamut, NoneToneMap, GammaRec709>;
+pub type ColorRec709 = ColorImpl<GamutSrgb, NoneToneMap, GammaRec709>;
 
 /// Rec. 2020色空間の色を表す構造体。
 /// 色域がRec. 2020でEOTFはRec.709のガンマ関数
-pub type Rec2020Color = Color<Rec2020Gamut, NoneToneMap, GammaRec709>;
+pub type ColorRec2020 = ColorImpl<GamutRec2020, NoneToneMap, GammaRec709>;
 
 /// ACEScg色空間の色を表す構造体。
 /// 色域がACEScgでEOTFはシーンリニアを想定してリニアとする。
 /// ACESのワークフローでディスプレイに表示するにはRRTとODTにあたるトーンマップを適用する必要がある。
-pub type AcesCgColor = Color<AcesCgGamut, NoneToneMap, Linear>;
+pub type ColorAcesCg = ColorImpl<GamutAcesCg, NoneToneMap, Linear>;
 
 /// ACES2065-1色空間の色を表す構造体。
 /// 色域がACES2065-1でEOTFはシーンリニアを想定してリニアとする。
 /// ACESのワークフローでディスプレイに表示するにはRRTとODTにあたるトーンマップを適用する必要がある。
-pub type Aces2065_1Color = Color<Aces2065_1Gamut, NoneToneMap, Linear>;
+pub type ColorAces2065_1 = ColorImpl<GamutAces2065_1, NoneToneMap, Linear>;

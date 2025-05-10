@@ -4,9 +4,12 @@ use std::env;
 use std::fs::File;
 use std::io::Write;
 
-use color::gamut::{
-    Aces2065_1Gamut, AcesCgGamut, AdobeRgbGamut, ColorGamut, DciP3D65Gamut, Rec2020Gamut,
-    SrgbGamut, xyz_to_lab,
+use color::{
+    Xyz,
+    gamut::{
+        ColorGamut, GamutAces2065_1, GamutAcesCg, GamutAdobeRgb, GamutDciP3D65, GamutRec2020,
+        GamutSrgb,
+    },
 };
 use math::{lup_decompose, lup_solve};
 
@@ -372,7 +375,8 @@ fn eval_residual<G: ColorGamut>(
     }
 
     // XYZからLabに変換する。
-    let out_lab = xyz_to_lab(glam::vec3(out_xyz[0], out_xyz[1], out_xyz[2]));
+    let out_xyz = Xyz::from(glam::vec3(out_xyz[0], out_xyz[1], out_xyz[2]));
+    let out_lab = out_xyz.xyz_to_lab();
     let rgb_lab = G::new().rgb_to_lab(rgb);
 
     // Lab空間での差を計算する。
@@ -393,19 +397,18 @@ fn eval_jacobian<G: ColorGamut>(
 ) -> glam::Mat3 {
     const RGB2SPEC_EPSILON: f32 = 1e-4;
 
-    let mut tmp;
     let mut jacobian = [0.0; 9];
 
     for i in 0..3 {
         // 係数を小さく少しずらして評価する。
-        tmp = [coefficients[0], coefficients[1], coefficients[2]];
-        tmp[i] -= RGB2SPEC_EPSILON;
-        let r0 = eval_residual::<G>(tmp, rgb, lambda_table, xyz_table).to_array();
+        let mut delta_neg = coefficients.clone();
+        delta_neg[i] -= RGB2SPEC_EPSILON;
+        let r0 = eval_residual::<G>(delta_neg, rgb, lambda_table, xyz_table).to_array();
 
         // 係数を大きく少しずらして評価する。
-        tmp = [coefficients[0], coefficients[1], coefficients[2]];
-        tmp[i] += RGB2SPEC_EPSILON;
-        let r1 = eval_residual::<G>(tmp, rgb, lambda_table, xyz_table).to_array();
+        let mut delta_pos = coefficients.clone();
+        delta_pos[i] += RGB2SPEC_EPSILON;
+        let r1 = eval_residual::<G>(delta_pos, rgb, lambda_table, xyz_table).to_array();
 
         for j in 0..3 {
             jacobian[j + i * 3] = (r1[j] - r0[j]) / (2.0 * RGB2SPEC_EPSILON);
@@ -429,10 +432,11 @@ fn calculate_coefficients<G: ColorGamut>(
         let residual = eval_residual::<G>(coefficients, rgb, lambda_table, xyz_table);
         let jacobian = eval_jacobian::<G>(coefficients, rgb, lambda_table, xyz_table);
 
+        // LUP分解して、J * x = residualを解く。
         let (l, u, p) = lup_decompose(jacobian, 1e-15);
-
         let x = lup_solve(l, u, p, residual).to_array();
 
+        // 係数を更新する。
         let mut r = 0.0;
         for j in 0..3 {
             coefficients[j] -= x[j];
@@ -441,12 +445,14 @@ fn calculate_coefficients<G: ColorGamut>(
         }
         let max = coefficients[0].max(coefficients[1]).max(coefficients[2]);
 
+        // 係数が大きすぎる場合は、正規化する。
         if max > 200.0 {
             coefficients[0] *= 200.0 / max;
             coefficients[1] *= 200.0 / max;
             coefficients[2] *= 200.0 / max;
         }
 
+        // 残差が小さくなったら終了する。
         if r < 1e-6 {
             break;
         }
@@ -461,7 +467,7 @@ fn init_table<G: ColorGamut>(
     z_nodes: &mut [f32; TABLE_SIZE],
     table: &mut [[[[[f32; 3]; TABLE_SIZE]; TABLE_SIZE]; TABLE_SIZE]; 3],
 ) {
-    // zの非線形なマッピングを計算する。
+    // 精度を0と1の付近に割り振るために、zの非線形なマッピングを計算する。
     const fn z_mapping(zi: usize) -> f64 {
         const fn smoothstep(x: f64) -> f64 {
             x * x * (3.0 - 2.0 * x)
@@ -537,6 +543,7 @@ fn init_table<G: ColorGamut>(
     }
 }
 
+/// ファイルにテーブルの定義を書き出す。
 fn write_table<G: ColorGamut>(
     writer: &mut impl Write,
     color_name: &str,
@@ -630,88 +637,88 @@ fn main() -> anyhow::Result<()> {
     let mut table = [[[[[0.0; 3]; TABLE_SIZE]; TABLE_SIZE]; TABLE_SIZE]; 3];
 
     // sRGB
-    init_table::<SrgbGamut>(&mut z_nodes, &mut table);
-    write_table::<SrgbGamut>(
+    init_table::<GamutSrgb>(&mut z_nodes, &mut table);
+    write_table::<GamutSrgb>(
         &mut file,
-        "SrgbColor",
-        "SrgbGamut",
+        "ColorSrgb",
+        "GamutSrgb",
         "GammaSrgb",
         &z_nodes,
         &table,
     )?;
 
     // Display P3
-    init_table::<DciP3D65Gamut>(&mut z_nodes, &mut table);
-    write_table::<DciP3D65Gamut>(
+    init_table::<GamutDciP3D65>(&mut z_nodes, &mut table);
+    write_table::<GamutDciP3D65>(
         &mut file,
-        "DisplayP3Color",
-        "DciP3D65Gamut",
+        "ColorDisplayP3",
+        "GamutDciP3D65",
         "GammaSrgb",
         &z_nodes,
         &table,
     )?;
 
     // P3-D65
-    init_table::<DciP3D65Gamut>(&mut z_nodes, &mut table);
-    write_table::<DciP3D65Gamut>(
+    init_table::<GamutDciP3D65>(&mut z_nodes, &mut table);
+    write_table::<GamutDciP3D65>(
         &mut file,
-        "P3D65Color",
-        "DciP3D65Gamut",
+        "ColorP3D65",
+        "GamutDciP3D65",
         "Gamma2_6",
         &z_nodes,
         &table,
     )?;
 
     // Adobe RGB
-    init_table::<AdobeRgbGamut>(&mut z_nodes, &mut table);
-    write_table::<AdobeRgbGamut>(
+    init_table::<GamutAdobeRgb>(&mut z_nodes, &mut table);
+    write_table::<GamutAdobeRgb>(
         &mut file,
-        "AdobeRGBColor",
-        "AdobeRgbGamut",
+        "ColorAdobeRGB",
+        "GamutAdobeRgb",
         "Gamma2_2",
         &z_nodes,
         &table,
     )?;
 
     // Rec. 709
-    init_table::<SrgbGamut>(&mut z_nodes, &mut table);
-    write_table::<SrgbGamut>(
+    init_table::<GamutSrgb>(&mut z_nodes, &mut table);
+    write_table::<GamutSrgb>(
         &mut file,
-        "Rec709Color",
-        "SrgbGamut",
+        "ColorRec709",
+        "GamutSrgb",
         "GammaRec709",
         &z_nodes,
         &table,
     )?;
 
     // Rec. 2020
-    init_table::<Rec2020Gamut>(&mut z_nodes, &mut table);
-    write_table::<Rec2020Gamut>(
+    init_table::<GamutRec2020>(&mut z_nodes, &mut table);
+    write_table::<GamutRec2020>(
         &mut file,
-        "Rec2020Color",
-        "Rec2020Gamut",
+        "ColorRec2020",
+        "GamutRec2020",
         "GammaRec709",
         &z_nodes,
         &table,
     )?;
 
     // ACEScg
-    init_table::<AcesCgGamut>(&mut z_nodes, &mut table);
-    write_table::<AcesCgGamut>(
+    init_table::<GamutAcesCg>(&mut z_nodes, &mut table);
+    write_table::<GamutAcesCg>(
         &mut file,
-        "AcesCgColor",
-        "AcesCgGamut",
+        "ColorAcesCg",
+        "GamutAcesCg",
         "Linear",
         &z_nodes,
         &table,
     )?;
 
     // ACES2065-1
-    init_table::<Aces2065_1Gamut>(&mut z_nodes, &mut table);
-    write_table::<Aces2065_1Gamut>(
+    init_table::<GamutAces2065_1>(&mut z_nodes, &mut table);
+    write_table::<GamutAces2065_1>(
         &mut file,
-        "Aces2065_1Color",
-        "Aces2065_1Gamut",
+        "ColorAces2065_1",
+        "GamutAces2065_1",
         "Linear",
         &z_nodes,
         &table,

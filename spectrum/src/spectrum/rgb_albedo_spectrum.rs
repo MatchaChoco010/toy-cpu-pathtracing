@@ -1,15 +1,15 @@
 //! RGB色から反射率スペクトルを生成するモジュール。
 
 use color::{
-    Aces2065_1Color, AcesCgColor, AdobeRGBColor, ColorTrait, DisplayP3Color, P3D65Color,
-    Rec709Color, Rec2020Color, SrgbColor,
+    Color, ColorAces2065_1, ColorAcesCg, ColorAdobeRGB, ColorDisplayP3, ColorP3D65, ColorRec709,
+    ColorRec2020, ColorSrgb,
 };
 
 use crate::rgb_sigmoid_polynomial::RgbSigmoidPolynomial;
 use crate::spectrum::Spectrum;
 
 #[derive(Clone)]
-pub struct RgbAlbedoSpectrum<C: ColorTrait + Clone> {
+pub struct RgbAlbedoSpectrum<C: Color + Clone> {
     table: RgbSigmoidPolynomial<C>,
 }
 
@@ -34,11 +34,11 @@ macro_rules! impl_rgb_albedo_spectrum {
     };
 }
 
-impl_rgb_albedo_spectrum!(SrgbColor);
-impl_rgb_albedo_spectrum!(DisplayP3Color);
-impl_rgb_albedo_spectrum!(P3D65Color);
-impl_rgb_albedo_spectrum!(AdobeRGBColor);
-impl_rgb_albedo_spectrum!(Rec709Color);
-impl_rgb_albedo_spectrum!(Rec2020Color);
-impl_rgb_albedo_spectrum!(AcesCgColor);
-impl_rgb_albedo_spectrum!(Aces2065_1Color);
+impl_rgb_albedo_spectrum!(ColorSrgb);
+impl_rgb_albedo_spectrum!(ColorDisplayP3);
+impl_rgb_albedo_spectrum!(ColorP3D65);
+impl_rgb_albedo_spectrum!(ColorAdobeRGB);
+impl_rgb_albedo_spectrum!(ColorRec709);
+impl_rgb_albedo_spectrum!(ColorRec2020);
+impl_rgb_albedo_spectrum!(ColorAcesCg);
+impl_rgb_albedo_spectrum!(ColorAces2065_1);

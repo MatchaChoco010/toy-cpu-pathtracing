@@ -3,14 +3,15 @@
 
 use std::marker::PhantomData;
 
-use color::eotf::{Eotf, Gamma2_2, Gamma2_6, GammaRec709, GammaSrgb, Linear};
-use color::gamut::{
-    Aces2065_1Gamut, AcesCgGamut, AdobeRgbGamut, ColorGamut, DciP3D65Gamut, Rec2020Gamut, SrgbGamut,
-};
-use color::tone_map::NoneToneMap;
 use color::{
-    Aces2065_1Color, AcesCgColor, AdobeRGBColor, Color, ColorTrait, DisplayP3Color, P3D65Color,
-    Rec709Color, Rec2020Color, SrgbColor,
+    Color, ColorAces2065_1, ColorAcesCg, ColorAdobeRGB, ColorDisplayP3, ColorImpl, ColorP3D65,
+    ColorRec709, ColorRec2020, ColorSrgb,
+    eotf::{Eotf, Gamma2_2, Gamma2_6, GammaRec709, GammaSrgb, Linear},
+    gamut::{
+        ColorGamut, GamutAces2065_1, GamutAcesCg, GamutAdobeRgb, GamutDciP3D65, GamutRec2020,
+        GamutSrgb,
+    },
+    tone_map::NoneToneMap,
 };
 
 use crate::spectrum::{LAMBDA_MAX, LAMBDA_MIN};
@@ -39,11 +40,11 @@ fn evaluate_polynomial(t: f32, coefficients: &[f32]) -> f32 {
 struct RgbToSpectrumTable<G: ColorGamut, E: Eotf> {
     table: [[[[[f32; 3]; TABLE_SIZE]; TABLE_SIZE]; TABLE_SIZE]; 3],
     z_nodes: [f32; TABLE_SIZE],
-    _color_space: PhantomData<Color<G, NoneToneMap, E>>,
+    _color_space: PhantomData<ColorImpl<G, NoneToneMap, E>>,
 }
 impl<G: ColorGamut, E: Eotf> RgbToSpectrumTable<G, E> {
     /// テーブルから多項式の係数を取得する。
-    fn get(&self, color: Color<G, NoneToneMap, E>) -> [f32; 3] {
+    fn get(&self, color: ColorImpl<G, NoneToneMap, E>) -> [f32; 3] {
         /// 線形補間を行う関数。
         fn lerp(a: f32, b: f32, t: f32) -> f32 {
             a + (b - a) * t
@@ -101,13 +102,13 @@ impl<G: ColorGamut, E: Eotf> RgbToSpectrumTable<G, E> {
 /// RGBからシグモイドを掛けた多項式でフィッティングしたスペクトルを保持し、
 /// 波長に対するスペクトルの値を引くことができる構造体。
 #[derive(Clone)]
-pub struct RgbSigmoidPolynomial<C: ColorTrait + Clone> {
+pub struct RgbSigmoidPolynomial<C: Color + Clone> {
     c0: f32,
     c1: f32,
     c2: f32,
     _color_space: PhantomData<C>,
 }
-impl<C: ColorTrait> RgbSigmoidPolynomial<C> {
+impl<C: Color> RgbSigmoidPolynomial<C> {
     /// SigmoidPolynomialの係数を指定して生成する。
     fn new(c0: f32, c1: f32, c2: f32) -> Self {
         Self {

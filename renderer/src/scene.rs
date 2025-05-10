@@ -11,9 +11,10 @@ pub mod primitive;
 use crate::camera::Camera;
 use crate::filter::Filter;
 
+use primitive::Intersection;
+
 pub use geometry::{Geometry, GeometryIndex, GeometryRepository};
 pub use material::MaterialId;
-use primitive::Intersection;
 pub use primitive::{
     CreatePrimitiveDesc, GeometryInfo, Interaction, LightIrradiance, PrimitiveBvh, PrimitiveIndex,
     PrimitiveRepository,

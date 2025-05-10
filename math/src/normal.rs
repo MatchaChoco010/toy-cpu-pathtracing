@@ -2,7 +2,7 @@
 
 use std::marker::PhantomData;
 
-use crate::coordinate_system::CoordinateSystem;
+use crate::CoordinateSystem;
 
 /// 座標系Cでの法線ベクトルを表す構造体。
 #[derive(Debug, Clone, Copy)]

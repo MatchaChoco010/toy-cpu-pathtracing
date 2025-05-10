@@ -5,11 +5,13 @@ use glam::Vec2;
 use math::{Bounds, LightSampleContext, Local, Ray, Render, Transform, World};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
-use crate::scene::primitive::{
-    Interaction, Intersection, LightSampleRadiance, PrimitiveAreaLight, PrimitiveGeometry,
-    PrimitiveIndex, PrimitiveLight, PrimitiveNonDeltaLight, PrimitiveTrait,
+use crate::scene::{
+    Geometry, GeometryIndex, GeometryRepository, MaterialId, Scene, SceneId,
+    primitive::{
+        Interaction, Intersection, LightSampleRadiance, PrimitiveAreaLight, PrimitiveGeometry,
+        PrimitiveIndex, PrimitiveLight, PrimitiveNonDeltaLight, PrimitiveTrait,
+    },
 };
-use crate::scene::{Geometry, GeometryIndex, GeometryRepository, MaterialId, Scene, SceneId};
 
 /// 放射面を含む三角形メッシュのプリミティブの構造体。
 pub struct EmissiveTriangleMesh<Id: SceneId> {

@@ -5,7 +5,7 @@ use std::path::Path;
 use image::{ImageFormat, Rgb, RgbImage};
 use rayon::prelude::*;
 
-use color::{ColorTrait, SrgbColor};
+use color::{Color, ColorSrgb};
 
 use crate::camera::Camera;
 use crate::filter::Filter;
@@ -25,7 +25,7 @@ pub struct RendererArgs<'a, Id: SceneId, F: Filter, SF: SamplerFactory> {
 
 /// レンダラーのトレイト。
 pub trait Renderer: Send + Sync + Clone {
-    type Color: ColorTrait;
+    type Color: Color;
 
     /// レンダリングを行い、RGBの色を返す。
     fn render(&mut self, x: u32, y: u32) -> Self::Color;
@@ -93,7 +93,7 @@ impl<'a, Id: SceneId, F: Filter, SF: SamplerFactory> NormalRenderer<'a, Id, F, S
     }
 }
 impl<'a, Id: SceneId, F: Filter, SF: SamplerFactory> Renderer for NormalRenderer<'a, Id, F, SF> {
-    type Color = SrgbColor;
+    type Color = ColorSrgb;
 
     fn render(&mut self, x: u32, y: u32) -> Self::Color {
         let RendererArgs {

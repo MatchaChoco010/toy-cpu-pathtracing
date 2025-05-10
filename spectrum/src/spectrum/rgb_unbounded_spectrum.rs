@@ -1,15 +1,15 @@
 //! RGBから一般の非有界なスペクトルを生成するモジュール。
 
 use color::{
-    Aces2065_1Color, AcesCgColor, AdobeRGBColor, ColorTrait, DisplayP3Color, P3D65Color,
-    Rec709Color, Rec2020Color, SrgbColor,
+    Color, ColorAces2065_1, ColorAcesCg, ColorAdobeRGB, ColorDisplayP3, ColorP3D65, ColorRec709,
+    ColorRec2020, ColorSrgb,
 };
 
 use crate::rgb_sigmoid_polynomial::RgbSigmoidPolynomial;
 use crate::spectrum::Spectrum;
 
 #[derive(Clone)]
-pub struct RgbUnboundedSpectrum<C: ColorTrait> {
+pub struct RgbUnboundedSpectrum<C: Color> {
     scale: f32,
     table: RgbSigmoidPolynomial<C>,
 }
@@ -38,11 +38,11 @@ macro_rules! impl_rgb_unbounded_spectrum {
         }
     };
 }
-impl_rgb_unbounded_spectrum!(SrgbColor);
-impl_rgb_unbounded_spectrum!(DisplayP3Color);
-impl_rgb_unbounded_spectrum!(P3D65Color);
-impl_rgb_unbounded_spectrum!(AdobeRGBColor);
-impl_rgb_unbounded_spectrum!(Rec709Color);
-impl_rgb_unbounded_spectrum!(Rec2020Color);
-impl_rgb_unbounded_spectrum!(AcesCgColor);
-impl_rgb_unbounded_spectrum!(Aces2065_1Color);
+impl_rgb_unbounded_spectrum!(ColorSrgb);
+impl_rgb_unbounded_spectrum!(ColorDisplayP3);
+impl_rgb_unbounded_spectrum!(ColorP3D65);
+impl_rgb_unbounded_spectrum!(ColorAdobeRGB);
+impl_rgb_unbounded_spectrum!(ColorRec709);
+impl_rgb_unbounded_spectrum!(ColorRec2020);
+impl_rgb_unbounded_spectrum!(ColorAcesCg);
+impl_rgb_unbounded_spectrum!(ColorAces2065_1);

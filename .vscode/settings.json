@@ -1,5 +1,4 @@
 {
-  "rust-analyzer.cargo.buildScripts.enable": true,
   "cSpell.words": [
     "Clippy",
     "copysign",

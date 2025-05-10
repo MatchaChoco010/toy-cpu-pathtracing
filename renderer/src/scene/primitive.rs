@@ -30,9 +30,10 @@ use spot_light::SpotLight;
 use triangle_mesh::TriangleMesh;
 use util_macros::{enum_methods, impl_binary_ops};
 
-use crate::scene::{Geometry, GeometryIndex, GeometryRepository, MaterialId, SceneId};
-
-use super::bvh::{Bvh, BvhItem, BvhItemData};
+use crate::scene::{
+    Geometry, GeometryIndex, GeometryRepository, MaterialId, SceneId,
+    bvh::{Bvh, BvhItem, BvhItemData},
+};
 
 impl<Id: SceneId> BvhItemData<PrimitiveIndex<Id>>
     for (&GeometryRepository<Id>, &PrimitiveRepository<Id>)
