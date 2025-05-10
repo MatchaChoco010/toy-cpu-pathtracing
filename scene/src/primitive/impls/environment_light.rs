@@ -3,7 +3,7 @@
 use std::path::Path;
 
 use math::{LightSampleContext, Local, Ray, Render, Transform, World};
-use spectrum::{SampledSpectrum, SampledWavelengths};
+use spectrum::{SampledSpectrum, SampledWavelengths, Spectrum};
 
 use crate::{
     Interaction, LightSampleRadiance, SceneId,
@@ -17,7 +17,7 @@ use crate::{
 /// 環境ライトのプリミティブの構造体。
 pub struct EnvironmentLight {
     intensity: f32,
-    phi: f32,
+    integrated_spectrum: Box<dyn Spectrum>,
     // texture:
     local_to_world: Transform<Local, World>,
     local_to_render: Transform<Local, Render>,
@@ -72,8 +72,8 @@ impl<Id: SceneId> Primitive<Id> for EnvironmentLight {
     }
 }
 impl<Id: SceneId> PrimitiveLight<Id> for EnvironmentLight {
-    fn phi(&self, lambda: &SampledWavelengths) -> f32 {
-        self.phi
+    fn phi(&self, lambda: &SampledWavelengths) -> SampledSpectrum {
+        self.intensity * self.integrated_spectrum.sample(lambda)
     }
 }
 impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EnvironmentLight {

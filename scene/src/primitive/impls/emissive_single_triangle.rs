@@ -142,7 +142,7 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for EmissiveSingleTriangle<Id> {
     }
 }
 impl<Id: SceneId> PrimitiveLight<Id> for EmissiveSingleTriangle<Id> {
-    fn phi(&self, lambda: &SampledWavelengths) -> f32 {
+    fn phi(&self, lambda: &SampledWavelengths) -> SampledSpectrum {
         todo!()
     }
 }

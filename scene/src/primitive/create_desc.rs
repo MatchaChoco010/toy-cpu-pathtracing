@@ -3,6 +3,7 @@
 use std::path::PathBuf;
 
 use math::{Local, Normal, Point3, Transform, World};
+use spectrum::Spectrum;
 
 use crate::{GeometryIndex, MaterialId, SceneId};
 
@@ -34,16 +35,22 @@ pub enum CreatePrimitiveDesc<Id: SceneId> {
     PointLightPrimitive {
         /// 点光源の強度。
         intensity: f32,
+        /// 点光源のスペクトル。
+        spectrum: Box<dyn Spectrum>,
         /// モデルのワールド座標系への座標変換。
         transform: Transform<Local, World>,
     },
     /// スポットライトプリミティブを作成するための情報。
     /// スポットライトの方向はモデルのZ+軸方向を向いている。
     SpotLightPrimitive {
-        /// スポットライトの角度。
-        angle: f32,
+        /// スポットライトの光の減衰を始める内側の角度。
+        angle_inner: f32,
+        /// スポットライトの光の減衰を終わる外側の角度。
+        angle_outer: f32,
         /// スポットライトの強度。
         intensity: f32,
+        /// スポットライトのスペクトル。
+        spectrum: Box<dyn Spectrum>,
         /// モデルのワールド座標系への座標変換。
         transform: Transform<Local, World>,
     },
@@ -52,6 +59,8 @@ pub enum CreatePrimitiveDesc<Id: SceneId> {
     DirectionalLightPrimitive {
         /// 指向性光源の強度。
         intensity: f32,
+        /// 指向性光源のスペクトル。
+        spectrum: Box<dyn Spectrum>,
         /// モデルのワールド座標系への座標変換。
         transform: Transform<Local, World>,
     },

@@ -6,6 +6,7 @@ mod primitive;
 mod scene;
 
 pub use geometry::{Geometry, GeometryIndex};
+pub use light_sampler::{LightSample, LightSampler};
 pub use material::MaterialId;
 pub use primitive::{
     CreatePrimitiveDesc, InteractGeometryInfo, Interaction, Intersection, LightIrradiance,

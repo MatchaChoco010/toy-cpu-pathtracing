@@ -3,11 +3,12 @@
 use std::fmt::Debug;
 
 use math::{Ray, Render, World};
+use spectrum::SampledWavelengths;
 
 use crate::{
-    CreatePrimitiveDesc, GeometryIndex, Intersection, PrimitiveIndex,
+    CreatePrimitiveDesc, GeometryIndex, Intersection, LightSampler, PrimitiveIndex,
     geometry::GeometryRepository,
-    light_sampler::LightSampler,
+    light_sampler::LightSamplerFactory,
     primitive::{PrimitiveBvh, PrimitiveRepository},
 };
 
@@ -35,7 +36,7 @@ pub struct Scene<Id: SceneId> {
     geometry_repository: GeometryRepository<Id>,
     primitive_repository: PrimitiveRepository<Id>,
     bvh: Option<PrimitiveBvh<Id>>,
-    light_sampler: Option<LightSampler<Id>>,
+    light_sampler_factory: Option<LightSamplerFactory<Id>>,
 }
 impl<Id: SceneId> Scene<Id> {
     fn __new() -> Self {
@@ -43,19 +44,22 @@ impl<Id: SceneId> Scene<Id> {
             geometry_repository: GeometryRepository::new(),
             primitive_repository: PrimitiveRepository::new(),
             bvh: None,
-            light_sampler: None,
+            light_sampler_factory: None,
         }
     }
 
+    /// objファイルを読み込んでジオメトリを作成し、シーンに追加する。
     pub fn load_obj(&mut self, path: &str) -> GeometryIndex<Id> {
         self.geometry_repository.load_obj(path)
     }
 
+    /// プリミティブを作成し、シーンに追加する。
     pub fn create_primitive(&mut self, desc: CreatePrimitiveDesc<Id>) -> PrimitiveIndex<Id> {
         self.primitive_repository
             .create_primitive(&self.geometry_repository, desc)
     }
 
+    /// シーンを交差判定やライトサンプル用にビルドする。
     pub fn build(&mut self, camera: &impl WorldToRender) {
         self.primitive_repository
             .update_world_to_render(&camera.world_to_render());
@@ -64,12 +68,14 @@ impl<Id: SceneId> Scene<Id> {
             &mut self.primitive_repository,
         ));
         let scene_bounds = self.bvh.as_ref().unwrap().scene_bounds();
-        self.light_sampler = Some(LightSampler::build(
+        self.light_sampler_factory = Some(LightSamplerFactory::build(
             &mut self.primitive_repository,
             &scene_bounds,
         ));
     }
 
+    /// 交差判定を計算する。
+    /// build()を呼び出す前に呼び出すとpanicする。
     pub fn intersect(&self, ray: &Ray<Render>, t_max: f32) -> Option<Intersection<Id, Render>> {
         if self.bvh.is_none() {
             panic!("BVH is not built");
@@ -80,6 +86,18 @@ impl<Id: SceneId> Scene<Id> {
             ray,
             t_max,
         )
+    }
+
+    /// ライトのサンプラーを取得する。
+    /// build()を呼び出す前に呼び出すとpanicする。
+    pub fn light_sampler(&self, lambda: SampledWavelengths) -> LightSampler<Id> {
+        if self.light_sampler_factory.is_none() {
+            panic!("Light sampler is not built");
+        }
+        self.light_sampler_factory
+            .as_ref()
+            .unwrap()
+            .create(&self.primitive_repository, &lambda)
     }
 }
 

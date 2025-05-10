@@ -128,7 +128,7 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for EmissiveTriangleMesh<Id> {
     }
 }
 impl<Id: SceneId> PrimitiveLight<Id> for EmissiveTriangleMesh<Id> {
-    fn phi(&self, lambda: &SampledWavelengths) -> f32 {
+    fn phi(&self, lambda: &SampledWavelengths) -> SampledSpectrum {
         todo!()
         // area_sumとmaterialのエネルギーを使って、光源としての総エネルギーを計算する
     }
