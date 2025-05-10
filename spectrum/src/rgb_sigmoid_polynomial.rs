@@ -17,7 +17,7 @@ use color::{
 use crate::spectrum::{LAMBDA_MAX, LAMBDA_MIN};
 
 ///作成するテーブルの配列のサイズ。
-const TABLE_SIZE: usize = 36;
+const TABLE_SIZE: usize = 64;
 
 /// シグモイド関数。
 fn sigmoid(x: f32) -> f32 {

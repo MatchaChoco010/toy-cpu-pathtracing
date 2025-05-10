@@ -21,12 +21,12 @@ const LAMBDA_MIN: f32 = 360.0;
 const LAMBDA_MAX: f32 = 830.0;
 
 ///作成するテーブルの配列のサイズ。
-const TABLE_SIZE: usize = 36;
+const TABLE_SIZE: usize = 64;
 
 /// 積分の評価に使うサンプル数。
 const N_CIE_FINE_SAMPLES: usize = (N_CIE_SAMPLES - 1) * 3 + 1;
 
-/// サンプルの間隔。
+/// 積分の評価時のサンプルの間隔。
 const H: f32 = (LAMBDA_MAX - LAMBDA_MIN) / (N_CIE_FINE_SAMPLES - 1) as f32;
 
 /// CIEの波長のデータのサンプル数。
@@ -725,6 +725,9 @@ fn main() -> anyhow::Result<()> {
         &z_nodes,
         &table,
     )?;
+
+    // build.rsがdirtyなときだけ実行するようにする。
+    println!("cargo:rerun-if-changed=build.rs");
 
     Ok(())
 }
