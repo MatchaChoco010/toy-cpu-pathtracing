@@ -5,11 +5,12 @@ use std::path::Path;
 use math::{LightSampleContext, Local, Ray, Render, Transform, World};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
-use crate::scene::{
-    GeometryRepository, SceneId,
-    primitive::{
-        Interaction, LightSampleRadiance, Primitive, PrimitiveAreaLight, PrimitiveDeltaLight,
-        PrimitiveGeometry, PrimitiveInfiniteLight, PrimitiveLight, PrimitiveNonDeltaLight,
+use crate::{
+    Interaction, LightSampleRadiance, SceneId,
+    geometry::GeometryRepository,
+    primitive::traits::{
+        Primitive, PrimitiveAreaLight, PrimitiveDeltaLight, PrimitiveGeometry,
+        PrimitiveInfiniteLight, PrimitiveLight, PrimitiveNonDeltaLight,
     },
 };
 

@@ -2,11 +2,12 @@
 //!
 //! 外部に公開する三角形メッシュのジオメトリの構造体の他、BVH構築のための中間データ構造なども含む。
 
+use std::any::Any;
 use std::marker::PhantomData;
 
 use math::{Bounds, Local, Normal, Point3, Ray, intersect_triangle};
 
-use crate::scene::{
+use crate::{
     Geometry, SceneId,
     bvh::{Bvh, BvhItem, BvhItemData, HitInfo},
     geometry::Intersection,
@@ -107,6 +108,7 @@ impl<Id: SceneId> BvhItem<Local> for Triangle<Id> {
 }
 
 /// 三角形メッシュのジオメトリの構造体。
+#[derive(Debug)]
 pub struct TriangleMesh<Id: SceneId> {
     positions: Vec<Point3<Local>>,
     normals: Vec<Normal<Local>>,
@@ -198,6 +200,10 @@ impl<Id: SceneId> Geometry<Id> for TriangleMesh<Id> {
         } else {
             panic!("BVH is not built");
         }
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 impl<Id: SceneId> BvhItemData<Triangle<Id>> for TriangleMesh<Id> {

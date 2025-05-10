@@ -3,10 +3,11 @@
 use math::{Bounds, CoordinateSystem, Ray, Render, Transform};
 use util_macros::impl_binary_ops;
 
-use crate::scene::{
-    GeometryRepository, SceneId,
+use crate::{
+    Interaction, PrimitiveIndex, SceneId,
     bvh::{Bvh, BvhItem, BvhItemData, HitInfo},
-    primitive::{Interaction, PrimitiveIndex, PrimitiveRepository},
+    geometry::GeometryRepository,
+    primitive::PrimitiveRepository,
 };
 
 /// BVHのアイテム用のトレイトをPrimitiveIndexに実装する。

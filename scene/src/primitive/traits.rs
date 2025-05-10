@@ -3,9 +3,9 @@
 use math::{Bounds, LightSampleContext, Ray, Render, Transform, World};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
-use crate::scene::{
-    GeometryRepository, MaterialId, SceneId,
-    primitive::{Interaction, Intersection, LightIrradiance, LightSampleRadiance, PrimitiveIndex},
+use crate::{
+    Interaction, Intersection, LightIrradiance, LightSampleRadiance, MaterialId, PrimitiveIndex,
+    SceneId, geometry::GeometryRepository,
 };
 
 /// プリミティブのトレイト。

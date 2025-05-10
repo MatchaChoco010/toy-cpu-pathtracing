@@ -2,7 +2,7 @@
 
 use std::marker::PhantomData;
 
-use crate::scene::SceneId;
+use crate::SceneId;
 
 /// MaterialRepositoryに登録したMaterialのID。
 /// MaterialRepositoryからこのIDを使ってMaterialを取得できる。

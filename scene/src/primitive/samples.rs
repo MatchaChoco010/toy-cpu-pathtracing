@@ -4,11 +4,11 @@ use math::{CoordinateSystem, Normal, Point3, Transform};
 use spectrum::SampledSpectrum;
 use util_macros::impl_binary_ops;
 
-use crate::scene::{SceneId, primitive::PrimitiveIndex};
+use crate::{SceneId, primitive::PrimitiveIndex};
 
 /// サンプルしたジオメトリを特定するための情報を持つ列挙型。
 #[derive(Debug, Clone, Copy)]
-pub enum GeometryInfo {
+pub enum InteractGeometryInfo {
     /// サンプルした三角形メッシュの三角形を特定するための情報。
     TriangleMesh {
         /// サンプルした三角形メッシュのインデックス。
@@ -30,7 +30,7 @@ pub enum Interaction<Id: SceneId, C: CoordinateSystem> {
         /// サンプルしたプリミティブのインデックス。
         primitive_index: PrimitiveIndex<Id>,
         /// サンプルしたジオメトリの追加情報。
-        geometry_info: GeometryInfo,
+        geometry_info: InteractGeometryInfo,
     },
     // Medium {
     //     ...

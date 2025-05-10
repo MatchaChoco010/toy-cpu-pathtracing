@@ -5,13 +5,11 @@ pub mod filter;
 pub mod renderer;
 pub mod sampler;
 pub mod scene;
-pub mod scene_loader;
 
 use camera::Camera;
 use filter::BoxFilter;
 use renderer::{NormalRenderer, RendererArgs, RendererImage};
 use sampler::RandomSamplerFactory;
-use scene::create_scene;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -49,12 +47,12 @@ fn main() {
     let width = args.width;
     let height = args.height;
 
-    let mut scene = create_scene!(scene);
+    let mut scene = ::scene::create_scene!(scene);
     let mut camera = Camera::new(45.0, width, height, filter);
 
     match args.scene {
-        0 => scene_loader::load_scene_0(&mut scene, &mut camera),
-        1 => scene_loader::load_scene_1(&mut scene, &mut camera),
+        0 => scene::load_scene_0(&mut scene, &mut camera),
+        1 => scene::load_scene_1(&mut scene, &mut camera),
         _ => panic!("Invalid scene number"),
     };
 

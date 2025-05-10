@@ -1,16 +1,12 @@
 [package]
-name = "renderer"
+name = "scene"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
-clap.workspace = true
 color.workspace = true
 glam.workspace = true
-image.workspace = true
 math.workspace = true
-rand.workspace = true
-rayon.workspace = true
-scene.workspace = true
 spectrum.workspace = true
+tobj.workspace = true
 util_macros.workspace = true
