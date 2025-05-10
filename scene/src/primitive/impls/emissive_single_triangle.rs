@@ -6,11 +6,12 @@ use math::{
 };
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
-use crate::scene::{
-    GeometryRepository, MaterialId, SceneId,
-    primitive::{
-        GeometryInfo, Interaction, Intersection, LightSampleRadiance, Primitive,
-        PrimitiveAreaLight, PrimitiveDeltaLight, PrimitiveGeometry, PrimitiveIndex,
+use crate::{
+    InteractGeometryInfo, Interaction, Intersection, LightSampleRadiance, MaterialId,
+    PrimitiveIndex, SceneId,
+    geometry::GeometryRepository,
+    primitive::traits::{
+        Primitive, PrimitiveAreaLight, PrimitiveDeltaLight, PrimitiveGeometry,
         PrimitiveInfiniteLight, PrimitiveLight, PrimitiveNonDeltaLight,
     },
 };
@@ -127,13 +128,13 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for EmissiveSingleTriangle<Id> {
 
         Some(Intersection {
             t_hit: hit.t_hit,
-            interaction: crate::scene::Interaction::Surface {
+            interaction: Interaction::Surface {
                 position: &self.local_to_render * hit.position,
                 normal: &self.local_to_render * hit.normal,
                 shading_normal: &self.local_to_render * shading_normal,
                 uv,
                 primitive_index: _primitive_index,
-                geometry_info: GeometryInfo::TriangleMesh {
+                geometry_info: InteractGeometryInfo::TriangleMesh {
                     triangle_index: 0, // TODO: 三角形のインデックスを取得する
                 },
             },

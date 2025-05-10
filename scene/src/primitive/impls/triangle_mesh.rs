@@ -2,12 +2,13 @@
 
 use math::{Bounds, Local, Ray, Render, Transform, World};
 
-use crate::scene::{
-    GeometryIndex, GeometryRepository, MaterialId, SceneId,
-    primitive::{
-        GeometryInfo, Interaction, Intersection, Primitive, PrimitiveAreaLight,
-        PrimitiveDeltaLight, PrimitiveGeometry, PrimitiveIndex, PrimitiveInfiniteLight,
-        PrimitiveLight, PrimitiveNonDeltaLight,
+use crate::{
+    GeometryIndex, InteractGeometryInfo, Interaction, Intersection, MaterialId, PrimitiveIndex,
+    SceneId,
+    geometry::GeometryRepository,
+    primitive::traits::{
+        Primitive, PrimitiveAreaLight, PrimitiveDeltaLight, PrimitiveGeometry,
+        PrimitiveInfiniteLight, PrimitiveLight, PrimitiveNonDeltaLight,
     },
 };
 
@@ -105,7 +106,7 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for TriangleMesh<Id> {
                         shading_normal: intersection.shading_normal,
                         uv: intersection.uv,
                         primitive_index,
-                        geometry_info: GeometryInfo::TriangleMesh {
+                        geometry_info: InteractGeometryInfo::TriangleMesh {
                             triangle_index: intersection.index,
                         },
                     },

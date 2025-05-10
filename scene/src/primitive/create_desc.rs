@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use math::{Local, Normal, Point3, Transform, World};
 
-use crate::scene::{GeometryIndex, MaterialId, SceneId};
+use crate::{GeometryIndex, MaterialId, SceneId};
 
 /// プリミティブを作成するための情報。
 pub enum CreatePrimitiveDesc<Id: SceneId> {

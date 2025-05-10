@@ -5,9 +5,10 @@ use std::marker::PhantomData;
 
 use math::{Render, Transform, World};
 
-use crate::scene::{
-    GeometryRepository, SceneId,
-    primitive::{CreatePrimitiveDesc, Primitive, impls::*},
+use crate::{
+    SceneId,
+    geometry::{self, GeometryRepository},
+    primitive::{self, CreatePrimitiveDesc, traits::Primitive},
 };
 
 /// PrimitiveRepositoryに登録したPrimitiveのIndex。
@@ -46,16 +47,20 @@ impl<Id: SceneId> PrimitiveRepository<Id> {
                 material_id,
                 transform,
             } => {
-                let geometry: &dyn Any = geometry_repository.get(geometry_index);
+                let geometry = geometry_repository.get(geometry_index);
 
-                if geometry.downcast_ref::<TriangleMesh<Id>>().is_some() {
+                if geometry.as_any().is::<geometry::impls::TriangleMesh<Id>>() {
                     // ジオメトリがTriangleMeshの場合。
 
                     // TODO: materialがemissiveか判断する
                     if true {
-                        Box::new(TriangleMesh::new(geometry_index, material_id, transform))
+                        Box::new(primitive::impls::TriangleMesh::new(
+                            geometry_index,
+                            material_id,
+                            transform,
+                        ))
                     } else {
-                        Box::new(EmissiveTriangleMesh::new(
+                        Box::new(primitive::impls::EmissiveTriangleMesh::new(
                             geometry_repository,
                             self,
                             geometry_index,
@@ -77,7 +82,7 @@ impl<Id: SceneId> PrimitiveRepository<Id> {
             } => {
                 // TODO: materialがemissiveか判断する
                 if true {
-                    Box::new(SingleTriangle::new(
+                    Box::new(primitive::impls::SingleTriangle::new(
                         positions,
                         normals,
                         uvs,
@@ -85,7 +90,7 @@ impl<Id: SceneId> PrimitiveRepository<Id> {
                         transform,
                     ))
                 } else {
-                    Box::new(EmissiveSingleTriangle::new(
+                    Box::new(primitive::impls::EmissiveSingleTriangle::new(
                         positions,
                         normals,
                         uvs,
@@ -97,21 +102,29 @@ impl<Id: SceneId> PrimitiveRepository<Id> {
             CreatePrimitiveDesc::PointLightPrimitive {
                 intensity,
                 transform,
-            } => Box::new(PointLight::new(intensity, transform)),
+            } => Box::new(primitive::impls::PointLight::new(intensity, transform)),
             CreatePrimitiveDesc::SpotLightPrimitive {
                 angle,
                 intensity,
                 transform,
-            } => Box::new(SpotLight::new(angle, intensity, transform)),
+            } => Box::new(primitive::impls::SpotLight::new(
+                angle, intensity, transform,
+            )),
             CreatePrimitiveDesc::DirectionalLightPrimitive {
                 intensity,
                 transform,
-            } => Box::new(DirectionalLight::new(intensity, transform)),
+            } => Box::new(primitive::impls::DirectionalLight::new(
+                intensity, transform,
+            )),
             CreatePrimitiveDesc::EnvironmentLightPrimitive {
                 intensity,
                 texture_path,
                 transform,
-            } => Box::new(EnvironmentLight::new(intensity, texture_path, transform)),
+            } => Box::new(primitive::impls::EnvironmentLight::new(
+                intensity,
+                texture_path,
+                transform,
+            )),
         };
         self.primitives.push(primitive);
         primitive_index

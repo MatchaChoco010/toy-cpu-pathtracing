@@ -10,5 +10,4 @@ mod traits;
 pub use bvh::{Intersection, PrimitiveBvh};
 pub use create_desc::CreatePrimitiveDesc;
 pub use repository::{PrimitiveIndex, PrimitiveRepository};
-pub use samples::{GeometryInfo, Interaction, LightIrradiance, LightSampleRadiance};
-pub use traits::*;
+pub use samples::{InteractGeometryInfo, Interaction, LightIrradiance, LightSampleRadiance};

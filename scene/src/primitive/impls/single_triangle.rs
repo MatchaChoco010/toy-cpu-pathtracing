@@ -2,12 +2,12 @@
 
 use math::{Bounds, Local, Normal, Point3, Ray, Render, Transform, World, intersect_triangle};
 
-use crate::scene::{
-    GeometryRepository, MaterialId, SceneId,
-    primitive::{
-        GeometryInfo, Intersection, Primitive, PrimitiveAreaLight, PrimitiveDeltaLight,
-        PrimitiveGeometry, PrimitiveIndex, PrimitiveInfiniteLight, PrimitiveLight,
-        PrimitiveNonDeltaLight,
+use crate::{
+    InteractGeometryInfo, Interaction, Intersection, MaterialId, PrimitiveIndex, SceneId,
+    geometry::GeometryRepository,
+    primitive::traits::{
+        Primitive, PrimitiveAreaLight, PrimitiveDeltaLight, PrimitiveGeometry,
+        PrimitiveInfiniteLight, PrimitiveLight, PrimitiveNonDeltaLight,
     },
 };
 
@@ -123,13 +123,13 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for SingleTriangle<Id> {
 
         Some(Intersection {
             t_hit: hit.t_hit,
-            interaction: crate::scene::Interaction::Surface {
+            interaction: Interaction::Surface {
                 position: &self.local_to_render * hit.position,
                 normal: &self.local_to_render * hit.normal,
                 shading_normal: &self.local_to_render * shading_normal,
                 uv,
                 primitive_index: _primitive_index,
-                geometry_info: GeometryInfo::TriangleMesh {
+                geometry_info: InteractGeometryInfo::TriangleMesh {
                     triangle_index: 0, // TODO: 三角形のインデックスを取得する
                 },
             },

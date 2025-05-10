@@ -3,12 +3,16 @@
 use math::{Bounds, LightSampleContext, Local, Ray, Render, Transform, World};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
-use crate::scene::{
-    GeometryIndex, GeometryRepository, MaterialId, PrimitiveRepository, SceneId,
+use crate::{
+    GeometryIndex, InteractGeometryInfo, Interaction, Intersection, LightSampleRadiance,
+    MaterialId, PrimitiveIndex, SceneId,
+    geometry::GeometryRepository,
     primitive::{
-        GeometryInfo, Interaction, Intersection, LightSampleRadiance, Primitive,
-        PrimitiveAreaLight, PrimitiveDeltaLight, PrimitiveGeometry, PrimitiveIndex,
-        PrimitiveInfiniteLight, PrimitiveLight, PrimitiveNonDeltaLight,
+        PrimitiveRepository,
+        traits::{
+            Primitive, PrimitiveAreaLight, PrimitiveDeltaLight, PrimitiveGeometry,
+            PrimitiveInfiniteLight, PrimitiveLight, PrimitiveNonDeltaLight,
+        },
     },
 };
 
@@ -115,7 +119,7 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for EmissiveTriangleMesh<Id> {
                         shading_normal: intersection.shading_normal,
                         uv: intersection.uv,
                         primitive_index,
-                        geometry_info: GeometryInfo::TriangleMesh {
+                        geometry_info: InteractGeometryInfo::TriangleMesh {
                             triangle_index: intersection.index,
                         },
                     },

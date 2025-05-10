@@ -311,6 +311,7 @@ pub enum BvhNode<C: CoordinateSystem, Item: BvhItem<C>> {
 
 /// BVHを表す構造体。
 /// BVHのノードをフラットな配列として持つ。
+#[derive(Debug)]
 pub struct Bvh<C: CoordinateSystem, Item: BvhItem<C>> {
     nodes: Vec<BvhNode<C, Item>>,
 }

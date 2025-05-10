@@ -6,11 +6,11 @@ use image::{ImageFormat, Rgb, RgbImage};
 use rayon::prelude::*;
 
 use color::{Color, ColorSrgb};
+use scene::{Interaction, Scene, SceneId};
 
 use crate::camera::Camera;
 use crate::filter::Filter;
 use crate::sampler::{Sampler, SamplerFactory};
-use crate::scene::{Interaction, Scene, SceneId};
 
 /// レンダラーの作成のための引数。
 #[derive(Clone)]

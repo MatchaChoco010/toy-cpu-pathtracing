@@ -3,7 +3,7 @@
 use math::{Bounds, Render};
 use spectrum::SampledWavelengths;
 
-use crate::scene::{PrimitiveIndex, PrimitiveRepository, SceneId};
+use crate::{PrimitiveIndex, SceneId, primitive::PrimitiveRepository};
 
 /// サンプルした光源のPrimitiveIndexとサンプル確率を持つ構造体。
 pub struct LightSample<Id: SceneId> {

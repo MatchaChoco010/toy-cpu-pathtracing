@@ -1,33 +1,36 @@
-//! 点光源のプリミティブの実装のモジュール。
+//! スポットライトのプリミティブの実装のモジュール。
 
 use math::{LightSampleContext, Local, Render, Transform, World};
 use spectrum::SampledWavelengths;
 
-use crate::scene::{
-    SceneId,
-    primitive::{
-        LightIrradiance, Primitive, PrimitiveAreaLight, PrimitiveDeltaLight, PrimitiveGeometry,
+use crate::{
+    LightIrradiance, SceneId,
+    primitive::traits::{
+        Primitive, PrimitiveAreaLight, PrimitiveDeltaLight, PrimitiveGeometry,
         PrimitiveInfiniteLight, PrimitiveLight, PrimitiveNonDeltaLight,
     },
 };
 
-/// 点光源のプリミティブの構造体。
-pub struct PointLight {
-    phi: f32,
+/// スポットライトのプリミティブの構造体。
+/// スポットライトの方向はローカル座標系のZ+軸方向である。
+pub struct SpotLight {
+    angle: f32,
+    intensity: f32,
     local_to_world: Transform<Local, World>,
     local_to_render: Transform<Local, Render>,
 }
-impl PointLight {
-    /// 新しい点光源のプリミティブを作成する。
-    pub fn new(intensity: f32, local_to_world: Transform<Local, World>) -> Self {
+impl SpotLight {
+    /// 新しいスポットライトのプリミティブを作成する。
+    pub fn new(intensity: f32, angle: f32, local_to_world: Transform<Local, World>) -> Self {
         Self {
-            phi: intensity,
+            angle,
+            intensity,
             local_to_world,
             local_to_render: Transform::identity(),
         }
     }
 }
-impl<Id: SceneId> Primitive<Id> for PointLight {
+impl<Id: SceneId> Primitive<Id> for SpotLight {
     fn update_world_to_render(&mut self, world_to_render: &Transform<World, Render>) {
         self.local_to_render = world_to_render * &self.local_to_world;
     }
@@ -64,12 +67,12 @@ impl<Id: SceneId> Primitive<Id> for PointLight {
         None
     }
 }
-impl<Id: SceneId> PrimitiveLight<Id> for PointLight {
+impl<Id: SceneId> PrimitiveLight<Id> for SpotLight {
     fn phi(&self, lambda: &SampledWavelengths) -> f32 {
-        self.phi
+        todo!()
     }
 }
-impl<Id: SceneId> PrimitiveDeltaLight<Id> for PointLight {
+impl<Id: SceneId> PrimitiveDeltaLight<Id> for SpotLight {
     fn calculate_irradiance(
         &self,
         _light_sample_context: &LightSampleContext<Render>,

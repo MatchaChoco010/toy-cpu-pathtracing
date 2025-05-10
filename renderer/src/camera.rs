@@ -1,6 +1,7 @@
 //! カメラを定義するモジュール。
 
 use math::{Point3, Ray, Render, Transform, Vector3, World};
+use scene::WorldToRender;
 
 use crate::filter::Filter;
 
@@ -82,5 +83,10 @@ impl<F: Filter> Camera<F> {
     /// ワールド座標系からレンダリング座標系への変換を取得する。
     pub fn world_to_render(&self) -> Transform<World, Render> {
         Transform::translation(-self.position.to_vec3())
+    }
+}
+impl<F: Filter> WorldToRender for Camera<F> {
+    fn world_to_render(&self) -> Transform<World, Render> {
+        self.world_to_render()
     }
 }

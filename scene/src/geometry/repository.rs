@@ -2,9 +2,9 @@
 
 use std::marker::PhantomData;
 
-use crate::scene::{
+use crate::{
     SceneId,
-    geometry::{Geometry, TriangleMesh},
+    geometry::{Geometry, impls::*},
 };
 
 /// シーンに含まれるジオメトリのIndex。
