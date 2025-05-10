@@ -28,7 +28,7 @@ impl Parse for MethodList {
 /// 下記の例ではVariant1とVariant2の構造体にfoo, bar, bazメソッドがあると仮定して、
 /// enum MyEnumにfoo, bar, bazメソッドを定義する。
 /// ```
-/// # use macros::enum_methods;
+/// # use util_macros::enum_methods;
 /// struct Variant1;
 /// impl Variant1 {
 ///    pub fn foo(&self, a: i32) -> i32 { a }
@@ -136,7 +136,7 @@ pub fn enum_methods(attr: TokenStream, item: TokenStream) -> TokenStream {
 ///
 /// 次のようにして利用する。
 /// ```
-/// # use macros::impl_binary_ops;
+/// # use util_macros::impl_binary_ops;
 /// # use std::marker::PhantomData;
 /// # struct A<T, U>(PhantomData<T>, PhantomData<U>);
 /// # struct B<T, U>(PhantomData<T>, PhantomData<U>);
@@ -249,7 +249,7 @@ pub fn impl_binary_ops(attr: TokenStream, item: TokenStream) -> TokenStream {
 ///
 /// 次のようにして利用する。
 /// ```
-/// # use macros::impl_assign_ops;
+/// # use util_macros::impl_assign_ops;
 /// # use std::marker::PhantomData;
 /// # struct A<T, U>(PhantomData<T>, PhantomData<U>);
 /// # struct B<T, U>(PhantomData<T>, PhantomData<U>);

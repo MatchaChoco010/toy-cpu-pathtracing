@@ -17,6 +17,7 @@
     "pkgs",
     "pname",
     "rustc",
+    "rustflags",
     "signum",
     "Srgb",
     "tobj"

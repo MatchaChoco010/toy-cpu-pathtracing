@@ -18,8 +18,9 @@
         craneLib =
           (crane.mkLib pkgs).overrideToolchain (p: p.fenix.stable.toolchain);
         crate = pkgs.callPackage ./nix/cargo.nix { inherit craneLib; };
+        shell = pkgs.callPackage ./nix/shell.nix { inherit craneLib; };
       in {
-        devShells.default = craneLib.devShell { };
+        devShells.default = shell.devShell;
         packages.default = crate.build;
         checks = crate.checks;
       });
