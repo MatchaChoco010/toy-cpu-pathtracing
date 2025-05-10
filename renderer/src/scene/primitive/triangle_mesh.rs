@@ -2,10 +2,10 @@
 
 use math::{Bounds, Local, Ray, Render, Transform, World};
 
-use crate::scene::primitive::{
-    Interaction, Intersection, PrimitiveGeometry, PrimitiveIndex, PrimitiveTrait,
+use crate::scene::{
+    Geometry, GeometryIndex, GeometryRepository, MaterialId, SceneId,
+    primitive::{Interaction, Intersection, PrimitiveGeometry, PrimitiveIndex, PrimitiveTrait},
 };
-use crate::scene::{Geometry, GeometryIndex, GeometryRepository, MaterialId, SceneId};
 
 /// 三角形メッシュのプリミティブの構造体。
 pub struct TriangleMesh<Id: SceneId> {

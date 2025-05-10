@@ -4,8 +4,10 @@ use glam::{Vec2, Vec3};
 
 use math::{Bounds, Local, Normal, Point3, Ray, Render, Transform, World, intersect_triangle};
 
-use crate::scene::primitive::{Intersection, PrimitiveGeometry, PrimitiveIndex, PrimitiveTrait};
-use crate::scene::{GeometryRepository, MaterialId, SceneId};
+use crate::scene::{
+    GeometryRepository, MaterialId, SceneId,
+    primitive::{Intersection, PrimitiveGeometry, PrimitiveIndex, PrimitiveTrait},
+};
 
 /// 三角形のプリミティブの構造体。
 pub struct SingleTriangle<Id: SceneId> {

@@ -8,11 +8,13 @@ use math::{
 };
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
-use crate::scene::primitive::{
-    Interaction, Intersection, LightSampleRadiance, PrimitiveAreaLight, PrimitiveGeometry,
-    PrimitiveIndex, PrimitiveLight, PrimitiveNonDeltaLight, PrimitiveTrait,
+use crate::scene::{
+    GeometryRepository, MaterialId, SceneId,
+    primitive::{
+        Interaction, Intersection, LightSampleRadiance, PrimitiveAreaLight, PrimitiveGeometry,
+        PrimitiveIndex, PrimitiveLight, PrimitiveNonDeltaLight, PrimitiveTrait,
+    },
 };
-use crate::scene::{GeometryRepository, MaterialId, SceneId};
 
 /// 放射面を含む三角形のプリミティブの構造体。
 pub struct EmissiveSingleTriangle<Id: SceneId> {

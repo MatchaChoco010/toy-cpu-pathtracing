@@ -15,7 +15,7 @@ pub trait ColorGamut: Sync + Send + Clone {
     fn rgb_to_lab(&self, rgb: glam::Vec3) -> glam::Vec3;
 }
 
-const fn xyy_to_xyz(xy: glam::Vec2, y: f32) -> glam::Vec3 {
+fn xyy_to_xyz(xy: glam::Vec2, y: f32) -> glam::Vec3 {
     if xy.y == 0.0 {
         return glam::Vec3::ZERO;
     }
@@ -24,7 +24,7 @@ const fn xyy_to_xyz(xy: glam::Vec2, y: f32) -> glam::Vec3 {
     glam::Vec3::new(x, y, z)
 }
 
-const fn xy_to_xyz(xy: glam::Vec2) -> glam::Vec3 {
+pub(crate) fn xy_to_xyz(xy: glam::Vec2) -> glam::Vec3 {
     xyy_to_xyz(xy, 1.0)
 }
 
@@ -39,29 +39,6 @@ fn rgb_to_xyz(r_xy: glam::Vec2, g_xy: glam::Vec2, b_xy: glam::Vec2, w: glam::Vec
 
     let c = rgb.inverse() * w;
     rgb * glam::Mat3::from_diagonal(c)
-}
-
-/// XYZからLabに変換する関数。
-pub fn xyz_to_lab(xyz: glam::Vec3) -> glam::Vec3 {
-    fn f(t: f32) -> f32 {
-        if t > 0.008856 {
-            t.powf(1.0 / 3.0)
-        } else {
-            (t * 903.3 + 16.0) / 116.0
-        }
-    }
-    let w = glam::vec2(0.34567, 0.35850);
-    let w_xyz = xy_to_xyz(w);
-
-    let xr = xyz.x / w_xyz.x;
-    let yr = xyz.y / w_xyz.y;
-    let zr = xyz.z / w_xyz.z;
-
-    let l = 116.0 * f(yr) - 16.0;
-    let a = 500.0 * (f(xr) - f(yr));
-    let b = 200.0 * (f(yr) - f(zr));
-
-    glam::vec3(l, a, b)
 }
 
 /// RGBからCIE Labに変換する関数。
@@ -95,11 +72,11 @@ fn lab(rgb: glam::Vec3, rgb_to_xyz: glam::Mat3) -> glam::Vec3 {
 
 /// sRGBの色域を表す。
 #[derive(Clone)]
-pub struct SrgbGamut {
+pub struct GamutSrgb {
     xyz_to_rgb: glam::Mat3,
     rgb_to_xyz: glam::Mat3,
 }
-impl ColorGamut for SrgbGamut {
+impl ColorGamut for GamutSrgb {
     /// sRGBの色域を生成する。
     fn new() -> Self {
         let r_xy = glam::vec2(0.6400, 0.3300);
@@ -130,11 +107,11 @@ impl ColorGamut for SrgbGamut {
 
 /// DCI-P3 D65の色域を表す。
 #[derive(Clone)]
-pub struct DciP3D65Gamut {
+pub struct GamutDciP3D65 {
     xyz_to_rgb: glam::Mat3,
     rgb_to_xyz: glam::Mat3,
 }
-impl ColorGamut for DciP3D65Gamut {
+impl ColorGamut for GamutDciP3D65 {
     /// DCI-P3 D65の色域を生成する。
     fn new() -> Self {
         let r_xy = glam::vec2(0.6800, 0.3200);
@@ -165,11 +142,11 @@ impl ColorGamut for DciP3D65Gamut {
 
 /// Adobe RGBの色域を表す。
 #[derive(Clone)]
-pub struct AdobeRgbGamut {
+pub struct GamutAdobeRgb {
     xyz_to_rgb: glam::Mat3,
     rgb_to_xyz: glam::Mat3,
 }
-impl ColorGamut for AdobeRgbGamut {
+impl ColorGamut for GamutAdobeRgb {
     /// Adobe RGBの色域を生成する。
     fn new() -> Self {
         let r_xy = glam::vec2(0.6400, 0.3300);
@@ -200,11 +177,11 @@ impl ColorGamut for AdobeRgbGamut {
 
 /// Rec. 2020の色域を表す。
 #[derive(Clone)]
-pub struct Rec2020Gamut {
+pub struct GamutRec2020 {
     xyz_to_rgb: glam::Mat3,
     rgb_to_xyz: glam::Mat3,
 }
-impl ColorGamut for Rec2020Gamut {
+impl ColorGamut for GamutRec2020 {
     /// Rec. 2020の色域を生成する。
     fn new() -> Self {
         let r_xy = glam::vec2(0.7080, 0.2920);
@@ -236,11 +213,11 @@ impl ColorGamut for Rec2020Gamut {
 /// ACEScgの色域を表す。
 /// AP-1。
 #[derive(Clone)]
-pub struct AcesCgGamut {
+pub struct GamutAcesCg {
     xyz_to_rgb: glam::Mat3,
     rgb_to_xyz: glam::Mat3,
 }
-impl ColorGamut for AcesCgGamut {
+impl ColorGamut for GamutAcesCg {
     /// ACEScgの色域を生成する。
     fn new() -> Self {
         let r_xy = glam::vec2(0.7130, 0.2930);
@@ -272,11 +249,11 @@ impl ColorGamut for AcesCgGamut {
 /// ACES2065-1の色域を表す。
 /// AP-0。
 #[derive(Clone)]
-pub struct Aces2065_1Gamut {
+pub struct GamutAces2065_1 {
     xyz_to_rgb: glam::Mat3,
     rgb_to_xyz: glam::Mat3,
 }
-impl ColorGamut for Aces2065_1Gamut {
+impl ColorGamut for GamutAces2065_1 {
     /// ACES2065-1の色域を生成する。
     fn new() -> Self {
         let r_xy = glam::vec2(0.73470, 0.26530);

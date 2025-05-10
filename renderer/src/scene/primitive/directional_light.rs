@@ -3,9 +3,9 @@
 use math::{Bounds, LightSampleContext, Local, Render, Transform, World};
 use spectrum::SampledWavelengths;
 
-use crate::scene::SceneId;
-use crate::scene::primitive::{
-    LightIrradiance, PrimitiveDeltaLight, PrimitiveLight, PrimitiveTrait,
+use crate::scene::{
+    SceneId,
+    primitive::{LightIrradiance, PrimitiveDeltaLight, PrimitiveLight, PrimitiveTrait},
 };
 
 /// 指向性ライトのプリミティブの構造体。

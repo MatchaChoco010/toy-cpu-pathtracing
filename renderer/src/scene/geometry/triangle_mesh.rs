@@ -8,8 +8,10 @@ use glam::{Vec2, Vec3};
 
 use math::{Bounds, Local, Normal, Point3, Ray, intersect_triangle};
 
-use crate::scene::SceneId;
-use crate::scene::bvh::{Bvh, BvhItem, BvhItemData, HitInfo};
+use crate::scene::{
+    SceneId,
+    bvh::{Bvh, BvhItem, BvhItemData, HitInfo},
+};
 
 /// 三角形メッシュとレイの交差の情報。
 pub struct Intersection {

@@ -1,8 +1,8 @@
 //! RGBから光源のスペクトルを生成するモジュール。
 
 use color::{
-    Aces2065_1Color, AcesCgColor, AdobeRGBColor, ColorTrait, DisplayP3Color, P3D65Color,
-    Rec709Color, Rec2020Color, SrgbColor,
+    Color, ColorAces2065_1, ColorAcesCg, ColorAdobeRGB, ColorDisplayP3, ColorP3D65, ColorRec709,
+    ColorRec2020, ColorSrgb,
 };
 
 use crate::presets;
@@ -10,7 +10,7 @@ use crate::rgb_sigmoid_polynomial::RgbSigmoidPolynomial;
 use crate::spectrum::{DenselySampledSpectrum, Spectrum};
 
 #[derive(Clone)]
-pub struct RgbIlluminantSpectrum<C: ColorTrait + Clone> {
+pub struct RgbIlluminantSpectrum<C: Color + Clone> {
     illuminant: DenselySampledSpectrum,
     scale: f32,
     table: RgbSigmoidPolynomial<C>,
@@ -46,11 +46,11 @@ macro_rules! impl_rgb_illuminant_spectrum {
     };
 }
 
-impl_rgb_illuminant_spectrum!(SrgbColor);
-impl_rgb_illuminant_spectrum!(DisplayP3Color);
-impl_rgb_illuminant_spectrum!(P3D65Color);
-impl_rgb_illuminant_spectrum!(AdobeRGBColor);
-impl_rgb_illuminant_spectrum!(Rec709Color);
-impl_rgb_illuminant_spectrum!(Rec2020Color);
-impl_rgb_illuminant_spectrum!(AcesCgColor);
-impl_rgb_illuminant_spectrum!(Aces2065_1Color);
+impl_rgb_illuminant_spectrum!(ColorSrgb);
+impl_rgb_illuminant_spectrum!(ColorDisplayP3);
+impl_rgb_illuminant_spectrum!(ColorP3D65);
+impl_rgb_illuminant_spectrum!(ColorAdobeRGB);
+impl_rgb_illuminant_spectrum!(ColorRec709);
+impl_rgb_illuminant_spectrum!(ColorRec2020);
+impl_rgb_illuminant_spectrum!(ColorAcesCg);
+impl_rgb_illuminant_spectrum!(ColorAces2065_1);
