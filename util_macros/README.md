@@ -1,5 +1,7 @@
 # util_macros
 
-Utility macro crate.
+いくつかのユーティリティマクロのクレート。
 
-A macro is provided to define binary operators for reference in bulk.
+以下のマクロを含む:
+- 二項演算子の参照の組み合わせへの実装を一括で行うためのマクロ
+- 二項代入演算子の参照の組み合わせへの実装を一括で行うためのマクロ

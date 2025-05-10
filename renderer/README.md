@@ -1,3 +1,7 @@
 # renderer
 
-A crate that serves as the entry point for the renderer.
+レンダラー本体のクレート。
+このクレートがエントリーポイントのバイナリクレートとなる。
+
+CLI引数でレンダリングするシーンやsppの数などのオプションを変更できる。
+指定できるオプションは`--help`で確認できる。

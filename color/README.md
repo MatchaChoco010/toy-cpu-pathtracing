@@ -1,6 +1,11 @@
 # color
 
-A crate that defines colors.
+レンダラーで使う色を定義するクレート。
 
-Handle RGB colors defined by color spaces based on color gamut, EOTF, and tone mapping.
-Several well-known color space presets are available, including sRGB.
+XYZ色空間の色と各色空間のRGB色の実装が行われている。
+
+RGBについては、各色空間を適切に扱った実装が行われている。
+RGB色は、色域とEOTFとそしてトーンマップ関数をRGBの値とペアで保持する。
+ある色域の色を別の色域へ変換したり、EOTFの適用をしたり逆変換をしたり、トーンマッピングを適用したりといった実装が型をつけて取り間違えないように実装されている。
+
+sRGBのようないくつかの定義済みの色空間のプリセットも含む。
