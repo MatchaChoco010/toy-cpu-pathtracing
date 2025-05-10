@@ -3,7 +3,7 @@
 use math::{Bounds, Local, Ray, Render, Transform, World};
 
 use crate::scene::{
-    Geometry, GeometryIndex, GeometryRepository, MaterialId, SceneId,
+    GeometryIndex, GeometryRepository, MaterialId, SceneId,
     primitive::{
         GeometryInfo, Interaction, Intersection, Primitive, PrimitiveAreaLight,
         PrimitiveDeltaLight, PrimitiveGeometry, PrimitiveIndex, PrimitiveInfiniteLight,
@@ -73,10 +73,7 @@ impl<Id: SceneId> Primitive<Id> for TriangleMesh<Id> {
 impl<Id: SceneId> PrimitiveGeometry<Id> for TriangleMesh<Id> {
     fn bounds(&self, geometry_repository: &GeometryRepository<Id>) -> Bounds<Render> {
         let geometry = geometry_repository.get(self.geometry_index);
-        let triangle_mesh = match geometry {
-            Geometry::TriangleMesh(triangle_mesh) => triangle_mesh,
-        };
-        &self.local_to_render * &triangle_mesh.bounds()
+        &self.local_to_render * geometry.bounds()
     }
 
     fn material_id(&self) -> MaterialId<Id> {
@@ -85,10 +82,7 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for TriangleMesh<Id> {
 
     fn build_geometry_bvh(&mut self, geometry_repository: &mut GeometryRepository<Id>) {
         let geometry = geometry_repository.get_mut(self.geometry_index);
-        let triangle_mesh = match geometry {
-            Geometry::TriangleMesh(triangle_mesh) => triangle_mesh,
-        };
-        triangle_mesh.build_bvh();
+        geometry.build_bvh();
     }
 
     fn intersect(
@@ -99,11 +93,8 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for TriangleMesh<Id> {
         t_max: f32,
     ) -> Option<Intersection<Id, Render>> {
         let geometry = geometry_repository.get(self.geometry_index);
-        let triangle_mesh = match geometry {
-            Geometry::TriangleMesh(triangle_mesh) => triangle_mesh,
-        };
         let ray = self.local_to_render.inverse() * ray;
-        let intersect = triangle_mesh.intersect(&ray, t_max);
+        let intersect = geometry.intersect(&ray, t_max);
         intersect.map(|intersection| {
             &self.local_to_render
                 * Intersection {
@@ -115,7 +106,7 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for TriangleMesh<Id> {
                         uv: intersection.uv,
                         primitive_index,
                         geometry_info: GeometryInfo::TriangleMesh {
-                            triangle_index: intersection.triangle_index,
+                            triangle_index: intersection.index,
                         },
                     },
                 }

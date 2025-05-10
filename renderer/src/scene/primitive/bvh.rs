@@ -52,6 +52,7 @@ impl<Id: SceneId> BvhItem<Render> for PrimitiveIndex<Id> {
         })
     }
 }
+
 /// BVHのアイテム用のデータトレイトをリポジトリのタプルに実装する。
 impl<Id: SceneId> BvhItemData<PrimitiveIndex<Id>>
     for (&GeometryRepository<Id>, &PrimitiveRepository<Id>)

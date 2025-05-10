@@ -2,8 +2,6 @@
 
 use std::path::PathBuf;
 
-use glam::Vec2;
-
 use math::{Local, Normal, Point3, Transform, World};
 
 use crate::scene::{GeometryIndex, MaterialId, SceneId};
@@ -26,7 +24,7 @@ pub enum CreatePrimitiveDesc<Id: SceneId> {
         /// 三角形の法線ベクトル。
         normals: [Normal<Local>; 3],
         /// 三角形のUV座標。
-        uvs: [Vec2; 3],
+        uvs: [glam::Vec2; 3],
         /// マテリアルのID。
         material_id: MaterialId<Id>,
         /// モデルのワールド座標系への座標変換。

@@ -4,30 +4,13 @@
 
 use std::marker::PhantomData;
 
-use glam::{Vec2, Vec3};
-
 use math::{Bounds, Local, Normal, Point3, Ray, intersect_triangle};
 
 use crate::scene::{
-    SceneId,
+    Geometry, SceneId,
     bvh::{Bvh, BvhItem, BvhItemData, HitInfo},
+    geometry::Intersection,
 };
-
-/// 三角形メッシュとレイの交差の情報。
-pub struct Intersection {
-    /// サンプルした位置。
-    pub position: Point3<Local>,
-    /// サンプルした幾何法線。
-    pub normal: Normal<Local>,
-    /// サンプルしたシェーディング座標。
-    pub shading_normal: Normal<Local>,
-    /// サンプルしたUV座標。
-    pub uv: Vec2,
-    /// サンプルした三角形のインデックス。
-    pub triangle_index: u32,
-    /// ヒットした距離。
-    pub t_hit: f32,
-}
 
 /// BVHの要素の三角形の構造体。
 #[derive(Debug, Clone, Copy)]
@@ -51,8 +34,8 @@ impl<Id: SceneId> BvhItem<Local> for Triangle<Id> {
             &data.positions[data.indices[self.triangle_index as usize * 3 + 1] as usize],
             &data.positions[data.indices[self.triangle_index as usize * 3 + 2] as usize],
         ];
-        let mut min = Vec3::splat(f32::INFINITY);
-        let mut max = Vec3::splat(f32::NEG_INFINITY);
+        let mut min = glam::Vec3::splat(f32::INFINITY);
+        let mut max = glam::Vec3::splat(f32::NEG_INFINITY);
         for position in &positions {
             let point = position.to_vec3();
             min = min.min(point);
@@ -84,7 +67,7 @@ impl<Id: SceneId> BvhItem<Local> for Triangle<Id> {
             data.normals[data.indices[self.triangle_index as usize * 3 + 2] as usize],
         ];
         let uvs = if data.uvs.is_empty() {
-            let uv = Vec2::new(0.0, 0.0);
+            let uv = glam::Vec2::new(0.0, 0.0);
             [uv, uv, uv]
         } else {
             [
@@ -116,7 +99,7 @@ impl<Id: SceneId> BvhItem<Local> for Triangle<Id> {
                 normal: hit.normal,
                 shading_normal,
                 uv,
-                triangle_index: self.triangle_index,
+                index: self.triangle_index,
                 t_hit: hit.t_hit,
             },
         })
@@ -127,7 +110,7 @@ impl<Id: SceneId> BvhItem<Local> for Triangle<Id> {
 pub struct TriangleMesh<Id: SceneId> {
     positions: Vec<Point3<Local>>,
     normals: Vec<Normal<Local>>,
-    uvs: Vec<Vec2>,
+    uvs: Vec<glam::Vec2>,
     indices: Vec<u32>,
     bvh: Option<Bvh<Local, Triangle<Id>>>,
     bounds: Bounds<Local>,
@@ -165,13 +148,17 @@ impl<Id: SceneId> TriangleMesh<Id> {
                     .chunks(3)
                     .map(|n| Normal::new(n[0], n[1], n[2])),
             );
-            uvs.extend(mesh.texcoords.chunks(2).map(|uv| Vec2::new(uv[0], uv[1])));
+            uvs.extend(
+                mesh.texcoords
+                    .chunks(2)
+                    .map(|uv| glam::Vec2::new(uv[0], uv[1])),
+            );
             indices.extend(mesh.indices.iter().map(|i| *i as u32));
         }
 
         // バウンディングボックスを計算する。
-        let mut min = Vec3::splat(f32::INFINITY);
-        let mut max = Vec3::splat(f32::NEG_INFINITY);
+        let mut min = glam::Vec3::splat(f32::INFINITY);
+        let mut max = glam::Vec3::splat(f32::NEG_INFINITY);
         for position in &positions {
             min = min.min(position.to_vec3());
             max = max.max(position.to_vec3());
@@ -189,9 +176,9 @@ impl<Id: SceneId> TriangleMesh<Id> {
             bounds,
         }
     }
-
-    /// BVHを構築する。
-    pub fn build_bvh(&mut self) {
+}
+impl<Id: SceneId> Geometry<Id> for TriangleMesh<Id> {
+    fn build_bvh(&mut self) {
         // すでにBVHが構築されている場合は何もしない
         if self.bvh.is_some() {
             return;
@@ -201,13 +188,11 @@ impl<Id: SceneId> TriangleMesh<Id> {
         self.bvh = Some(bvh);
     }
 
-    /// 三角形メッシュのバウンディングボックスを返す。
-    pub fn bounds(&self) -> Bounds<Local> {
+    fn bounds(&self) -> Bounds<Local> {
         self.bounds.clone()
     }
 
-    /// 交差判定を行う。
-    pub fn intersect(&self, ray: &Ray<Local>, t_max: f32) -> Option<Intersection> {
+    fn intersect(&self, ray: &Ray<Local>, t_max: f32) -> Option<Intersection> {
         if let Some(bvh) = &self.bvh {
             bvh.intersect(self, ray, t_max)
         } else {

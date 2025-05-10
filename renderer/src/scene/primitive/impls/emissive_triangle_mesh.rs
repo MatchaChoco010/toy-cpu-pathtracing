@@ -1,12 +1,10 @@
 //! 放射面を含む三角形メッシュのプリミティブの実装のモジュール。
 
-use glam::Vec2;
-
 use math::{Bounds, LightSampleContext, Local, Ray, Render, Transform, World};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::scene::{
-    Geometry, GeometryIndex, GeometryRepository, MaterialId, PrimitiveRepository, SceneId,
+    GeometryIndex, GeometryRepository, MaterialId, PrimitiveRepository, SceneId,
     primitive::{
         GeometryInfo, Interaction, Intersection, LightSampleRadiance, Primitive,
         PrimitiveAreaLight, PrimitiveDeltaLight, PrimitiveGeometry, PrimitiveIndex,
@@ -85,10 +83,7 @@ impl<Id: SceneId> Primitive<Id> for EmissiveTriangleMesh<Id> {
 impl<Id: SceneId> PrimitiveGeometry<Id> for EmissiveTriangleMesh<Id> {
     fn bounds(&self, geometry_repository: &GeometryRepository<Id>) -> Bounds<Render> {
         let geometry = geometry_repository.get(self.geometry_index);
-        let triangle_mesh = match geometry {
-            Geometry::TriangleMesh(triangle_mesh) => triangle_mesh,
-        };
-        &self.local_to_render * &triangle_mesh.bounds()
+        &self.local_to_render * &geometry.bounds()
     }
 
     fn material_id(&self) -> MaterialId<Id> {
@@ -97,10 +92,7 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for EmissiveTriangleMesh<Id> {
 
     fn build_geometry_bvh(&mut self, geometry_repository: &mut GeometryRepository<Id>) {
         let geometry = geometry_repository.get_mut(self.geometry_index);
-        let triangle_mesh = match geometry {
-            Geometry::TriangleMesh(triangle_mesh) => triangle_mesh,
-        };
-        triangle_mesh.build_bvh();
+        geometry.build_bvh();
     }
 
     fn intersect(
@@ -111,11 +103,8 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for EmissiveTriangleMesh<Id> {
         t_max: f32,
     ) -> Option<Intersection<Id, Render>> {
         let geometry = geometry_repository.get(self.geometry_index);
-        let triangle_mesh = match geometry {
-            Geometry::TriangleMesh(triangle_mesh) => triangle_mesh,
-        };
         let ray = self.local_to_render.inverse() * ray;
-        let intersect = triangle_mesh.intersect(&ray, t_max);
+        let intersect = geometry.intersect(&ray, t_max);
         intersect.map(|intersection| {
             &self.local_to_render
                 * Intersection {
@@ -127,7 +116,7 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for EmissiveTriangleMesh<Id> {
                         uv: intersection.uv,
                         primitive_index,
                         geometry_info: GeometryInfo::TriangleMesh {
-                            triangle_index: intersection.triangle_index,
+                            triangle_index: intersection.index,
                         },
                     },
                 }
@@ -153,7 +142,7 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveTriangleMesh<Id> {
         _light_sample_context: &LightSampleContext<Render>,
         _lambda: &SampledWavelengths,
         _s: f32,
-        _uv: Vec2,
+        _uv: glam::Vec2,
     ) -> LightSampleRadiance<Id, Render> {
         // sを使って三角形をarea_tableからサンプリングする
         // uvを使って三角形から位置要サンプリングして、object_to_renderを使ってレンダリング空間に変換する

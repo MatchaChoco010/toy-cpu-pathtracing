@@ -1,7 +1,5 @@
 //! シーン上の点をサンプルした結果を持つ構造体を定義するモジュール。
 
-use glam::Vec2;
-
 use math::{CoordinateSystem, Normal, Point3, Transform};
 use spectrum::SampledSpectrum;
 use util_macros::impl_binary_ops;
@@ -28,7 +26,7 @@ pub enum Interaction<Id: SceneId, C: CoordinateSystem> {
         /// サンプルしたシェーディング座標。
         shading_normal: Normal<C>,
         /// サンプルしたUV座標。
-        uv: Vec2,
+        uv: glam::Vec2,
         /// サンプルしたプリミティブのインデックス。
         primitive_index: PrimitiveIndex<Id>,
         /// サンプルしたジオメトリの追加情報。

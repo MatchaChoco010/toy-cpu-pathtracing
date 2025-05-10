@@ -1,7 +1,5 @@
 //! プリミティブが実装すべきトレイトを定義するモジュール。
 
-use glam::Vec2;
-
 use math::{Bounds, LightSampleContext, Ray, Render, Transform, World};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
@@ -84,7 +82,7 @@ pub trait PrimitiveNonDeltaLight<Id: SceneId>: PrimitiveLight<Id> {
         _light_sample_context: &LightSampleContext<Render>,
         _lambda: &SampledWavelengths,
         _s: f32,
-        _uv: Vec2,
+        _uv: glam::Vec2,
     ) -> LightSampleRadiance<Id, Render>;
 
     /// 交差点をライトのサンプルでサンプルしたときのPDFを計算する。
