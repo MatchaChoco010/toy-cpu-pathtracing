@@ -100,10 +100,11 @@ impl<Id: SceneId> PrimitiveDeltaLight<Id> for SpotLight {
         light_sample_context: &LightSampleContext<Render>,
         lambda: &SampledWavelengths,
     ) -> LightIrradiance {
-        // Render空間でのライトの方向とcos成分を計算する。
+        // Render空間でのライトの方向と距離の二乗とcos成分を計算する。
         let position = &self.local_to_render * Point3::ZERO;
         let distance_vec = light_sample_context.position.vector_to(position);
         let wi = distance_vec.normalize();
+        let distance_squared = distance_vec.length_squared();
         let cos_theta = wi.dot(light_sample_context.normal);
 
         // angle_innerとangle_outerの間でcos成分でsmoothstep補間した値をスポットライトの減衰とする。
@@ -111,10 +112,12 @@ impl<Id: SceneId> PrimitiveDeltaLight<Id> for SpotLight {
             let t = ((t - a) / (b - a)).clamp(0.0, 1.0);
             t * t * (3.0 - 2.0 * t)
         }
-        let falloff = smoothstep(self.angle_outer, self.angle_inner, cos_theta);
+        let angle_theta = (self.local_to_render.inverse() * wi).to_vec3().z;
+        let falloff = smoothstep(self.angle_outer, self.angle_inner, angle_theta);
 
         // 放射照度を計算する。
-        let irradiance = self.intensity * self.spectrum.sample(lambda) * cos_theta * falloff;
+        let irradiance =
+            self.intensity * self.spectrum.sample(lambda) * cos_theta * falloff / distance_squared;
         LightIrradiance { irradiance }
     }
 }
