@@ -1,6 +1,7 @@
 //! プリミティブを作成するための情報を定義するモジュール。
 
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use math::{Local, Normal, Point3, Transform, World};
 use spectrum::Spectrum;
@@ -36,7 +37,7 @@ pub enum CreatePrimitiveDesc<Id: SceneId> {
         /// 点光源の強度。
         intensity: f32,
         /// 点光源のスペクトル。
-        spectrum: Box<dyn Spectrum>,
+        spectrum: Arc<dyn Spectrum>,
         /// モデルのワールド座標系への座標変換。
         transform: Transform<Local, World>,
     },
@@ -50,7 +51,7 @@ pub enum CreatePrimitiveDesc<Id: SceneId> {
         /// スポットライトの強度。
         intensity: f32,
         /// スポットライトのスペクトル。
-        spectrum: Box<dyn Spectrum>,
+        spectrum: Arc<dyn Spectrum>,
         /// モデルのワールド座標系への座標変換。
         transform: Transform<Local, World>,
     },
@@ -60,7 +61,7 @@ pub enum CreatePrimitiveDesc<Id: SceneId> {
         /// 指向性光源の強度。
         intensity: f32,
         /// 指向性光源のスペクトル。
-        spectrum: Box<dyn Spectrum>,
+        spectrum: Arc<dyn Spectrum>,
         /// モデルのワールド座標系への座標変換。
         transform: Transform<Local, World>,
     },
