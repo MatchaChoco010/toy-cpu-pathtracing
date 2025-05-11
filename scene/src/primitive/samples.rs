@@ -1,6 +1,6 @@
 //! シーン上の点をサンプルした結果を持つ構造体を定義するモジュール。
 
-use math::{CoordinateSystem, Normal, Point3, Transform};
+use math::{CoordinateSystem, Normal, Point3, Transform, Vector3};
 use spectrum::SampledSpectrum;
 use util_macros::impl_binary_ops;
 
@@ -23,8 +23,10 @@ pub enum Interaction<Id: SceneId, C: CoordinateSystem> {
         position: Point3<C>,
         /// サンプルした幾何法線。
         normal: Normal<C>,
-        /// サンプルしたシェーディング座標。
+        /// サンプルしたシェーディング法線。
         shading_normal: Normal<C>,
+        /// サンプルしたタンジェントベクトル。
+        tangent: Vector3<C>,
         /// サンプルしたUV座標。
         uv: glam::Vec2,
         /// サンプルしたプリミティブのインデックス。
@@ -46,6 +48,7 @@ fn mul<Id: SceneId, From: CoordinateSystem, To: CoordinateSystem>(
             position,
             normal,
             shading_normal,
+            tangent,
             uv,
             primitive_index,
             geometry_info,
@@ -53,6 +56,7 @@ fn mul<Id: SceneId, From: CoordinateSystem, To: CoordinateSystem>(
             position: lhs * position,
             normal: lhs * normal,
             shading_normal: lhs * shading_normal,
+            tangent: lhs * tangent,
             uv: *uv,
             primitive_index: *primitive_index,
             geometry_info: *geometry_info,

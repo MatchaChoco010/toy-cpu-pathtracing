@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 
 use util_macros::impl_binary_ops;
 
-use crate::{Bounds, CoordinateSystem, Normal, Point3, Ray, Vector3};
+use crate::{Bounds, CoordinateSystem, Normal, Point3, Ray, Render, Tangent, Vector3};
 
 /// 座標系の変換を行う行列の構造体。
 #[derive(Debug, Clone)]
@@ -144,5 +144,25 @@ impl<From: CoordinateSystem, To: CoordinateSystem> Transform<From, To> {
     pub fn inverse(&self) -> Transform<To, From> {
         let inverse_matrix = self.matrix.inverse();
         Transform::from_matrix(inverse_matrix)
+    }
+}
+impl Transform<Render, Tangent> {
+    /// Render座標系からTangent座標系への変換Transformを作成する。
+    /// shading_normalがY軸になり、tangentの方向にX軸が向くような座尿系に変換するTransform。
+    pub fn from_shading_normal_tangent(
+        shading_normal: &Normal<Render>,
+        tangent: &Vector3<Render>,
+    ) -> Transform<Render, Tangent> {
+        let shading_tangent = (tangent.to_vec3()
+            - shading_normal.to_vec3().dot(tangent.to_vec3()) * shading_normal.to_vec3())
+        .normalize();
+        let shading_bitangent = shading_normal.to_vec3().cross(shading_tangent).normalize();
+        let matrix = glam::Mat4::from_cols(
+            shading_tangent.extend(0.0),
+            shading_normal.to_vec3().extend(0.0),
+            shading_bitangent.extend(0.0),
+            glam::Vec4::ZERO,
+        );
+        Transform::from_matrix(matrix)
     }
 }

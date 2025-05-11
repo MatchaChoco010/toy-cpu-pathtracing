@@ -2,6 +2,8 @@
 
 use std::marker::PhantomData;
 
+use util_macros::impl_binary_ops;
+
 use crate::{CoordinateSystem, Vector3};
 
 /// 座標系Cでの点を表す構造体。
@@ -60,4 +62,12 @@ impl<C: CoordinateSystem> AsRef<Point3<C>> for Point3<C> {
     fn as_ref(&self) -> &Point3<C> {
         &self
     }
+}
+#[impl_binary_ops(Add)]
+fn add<C: CoordinateSystem>(lhs: &Point3<C>, rhs: &Vector3<C>) -> Point3<C> {
+    Point3::from(lhs.vec + rhs.to_vec3())
+}
+#[impl_binary_ops(Sub)]
+fn sub<C: CoordinateSystem>(lhs: &Point3<C>, rhs: &Vector3<C>) -> Point3<C> {
+    Point3::from(lhs.vec - rhs.to_vec3())
 }
