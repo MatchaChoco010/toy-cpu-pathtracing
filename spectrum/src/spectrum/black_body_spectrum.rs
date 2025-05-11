@@ -1,6 +1,8 @@
 //! 黒体放射スペクトルを定義するモジュール。
 
-use crate::spectrum::{LAMBDA_MAX, LAMBDA_MIN, Spectrum};
+use std::sync::Arc;
+
+use crate::spectrum::{LAMBDA_MAX, LAMBDA_MIN, Spectrum, SpectrumTrait};
 
 /// 与えられた波長lambda (nm) と温度temperature (K) に対して、プランクの法則に基づいて黒体放射を計算する。
 fn black_body(lambda: f32, temperature: f32) -> f32 {
@@ -26,11 +28,11 @@ pub struct BlackBodySpectrum {
 impl BlackBodySpectrum {
     /// 新しい黒体スペクトルを作成する。
     /// 国体の温度 (K) を引数に取る。
-    pub fn new(temperature: f32) -> Self {
-        Self { temperature }
+    pub fn new(temperature: f32) -> Spectrum {
+        Arc::new(Self { temperature })
     }
 }
-impl Spectrum for BlackBodySpectrum {
+impl SpectrumTrait for BlackBodySpectrum {
     fn value(&self, lambda: f32) -> f32 {
         black_body(lambda, self.temperature)
     }

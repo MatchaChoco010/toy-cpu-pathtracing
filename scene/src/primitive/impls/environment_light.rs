@@ -3,7 +3,7 @@
 use std::path::Path;
 
 use math::{Local, Ray, Render, Transform, World};
-use spectrum::{SampledSpectrum, SampledWavelengths, Spectrum};
+use spectrum::{SampledSpectrum, SampledWavelengths, SpectrumTrait};
 
 use crate::{
     LightSampleRadiance, PrimitiveIndex, SceneId, SurfaceInteraction,
@@ -17,7 +17,7 @@ use crate::{
 /// 環境ライトのプリミティブの構造体。
 pub struct EnvironmentLight {
     intensity: f32,
-    integrated_spectrum: Box<dyn Spectrum>,
+    integrated_spectrum: Box<dyn SpectrumTrait>,
     // texture:
     local_to_world: Transform<Local, World>,
     local_to_render: Transform<Local, Render>,

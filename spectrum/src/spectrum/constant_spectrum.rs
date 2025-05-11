@@ -1,6 +1,8 @@
 //! 定数スペクトルを定義するモジュール。
 
-use crate::spectrum::Spectrum;
+use std::sync::Arc;
+
+use crate::spectrum::{Spectrum, SpectrumTrait};
 
 /// 定数スペクトルを表す構造体。
 #[derive(Clone)]
@@ -9,11 +11,11 @@ pub struct ConstantSpectrum {
 }
 impl ConstantSpectrum {
     /// 新しい定数スペクトルを作成する。
-    pub fn new(c: f32) -> Self {
-        Self { c }
+    pub fn new(c: f32) -> Spectrum {
+        Arc::new(Self { c })
     }
 }
-impl Spectrum for ConstantSpectrum {
+impl SpectrumTrait for ConstantSpectrum {
     fn value(&self, _lambda: f32) -> f32 {
         self.c
     }

@@ -128,6 +128,6 @@ impl<'a, Id: SceneId, F: Filter, SF: SamplerFactory> Renderer for NormalRenderer
         }
         let color = acc_color / spp as f32;
 
-        Self::Color::new(color)
+        Self::Color::from_vec3(color)
     }
 }

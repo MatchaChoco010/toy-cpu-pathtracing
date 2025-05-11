@@ -1,12 +1,14 @@
 //! RGB色から反射率スペクトルを生成するモジュール。
 
+use std::sync::Arc;
+
 use color::{
     Color, ColorAces2065_1, ColorAcesCg, ColorAdobeRGB, ColorDisplayP3, ColorP3D65, ColorRec709,
     ColorRec2020, ColorSrgb,
 };
 
 use crate::rgb_sigmoid_polynomial::RgbSigmoidPolynomial;
-use crate::spectrum::Spectrum;
+use crate::spectrum::{Spectrum, SpectrumTrait};
 
 #[derive(Clone)]
 pub struct RgbAlbedoSpectrum<C: Color + Clone> {
@@ -17,12 +19,12 @@ macro_rules! impl_rgb_albedo_spectrum {
     ($color:ty) => {
         impl RgbAlbedoSpectrum<$color> {
             /// 新しいRGB反射率スペクトルを作成する。
-            pub fn new(color: $color) -> Self {
+            pub fn new(color: $color) -> Spectrum {
                 let table = RgbSigmoidPolynomial::from(color);
-                Self { table }
+                Arc::new(Self { table })
             }
         }
-        impl Spectrum for RgbAlbedoSpectrum<$color> {
+        impl SpectrumTrait for RgbAlbedoSpectrum<$color> {
             fn value(&self, lambda: f32) -> f32 {
                 self.table.value(lambda)
             }

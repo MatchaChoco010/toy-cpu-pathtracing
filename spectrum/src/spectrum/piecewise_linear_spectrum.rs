@@ -1,6 +1,8 @@
 //! 線形補間されたスペクトルを定義するモジュール。
 
-use crate::spectrum::Spectrum;
+use std::sync::Arc;
+
+use crate::spectrum::{Spectrum, SpectrumTrait};
 
 /// 線形補間されたスペクトルを表す構造体。
 #[derive(Clone)]
@@ -10,22 +12,22 @@ pub struct PiecewiseLinearSpectrum {
 }
 impl PiecewiseLinearSpectrum {
     /// 新しい線形補間されたスペクトルを作成する。
-    pub fn new(lambdas: Vec<f32>, values: Vec<f32>) -> Self {
+    pub fn new(lambdas: Vec<f32>, values: Vec<f32>) -> Spectrum {
         assert_eq!(lambdas.len(), values.len());
-        Self { lambdas, values }
+        Arc::new(Self { lambdas, values })
     }
 
     /// 波長の配列と値のペアの配列から新しい線形補間されたスペクトルを作成する。
-    pub fn from_lambda_and_value(lambdas: &[f32], values: &[f32]) -> Self {
+    pub fn from_lambda_and_value(lambdas: &[f32], values: &[f32]) -> Spectrum {
         assert_eq!(lambdas.len(), values.len());
-        Self {
+        Arc::new(Self {
             lambdas: lambdas.to_vec(),
             values: values.to_vec(),
-        }
+        })
     }
 
     /// 波長と値が交互に並んだ配列から新しい線形補間されたスペクトルを作成する。
-    pub fn from_interleaved(lambdas_and_values: &[f32]) -> Self {
+    pub fn from_interleaved(lambdas_and_values: &[f32]) -> Spectrum {
         assert_eq!(lambdas_and_values.len() % 2, 0);
         let len = lambdas_and_values.len() / 2;
         let (lambdas, values) = lambdas_and_values.chunks_exact(2).fold(
@@ -36,10 +38,10 @@ impl PiecewiseLinearSpectrum {
                 (lambdas, values)
             },
         );
-        Self { lambdas, values }
+        Arc::new(Self { lambdas, values })
     }
 }
-impl Spectrum for PiecewiseLinearSpectrum {
+impl SpectrumTrait for PiecewiseLinearSpectrum {
     fn value(&self, lambda: f32) -> f32 {
         if self.lambdas.is_empty() {
             return 0.0;

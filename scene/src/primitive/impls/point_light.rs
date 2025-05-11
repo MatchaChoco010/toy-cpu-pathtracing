@@ -1,7 +1,6 @@
 //! 点光源のプリミティブの実装のモジュール。
 
 use std::f32::consts::PI;
-use std::sync::Arc;
 
 use math::{Local, Point3, Render, Transform, World};
 use spectrum::{SampledSpectrum, SampledWavelengths, Spectrum};
@@ -17,7 +16,7 @@ use crate::{
 /// 点光源のプリミティブの構造体。
 pub struct PointLight {
     intensity: f32,
-    spectrum: Arc<dyn Spectrum>,
+    spectrum: Spectrum,
     local_to_world: Transform<Local, World>,
     local_to_render: Transform<Local, Render>,
 }
@@ -25,7 +24,7 @@ impl PointLight {
     /// 新しい点光源のプリミティブを作成する。
     pub fn new(
         intensity: f32,
-        spectrum: Arc<dyn Spectrum>,
+        spectrum: Spectrum,
         local_to_world: Transform<Local, World>,
     ) -> Self {
         Self {

@@ -1,5 +1,7 @@
 //! スペクトルに関するモジュール。
 
+use std::sync::Arc;
+
 use color::Xyz;
 
 mod black_body_spectrum;
@@ -27,7 +29,7 @@ pub const LAMBDA_MIN: f32 = 360.0;
 pub const LAMBDA_MAX: f32 = 830.0;
 
 /// スペクトルのトレイト。
-pub trait Spectrum: Send + Sync {
+pub trait SpectrumTrait: Send + Sync {
     /// 波長lambda (nm)に対するスペクトル強度の値を取得する。
     fn value(&self, lambda: f32) -> f32;
 
@@ -46,19 +48,18 @@ pub trait Spectrum: Send + Sync {
     /// スペクトルをXYZ色空間に変換する。
     fn to_xyz(&self) -> Xyz {
         let xyz = glam::vec3(
-            inner_product(&presets::x(), self),
-            inner_product(&presets::y(), self),
-            inner_product(&presets::z(), self),
+            inner_product(self, &presets::x()),
+            inner_product(self, &presets::y()),
+            inner_product(self, &presets::z()),
         ) / presets::y_integral();
         Xyz::from(xyz)
     }
 }
 
 /// スペクトル同士の内積を計算する関数。
-fn inner_product<S1, S2>(s1: &S1, s2: &S2) -> f32
+fn inner_product<S>(s1: &S, s2: &Spectrum) -> f32
 where
-    S1: Spectrum + ?Sized,
-    S2: Spectrum + ?Sized,
+    S: SpectrumTrait + ?Sized,
 {
     let mut sum = 0.0;
     let range = 0..(LAMBDA_MAX - LAMBDA_MIN) as usize;
@@ -68,3 +69,6 @@ where
     }
     sum
 }
+
+/// スペクトルの型エイリアス。
+pub type Spectrum = Arc<dyn SpectrumTrait>;
