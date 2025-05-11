@@ -104,6 +104,7 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for TriangleMesh<Id> {
                         position: intersection.position,
                         normal: intersection.normal,
                         shading_normal: intersection.shading_normal,
+                        tangent: intersection.tangent,
                         uv: intersection.uv,
                         primitive_index,
                         geometry_info: InteractGeometryInfo::TriangleMesh {

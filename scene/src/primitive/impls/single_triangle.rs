@@ -121,12 +121,21 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for SingleTriangle<Id> {
                 + self.uvs[2].y * hit.barycentric[2],
         );
 
+        let edge1 = self.positions[0].vector_to(self.positions[1]);
+        let edge2 = self.positions[0].vector_to(self.positions[2]);
+        let delta_uv1 = self.uvs[1] - self.uvs[0];
+        let delta_uv2 = self.uvs[2] - self.uvs[0];
+        let r = 1.0 / (delta_uv1.x * delta_uv2.y - delta_uv1.y * delta_uv2.x);
+        let tangent = r * (edge1 * delta_uv2.y - edge2 * delta_uv1.y);
+        let tangent = tangent.normalize();
+
         Some(Intersection {
             t_hit: hit.t_hit,
             interaction: Interaction::Surface {
                 position: &self.local_to_render * hit.position,
                 normal: &self.local_to_render * hit.normal,
                 shading_normal: &self.local_to_render * shading_normal,
+                tangent: &self.local_to_render * tangent,
                 uv,
                 primitive_index: _primitive_index,
                 geometry_info: InteractGeometryInfo::TriangleMesh {

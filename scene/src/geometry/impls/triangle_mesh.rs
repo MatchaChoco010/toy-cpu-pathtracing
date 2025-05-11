@@ -5,7 +5,7 @@
 use std::any::Any;
 use std::marker::PhantomData;
 
-use math::{Bounds, Local, Normal, Point3, Ray, intersect_triangle};
+use math::{Bounds, Local, Normal, Point3, Ray, Vector3, intersect_triangle};
 
 use crate::{
     Geometry, SceneId,
@@ -92,6 +92,7 @@ impl<Id: SceneId> BvhItem<Local> for Triangle<Id> {
         );
         let uv =
             uvs[0] * hit.barycentric[0] + uvs[1] * hit.barycentric[1] + uvs[2] * hit.barycentric[2];
+        let tangent = data.tangents[self.triangle_index as usize];
 
         Some(HitInfo {
             t_hit: hit.t_hit,
@@ -99,6 +100,7 @@ impl<Id: SceneId> BvhItem<Local> for Triangle<Id> {
                 position: hit.position,
                 normal: hit.normal,
                 shading_normal,
+                tangent,
                 uv,
                 index: self.triangle_index,
                 t_hit: hit.t_hit,
@@ -112,6 +114,7 @@ impl<Id: SceneId> BvhItem<Local> for Triangle<Id> {
 pub struct TriangleMesh<Id: SceneId> {
     positions: Vec<Point3<Local>>,
     normals: Vec<Normal<Local>>,
+    tangents: Vec<Vector3<Local>>,
     uvs: Vec<glam::Vec2>,
     indices: Vec<u32>,
     bvh: Option<Bvh<Local, Triangle<Id>>>,
@@ -135,6 +138,7 @@ impl<Id: SceneId> TriangleMesh<Id> {
         // モデルのデータを格納する。
         let mut positions = vec![];
         let mut normals = vec![];
+        let mut tangents = vec![];
         let mut uvs = vec![];
         let mut indices = vec![];
 
@@ -155,7 +159,27 @@ impl<Id: SceneId> TriangleMesh<Id> {
                     .chunks(2)
                     .map(|uv| glam::Vec2::new(uv[0], uv[1])),
             );
+
             indices.extend(mesh.indices.iter().map(|i| *i as u32));
+
+            for i in indices.chunks(3) {
+                let p0 = positions[i[0] as usize];
+                let p1 = positions[i[1] as usize];
+                let p2 = positions[i[2] as usize];
+                let edge1 = p0.vector_to(p1);
+                let edge2 = p0.vector_to(p2);
+
+                let uv0 = uvs[i[0] as usize];
+                let uv1 = uvs[i[1] as usize];
+                let uv2 = uvs[i[2] as usize];
+                let delta_uv1 = uv1 - uv0;
+                let delta_uv2 = uv2 - uv0;
+
+                let r = 1.0 / (delta_uv1.x * delta_uv2.y - delta_uv1.y * delta_uv2.x);
+                let tangent = r * (edge1 * delta_uv2.y - edge2 * delta_uv1.y);
+                let tangent = tangent.normalize();
+                tangents.push(tangent);
+            }
         }
 
         // バウンディングボックスを計算する。
@@ -172,6 +196,7 @@ impl<Id: SceneId> TriangleMesh<Id> {
         Self {
             positions,
             normals,
+            tangents,
             uvs,
             indices,
             bvh: None,

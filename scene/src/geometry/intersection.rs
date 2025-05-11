@@ -1,6 +1,6 @@
 //! ジオメトリとレイの交差の情報を保持する構造体を定義するモジュール。
 
-use math::{Local, Normal, Point3};
+use math::{Local, Normal, Point3, Vector3};
 
 /// ジオメトリとレイの交差の情報。
 pub struct Intersection {
@@ -8,8 +8,10 @@ pub struct Intersection {
     pub position: Point3<Local>,
     /// サンプルした幾何法線。
     pub normal: Normal<Local>,
-    /// サンプルしたシェーディング座標。
+    /// サンプルしたシェーディング法線。
     pub shading_normal: Normal<Local>,
+    /// サンプルしたタンジェントベクトル。
+    pub tangent: Vector3<Local>,
     /// サンプルしたUV座標。
     pub uv: glam::Vec2,
     /// サンプルしたジオメトリのインデックス。
