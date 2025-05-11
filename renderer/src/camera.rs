@@ -82,7 +82,7 @@ impl<F: Filter> Camera<F> {
 
     /// ワールド座標系からレンダリング座標系への変換を取得する。
     pub fn world_to_render(&self) -> Transform<World, Render> {
-        Transform::translation(-self.position.to_vec3())
+        Transform::from_translate(-self.position.to_vec3())
     }
 }
 impl<F: Filter> WorldToRender for Camera<F> {

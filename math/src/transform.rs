@@ -87,21 +87,21 @@ impl<From: CoordinateSystem, To: CoordinateSystem> Transform<From, To> {
 
     /// 平行移動のTransformを作成する。
     #[inline(always)]
-    pub fn translation(translation: glam::Vec3) -> Self {
-        let matrix = glam::Mat4::from_translation(translation);
+    pub fn from_translate(translate: glam::Vec3) -> Self {
+        let matrix = glam::Mat4::from_translation(translate);
         Transform::from_matrix(matrix)
     }
 
     /// 回転のTransformを作成する。
     #[inline(always)]
-    pub fn rotation(rotation: glam::Quat) -> Self {
-        let matrix = glam::Mat4::from_quat(rotation);
+    pub fn from_rotate(rotate: glam::Quat) -> Self {
+        let matrix = glam::Mat4::from_quat(rotate);
         Transform::from_matrix(matrix)
     }
 
     /// スケールのTransformを作成する。
     #[inline(always)]
-    pub fn scaling(scale: glam::Vec3) -> Self {
+    pub fn from_scale(scale: glam::Vec3) -> Self {
         let matrix = glam::Mat4::from_scale(scale);
         Transform::from_matrix(matrix)
     }
