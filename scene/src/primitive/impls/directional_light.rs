@@ -1,6 +1,7 @@
 //! 指向性ライトのプリミティブの実装のモジュール。
 
 use std::f32::consts::PI;
+use std::sync::Arc;
 
 use math::{Bounds, LightSampleContext, Local, Render, Transform, Vector3, World};
 use spectrum::{SampledSpectrum, SampledWavelengths, Spectrum};
@@ -17,7 +18,7 @@ use crate::{
 /// 指向性ライトの方向はローカル座標系のZ+軸方向である。
 pub struct DirectionalLight {
     intensity: f32,
-    spectrum: Box<dyn Spectrum>,
+    spectrum: Arc<dyn Spectrum>,
     area: Option<f32>,
     local_to_world: Transform<Local, World>,
     local_to_render: Transform<Local, Render>,
@@ -26,7 +27,7 @@ impl DirectionalLight {
     /// 指向性ライトの新しいインスタンスを作成する。
     pub fn new(
         intensity: f32,
-        spectrum: Box<dyn Spectrum>,
+        spectrum: Arc<dyn Spectrum>,
         local_to_world: Transform<Local, World>,
     ) -> Self {
         Self {

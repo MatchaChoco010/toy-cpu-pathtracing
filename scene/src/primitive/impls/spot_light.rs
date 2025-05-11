@@ -1,6 +1,7 @@
 //! スポットライトのプリミティブの実装のモジュール。
 
 use std::f32::consts::PI;
+use std::sync::Arc;
 
 use math::{LightSampleContext, Local, Point3, Render, Transform, World};
 use spectrum::{SampledSpectrum, SampledWavelengths, Spectrum};
@@ -19,7 +20,7 @@ pub struct SpotLight {
     angle_inner: f32,
     angle_outer: f32,
     intensity: f32,
-    spectrum: Box<dyn Spectrum>,
+    spectrum: Arc<dyn Spectrum>,
     local_to_world: Transform<Local, World>,
     local_to_render: Transform<Local, Render>,
 }
@@ -29,7 +30,7 @@ impl SpotLight {
         angle_inner: f32,
         angle_outer: f32,
         intensity: f32,
-        spectrum: Box<dyn Spectrum>,
+        spectrum: Arc<dyn Spectrum>,
         local_to_world: Transform<Local, World>,
     ) -> Self {
         Self {
