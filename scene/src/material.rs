@@ -1,15 +1,9 @@
-//! シーンのマテリアルとその管理に使う構造体などを定義するモジュール。
+//! マテリアルに関連する定義を行うモジュール。
 
-use std::marker::PhantomData;
+mod bsdf;
+mod edf;
+mod material;
 
-use crate::SceneId;
-
-/// MaterialRepositoryに登録したMaterialのID。
-/// MaterialRepositoryからこのIDを使ってMaterialを取得できる。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct MaterialId<Id: SceneId>(pub usize, PhantomData<Id>);
-impl<Id: SceneId> MaterialId<Id> {
-    pub fn new(index: usize) -> Self {
-        Self(index, PhantomData)
-    }
-}
+pub use bsdf::{Bsdf, BsdfSample};
+pub use edf::Edf;
+pub use material::SurfaceMaterial;

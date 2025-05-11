@@ -1,11 +1,11 @@
 //! プリミティブが実装すべきトレイトを定義するモジュール。
 
-use math::{Bounds, LightSampleContext, Ray, Render, Transform, World};
+use math::{Bounds, Ray, Render, Transform, World};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::{
-    Interaction, Intersection, LightIrradiance, LightSampleRadiance, MaterialId, PrimitiveIndex,
-    SceneId, geometry::GeometryRepository,
+    Intersection, LightIrradiance, LightSampleRadiance, PrimitiveIndex, SceneId,
+    SurfaceInteraction, SurfaceMaterial, geometry::GeometryRepository,
 };
 
 /// プリミティブのトレイト。
@@ -43,8 +43,8 @@ pub trait PrimitiveGeometry<Id: SceneId>: Primitive<Id> {
     /// バウンディングボックスを取得する。
     fn bounds(&self, _geometry_repository: &GeometryRepository<Id>) -> Bounds<Render>;
 
-    /// マテリアルIDを取得する。
-    fn material_id(&self) -> MaterialId<Id>;
+    /// 表面マテリアルを取得する。
+    fn surface_material(&self) -> &SurfaceMaterial<Id>;
 
     /// ジオメトリのBVHを構築する。
     fn build_geometry_bvh(&mut self, _geometry_repository: &mut GeometryRepository<Id>) {
@@ -77,20 +77,16 @@ pub trait PrimitiveNonDeltaLight<Id: SceneId>: PrimitiveLight<Id> {
     /// ライト上の点とそのスペクトル放射輝度のサンプリングを行う。
     fn sample_radiance(
         &self,
+        _primitive_index: PrimitiveIndex<Id>,
         _geometry_repository: &GeometryRepository<Id>,
-        // _material_repository: &GeometryRepository<Id>,
-        _light_sample_context: &LightSampleContext<Render>,
+        _shading_point: &SurfaceInteraction<Id, Render>,
         _lambda: &SampledWavelengths,
         _s: f32,
         _uv: glam::Vec2,
     ) -> LightSampleRadiance<Id, Render>;
 
     /// 交差点をライトのサンプルでサンプルしたときのPDFを計算する。
-    fn pdf_light_sample(
-        &self,
-        _light_sample_context: &LightSampleContext<Render>,
-        _interaction: &Interaction<Id, Render>,
-    ) -> f32;
+    fn pdf_light_sample(&self, _interaction: &SurfaceInteraction<Id, Render>) -> f32;
 }
 
 /// DeltaなライトのPrimitiveを表すトレイト。
@@ -98,7 +94,7 @@ pub trait PrimitiveDeltaLight<Id: SceneId>: PrimitiveLight<Id> {
     /// 与えた波長でのスペクトル放射照度の計算を行う。
     fn calculate_irradiance(
         &self,
-        _light_sample_context: &LightSampleContext<Render>,
+        _shading_point: &SurfaceInteraction<Id, Render>,
         _lambda: &SampledWavelengths,
     ) -> LightIrradiance;
 }
@@ -108,8 +104,8 @@ pub trait PrimitiveAreaLight<Id: SceneId>: PrimitiveNonDeltaLight<Id> {
     /// 与えた波長における交差点でのスペクトル放射輝度を計算する。
     fn intersect_radiance(
         &self,
-        // _material_repository: &GeometryRepository<Id>,
-        _interaction: &Interaction<Id, Render>,
+        _shading_point: &SurfaceInteraction<Id, Render>,
+        _interaction: &SurfaceInteraction<Id, Render>,
         _lambda: &SampledWavelengths,
     ) -> SampledSpectrum;
 }

@@ -1,10 +1,12 @@
 //! 三角形メッシュのプリミティブの実装のモジュール。
 
+use std::sync::Arc;
+
 use math::{Bounds, Local, Ray, Render, Transform, World};
 
 use crate::{
-    GeometryIndex, InteractGeometryInfo, Interaction, Intersection, MaterialId, PrimitiveIndex,
-    SceneId,
+    GeometryIndex, InteractGeometryInfo, Intersection, PrimitiveIndex, SceneId, SurfaceInteraction,
+    SurfaceMaterial,
     geometry::GeometryRepository,
     primitive::traits::{
         Primitive, PrimitiveAreaLight, PrimitiveDeltaLight, PrimitiveGeometry,
@@ -15,7 +17,7 @@ use crate::{
 /// 三角形メッシュのプリミティブの構造体。
 pub struct TriangleMesh<Id: SceneId> {
     geometry_index: GeometryIndex<Id>,
-    material_id: MaterialId<Id>,
+    material: Arc<SurfaceMaterial<Id>>,
     local_to_world: Transform<Local, World>,
     local_to_render: Transform<Local, Render>,
 }
@@ -23,12 +25,12 @@ impl<Id: SceneId> TriangleMesh<Id> {
     /// 新しい三角形メッシュのプリミティブを作成する。
     pub fn new(
         geometry_index: GeometryIndex<Id>,
-        material_id: MaterialId<Id>,
+        material: Arc<SurfaceMaterial<Id>>,
         local_to_world: Transform<Local, World>,
     ) -> Self {
         Self {
             geometry_index,
-            material_id,
+            material,
             local_to_world,
             local_to_render: Transform::identity(),
         }
@@ -77,8 +79,8 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for TriangleMesh<Id> {
         &self.local_to_render * geometry.bounds()
     }
 
-    fn material_id(&self) -> MaterialId<Id> {
-        self.material_id
+    fn surface_material(&self) -> &SurfaceMaterial<Id> {
+        &self.material
     }
 
     fn build_geometry_bvh(&mut self, geometry_repository: &mut GeometryRepository<Id>) {
@@ -100,7 +102,7 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for TriangleMesh<Id> {
             &self.local_to_render
                 * Intersection {
                     t_hit: intersection.t_hit,
-                    interaction: Interaction::Surface {
+                    interaction: SurfaceInteraction {
                         position: intersection.position,
                         normal: intersection.normal,
                         shading_normal: intersection.shading_normal,

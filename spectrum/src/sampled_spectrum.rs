@@ -121,6 +121,13 @@ fn div_assign(lhs: &mut SampledSpectrum, rhs: &SampledSpectrum) {
     }
 }
 impl SampledSpectrum {
+    /// ゼロのスペクトルを作成する。
+    pub fn zero() -> Self {
+        Self {
+            values: [0.0; N_SPECTRUM_SAMPLES],
+        }
+    }
+
     /// 新しいサンプルスペクトルを作成する。
     #[inline(always)]
     pub fn new() -> Self {
