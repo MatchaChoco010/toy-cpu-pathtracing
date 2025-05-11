@@ -1,8 +1,9 @@
 //! マテリアルに関連する定義を行うモジュール。
 
-mod bsdf;
-mod edf;
 mod material;
+
+pub mod bsdf;
+pub mod edf;
 
 pub use bsdf::{Bsdf, BsdfSample};
 pub use edf::Edf;

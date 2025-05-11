@@ -24,6 +24,24 @@ impl<C: CoordinateSystem> Vector3<C> {
         Self::from(glam::Vec3::new(x, y, z))
     }
 
+    /// x成分を取得する。
+    #[inline(always)]
+    pub fn x(&self) -> f32 {
+        self.vec.x
+    }
+
+    /// y成分を取得する。
+    #[inline(always)]
+    pub fn y(&self) -> f32 {
+        self.vec.y
+    }
+
+    /// z成分を取得する。
+    #[inline(always)]
+    pub fn z(&self) -> f32 {
+        self.vec.z
+    }
+
     /// ベクトルを正規化する。
     #[inline(always)]
     pub fn normalize(&self) -> Self {

@@ -2,8 +2,10 @@
 
 use std::sync::Arc;
 
+use color::ColorSrgb;
 use math::{Normal, Point3, Transform, Vector3};
-use scene::{CreatePrimitiveDesc, Scene, SceneId, SurfaceMaterial};
+use scene::{CreatePrimitiveDesc, Scene, SceneId, SurfaceMaterial, bsdf, edf};
+use spectrum::{RgbAlbedoSpectrum, presets};
 
 use crate::camera::Camera;
 use crate::filter::Filter;
@@ -13,7 +15,9 @@ pub fn load_scene_0<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
         surface_material: Arc::new(SurfaceMaterial {
-            bsdf: None,
+            bsdf: Some(bsdf::NormalizedLambert::new(
+                RgbAlbedoSpectrum::<ColorSrgb>::new(ColorSrgb::new(0.8, 0.8, 0.8)),
+            )),
             edf: None,
         }),
         transform: Transform::identity(),
@@ -23,7 +27,9 @@ pub fn load_scene_0<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
         surface_material: Arc::new(SurfaceMaterial {
-            bsdf: None,
+            bsdf: Some(bsdf::NormalizedLambert::new(
+                RgbAlbedoSpectrum::<ColorSrgb>::new(ColorSrgb::new(0.8, 0.8, 0.8)),
+            )),
             edf: None,
         }),
         transform: Transform::identity(),
@@ -33,7 +39,9 @@ pub fn load_scene_0<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
         surface_material: Arc::new(SurfaceMaterial {
-            bsdf: None,
+            bsdf: Some(bsdf::NormalizedLambert::new(
+                RgbAlbedoSpectrum::<ColorSrgb>::new(ColorSrgb::new(0.8, 0.0, 0.0)),
+            )),
             edf: None,
         }),
         transform: Transform::identity(),
@@ -43,7 +51,9 @@ pub fn load_scene_0<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
         surface_material: Arc::new(SurfaceMaterial {
-            bsdf: None,
+            bsdf: Some(bsdf::NormalizedLambert::new(
+                RgbAlbedoSpectrum::<ColorSrgb>::new(ColorSrgb::new(0.0, 0.8, 0.0)),
+            )),
             edf: None,
         }),
         transform: Transform::identity(),
@@ -53,7 +63,9 @@ pub fn load_scene_0<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
         surface_material: Arc::new(SurfaceMaterial {
-            bsdf: None,
+            bsdf: Some(bsdf::NormalizedLambert::new(
+                RgbAlbedoSpectrum::<ColorSrgb>::new(ColorSrgb::new(0.8, 0.8, 0.8)),
+            )),
             edf: None,
         }),
         transform: Transform::identity(),
@@ -63,7 +75,9 @@ pub fn load_scene_0<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
         surface_material: Arc::new(SurfaceMaterial {
-            bsdf: None,
+            bsdf: Some(bsdf::NormalizedLambert::new(
+                RgbAlbedoSpectrum::<ColorSrgb>::new(ColorSrgb::new(0.8, 0.8, 0.8)),
+            )),
             edf: None,
         }),
         transform: Transform::identity(),
@@ -73,7 +87,9 @@ pub fn load_scene_0<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
         surface_material: Arc::new(SurfaceMaterial {
-            bsdf: None,
+            bsdf: Some(bsdf::NormalizedLambert::new(
+                RgbAlbedoSpectrum::<ColorSrgb>::new(ColorSrgb::new(0.8, 0.8, 0.8)),
+            )),
             edf: None,
         }),
         transform: Transform::identity(),
@@ -84,7 +100,7 @@ pub fn load_scene_0<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
         geometry_index: geom,
         surface_material: Arc::new(SurfaceMaterial {
             bsdf: None,
-            edf: None,
+            edf: Some(edf::Uniform::new(presets::cie_d(6504.0))),
         }),
         transform: Transform::identity(),
     });
@@ -101,7 +117,9 @@ pub fn load_scene_1<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
         surface_material: Arc::new(SurfaceMaterial {
-            bsdf: None,
+            bsdf: Some(bsdf::NormalizedLambert::new(
+                RgbAlbedoSpectrum::<ColorSrgb>::new(ColorSrgb::new(0.5, 0.5, 0.8)),
+            )),
             edf: None,
         }),
         transform: Transform::identity(),
@@ -109,10 +127,12 @@ pub fn load_scene_1<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
         surface_material: Arc::new(SurfaceMaterial {
-            bsdf: None,
+            bsdf: Some(bsdf::NormalizedLambert::new(
+                RgbAlbedoSpectrum::<ColorSrgb>::new(ColorSrgb::new(0.5, 0.8, 0.5)),
+            )),
             edf: None,
         }),
-        transform: Transform::rotation(glam::Quat::from_rotation_y(30_f32.to_radians()))
+        transform: Transform::from_rotate(glam::Quat::from_rotation_y(30_f32.to_radians()))
             .translate(glam::vec3(-1.0, 1.0, 3.0)),
     });
 
@@ -120,7 +140,9 @@ pub fn load_scene_1<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
         surface_material: Arc::new(SurfaceMaterial {
-            bsdf: None,
+            bsdf: Some(bsdf::NormalizedLambert::new(
+                RgbAlbedoSpectrum::<ColorSrgb>::new(ColorSrgb::new(0.8, 0.8, 0.8)),
+            )),
             edf: None,
         }),
         transform: Transform::identity(),
@@ -143,10 +165,18 @@ pub fn load_scene_1<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
             glam::Vec2::new(0.0, 1.0),
         ],
         surface_material: Arc::new(SurfaceMaterial {
-            bsdf: None,
+            bsdf: Some(bsdf::NormalizedLambert::new(
+                RgbAlbedoSpectrum::<ColorSrgb>::new(ColorSrgb::new(0.8, 0.5, 0.5)),
+            )),
             edf: None,
         }),
-        transform: Transform::rotation(glam::Quat::from_rotation_y(60_f32.to_radians())),
+        transform: Transform::from_rotate(glam::Quat::from_rotation_y(60_f32.to_radians())),
+    });
+
+    scene.create_primitive(CreatePrimitiveDesc::PointLightPrimitive {
+        intensity: 10.0,
+        spectrum: presets::cie_d(6504.0),
+        transform: Transform::from_translate(glam::vec3(0.0, 3.0, 0.0)),
     });
 
     camera.set_look_to(
