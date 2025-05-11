@@ -4,7 +4,7 @@ use math::{Bounds, CoordinateSystem, Ray, Render, Transform};
 use util_macros::impl_binary_ops;
 
 use crate::{
-    SurfaceInteraction, PrimitiveIndex, SceneId,
+    PrimitiveIndex, SceneId, SurfaceInteraction,
     bvh::{Bvh, BvhItem, BvhItemData, HitInfo},
     geometry::GeometryRepository,
     primitive::PrimitiveRepository,
@@ -59,7 +59,11 @@ impl<Id: SceneId> BvhItemData<PrimitiveIndex<Id>>
     for (&GeometryRepository<Id>, &PrimitiveRepository<Id>)
 {
     fn item_list(&self) -> impl Iterator<Item = PrimitiveIndex<Id>> {
-        self.1.get_all_primitive_indices()
+        // BVHに含めるのはジオメトリプリミティブのみ。
+        self.1.get_all_primitive_indices().filter(|index| {
+            let primitive = self.1.get(*index);
+            primitive.as_geometry().is_some()
+        })
     }
 }
 
