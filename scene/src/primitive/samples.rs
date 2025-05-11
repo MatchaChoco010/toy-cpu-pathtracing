@@ -9,6 +9,8 @@ use crate::{SceneId, primitive::PrimitiveIndex};
 /// サンプルしたジオメトリを特定するための情報を持つ列挙型。
 #[derive(Debug, Clone, Copy)]
 pub enum InteractGeometryInfo {
+    /// ジオメトリにインデックスが必要ない場合。
+    None,
     /// サンプルした三角形メッシュの三角形を特定するための情報。
     TriangleMesh {
         /// サンプルした三角形メッシュのインデックス。
@@ -16,51 +18,36 @@ pub enum InteractGeometryInfo {
     },
 }
 
-/// シーンをサンプルした結果の情報を持つ列挙型。
-pub enum Interaction<Id: SceneId, C: CoordinateSystem> {
-    Surface {
-        /// サンプルした位置。
-        position: Point3<C>,
-        /// サンプルした幾何法線。
-        normal: Normal<C>,
-        /// サンプルしたシェーディング法線。
-        shading_normal: Normal<C>,
-        /// サンプルしたタンジェントベクトル。
-        tangent: Vector3<C>,
-        /// サンプルしたUV座標。
-        uv: glam::Vec2,
-        /// サンプルしたプリミティブのインデックス。
-        primitive_index: PrimitiveIndex<Id>,
-        /// サンプルしたジオメトリの追加情報。
-        geometry_info: InteractGeometryInfo,
-    },
-    // Medium {
-    //     ...
-    // },
+/// シーンの表面をサンプルした結果の情報を持つ構造体。
+pub struct SurfaceInteraction<Id: SceneId, C: CoordinateSystem> {
+    /// サンプルした位置。
+    pub position: Point3<C>,
+    /// サンプルした幾何法線。
+    pub normal: Normal<C>,
+    /// サンプルしたシェーディング法線。
+    pub shading_normal: Normal<C>,
+    /// サンプルしたタンジェントベクトル。
+    pub tangent: Vector3<C>,
+    /// サンプルしたUV座標。
+    pub uv: glam::Vec2,
+    /// サンプルしたプリミティブのインデックス。
+    pub primitive_index: PrimitiveIndex<Id>,
+    /// サンプルしたジオメトリの追加情報。
+    pub geometry_info: InteractGeometryInfo,
 }
 #[impl_binary_ops(Mul)]
 fn mul<Id: SceneId, From: CoordinateSystem, To: CoordinateSystem>(
     lhs: &Transform<From, To>,
-    rhs: &Interaction<Id, From>,
-) -> Interaction<Id, To> {
-    match rhs {
-        Interaction::Surface {
-            position,
-            normal,
-            shading_normal,
-            tangent,
-            uv,
-            primitive_index,
-            geometry_info,
-        } => Interaction::Surface {
-            position: lhs * position,
-            normal: lhs * normal,
-            shading_normal: lhs * shading_normal,
-            tangent: lhs * tangent,
-            uv: *uv,
-            primitive_index: *primitive_index,
-            geometry_info: *geometry_info,
-        },
+    rhs: &SurfaceInteraction<Id, From>,
+) -> SurfaceInteraction<Id, To> {
+    SurfaceInteraction {
+        position: lhs * rhs.position,
+        normal: lhs * rhs.normal,
+        shading_normal: lhs * rhs.shading_normal,
+        tangent: lhs * rhs.tangent,
+        uv: rhs.uv,
+        primitive_index: rhs.primitive_index,
+        geometry_info: rhs.geometry_info,
     }
 }
 
@@ -71,7 +58,7 @@ pub struct LightSampleRadiance<Id: SceneId, C: CoordinateSystem> {
     /// サンプルのPDF。
     pub pdf: f32,
     /// シーンをサンプルした結果の情報。
-    pub interaction: Interaction<Id, C>,
+    pub interaction: SurfaceInteraction<Id, C>,
 }
 
 /// ライト上のサンプルされた放射照度情報を持つ構造体。

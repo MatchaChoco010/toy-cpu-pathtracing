@@ -6,7 +6,7 @@ use image::{ImageFormat, Rgb, RgbImage};
 use rayon::prelude::*;
 
 use color::{Color, ColorSrgb};
-use scene::{Interaction, Scene, SceneId};
+use scene::{Scene, SceneId, SurfaceInteraction};
 
 use crate::camera::Camera;
 use crate::filter::Filter;
@@ -117,7 +117,7 @@ impl<'a, Id: SceneId, F: Filter, SF: SamplerFactory> Renderer for NormalRenderer
 
             let color = match intersect {
                 Some(intersect) => match intersect.interaction {
-                    Interaction::Surface { shading_normal, .. } => {
+                    SurfaceInteraction { shading_normal, .. } => {
                         shading_normal.to_vec3() * 0.5 + glam::Vec3::splat(0.5)
                     }
                 },

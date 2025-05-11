@@ -2,11 +2,11 @@
 
 use std::path::Path;
 
-use math::{LightSampleContext, Local, Ray, Render, Transform, World};
+use math::{Local, Ray, Render, Transform, World};
 use spectrum::{SampledSpectrum, SampledWavelengths, Spectrum};
 
 use crate::{
-    Interaction, LightSampleRadiance, SceneId,
+    LightSampleRadiance, PrimitiveIndex, SceneId, SurfaceInteraction,
     geometry::GeometryRepository,
     primitive::traits::{
         Primitive, PrimitiveAreaLight, PrimitiveDeltaLight, PrimitiveGeometry,
@@ -24,7 +24,11 @@ pub struct EnvironmentLight {
 }
 impl EnvironmentLight {
     /// 新しい環境ライトのプリミティブを作成する。
-    pub fn new(intensity: f32, path: impl AsRef<Path>, transform: Transform<Local, World>) -> Self {
+    pub fn new(
+        _intensity: f32,
+        _path: impl AsRef<Path>,
+        _transform: Transform<Local, World>,
+    ) -> Self {
         todo!()
         // テクスチャを読んで、テクスチャのpdfとかも作る
         // Self {
@@ -79,9 +83,9 @@ impl<Id: SceneId> PrimitiveLight<Id> for EnvironmentLight {
 impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EnvironmentLight {
     fn sample_radiance(
         &self,
+        _primitive_index: PrimitiveIndex<Id>,
         _geometry_repository: &GeometryRepository<Id>,
-        // material_repository: &MaterialRepository<Id>,
-        _light_sample_context: &LightSampleContext<Render>,
+        _shading_point: &SurfaceInteraction<Id, Render>,
         _lambda: &SampledWavelengths,
         _s: f32,
         _uv: glam::Vec2,
@@ -89,11 +93,7 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EnvironmentLight {
         todo!()
     }
 
-    fn pdf_light_sample(
-        &self,
-        _light_sample_context: &LightSampleContext<Render>,
-        _interaction: &Interaction<Id, Render>,
-    ) -> f32 {
+    fn pdf_light_sample(&self, _interaction: &SurfaceInteraction<Id, Render>) -> f32 {
         todo!()
     }
 }

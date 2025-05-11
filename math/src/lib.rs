@@ -4,7 +4,6 @@
 
 mod bounds;
 mod coordinate_system;
-mod light_sample_context;
 mod matrix;
 mod normal;
 mod point;
@@ -15,7 +14,6 @@ mod vector;
 
 pub use bounds::*;
 pub use coordinate_system::*;
-pub use light_sample_context::*;
 pub use matrix::*;
 pub use normal::*;
 pub use point::*;

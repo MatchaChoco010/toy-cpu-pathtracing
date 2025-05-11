@@ -6,7 +6,7 @@ use std::sync::Arc;
 use math::{Local, Normal, Point3, Transform, World};
 use spectrum::Spectrum;
 
-use crate::{GeometryIndex, MaterialId, SceneId};
+use crate::{GeometryIndex, SceneId, SurfaceMaterial};
 
 /// プリミティブを作成するための情報。
 pub enum CreatePrimitiveDesc<Id: SceneId> {
@@ -14,8 +14,8 @@ pub enum CreatePrimitiveDesc<Id: SceneId> {
     GeometryPrimitive {
         /// ジオメトリのインデックス。
         geometry_index: GeometryIndex<Id>,
-        /// マテリアルのID。
-        material_id: MaterialId<Id>,
+        /// 表面マテリアル。
+        surface_material: Arc<SurfaceMaterial<Id>>,
         /// モデルのワールド座標系への座標変換。
         transform: Transform<Local, World>,
     },
@@ -27,8 +27,8 @@ pub enum CreatePrimitiveDesc<Id: SceneId> {
         normals: [Normal<Local>; 3],
         /// 三角形のUV座標。
         uvs: [glam::Vec2; 3],
-        /// マテリアルのID。
-        material_id: MaterialId<Id>,
+        /// 表面マテリアル。
+        surface_material: Arc<SurfaceMaterial<Id>>,
         /// モデルのワールド座標系への座標変換。
         transform: Transform<Local, World>,
     },

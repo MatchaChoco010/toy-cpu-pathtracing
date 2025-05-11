@@ -3,11 +3,11 @@
 use std::f32::consts::PI;
 use std::sync::Arc;
 
-use math::{LightSampleContext, Local, Point3, Render, Transform, World};
+use math::{Local, Point3, Render, Transform, World};
 use spectrum::{SampledSpectrum, SampledWavelengths, Spectrum};
 
 use crate::{
-    LightIrradiance, SceneId,
+    LightIrradiance, SceneId, SurfaceInteraction,
     primitive::traits::{
         Primitive, PrimitiveAreaLight, PrimitiveDeltaLight, PrimitiveGeometry,
         PrimitiveInfiniteLight, PrimitiveLight, PrimitiveNonDeltaLight,
@@ -82,15 +82,15 @@ impl<Id: SceneId> PrimitiveLight<Id> for PointLight {
 impl<Id: SceneId> PrimitiveDeltaLight<Id> for PointLight {
     fn calculate_irradiance(
         &self,
-        light_sample_context: &LightSampleContext<Render>,
+        shading_point: &SurfaceInteraction<Id, Render>,
         lambda: &SampledWavelengths,
     ) -> LightIrradiance {
         // Render空間でのライトの方向と距離の二乗とcos成分を計算する。
         let position = &self.local_to_render * Point3::ZERO;
-        let distance_vec = light_sample_context.position.vector_to(position);
+        let distance_vec = shading_point.position.vector_to(position);
         let wi = distance_vec.normalize();
         let distance_squared = distance_vec.length_squared();
-        let cos_theta = wi.dot(light_sample_context.normal);
+        let cos_theta = wi.dot(shading_point.normal);
 
         // 放射照度を計算する。
         let irradiance =

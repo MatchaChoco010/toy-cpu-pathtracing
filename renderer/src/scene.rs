@@ -1,7 +1,9 @@
 //! シーンにオブジェクトを配置する関数を集めたモジュール。
 
+use std::sync::Arc;
+
 use math::{Normal, Point3, Transform, Vector3};
-use scene::{CreatePrimitiveDesc, MaterialId, Scene, SceneId};
+use scene::{CreatePrimitiveDesc, Scene, SceneId, SurfaceMaterial};
 
 use crate::camera::Camera;
 use crate::filter::Filter;
@@ -10,56 +12,80 @@ pub fn load_scene_0<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let geom = scene.load_obj("./renderer/assets/bunny.obj");
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        material_id: MaterialId::new(0),
+        surface_material: Arc::new(SurfaceMaterial {
+            bsdf: None,
+            edf: None,
+        }),
         transform: Transform::identity(),
     });
 
     let geom = scene.load_obj("./renderer/assets/box.obj");
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        material_id: MaterialId::new(0),
+        surface_material: Arc::new(SurfaceMaterial {
+            bsdf: None,
+            edf: None,
+        }),
         transform: Transform::identity(),
     });
 
     let geom = scene.load_obj("./renderer/assets/hidari.obj");
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        material_id: MaterialId::new(0),
+        surface_material: Arc::new(SurfaceMaterial {
+            bsdf: None,
+            edf: None,
+        }),
         transform: Transform::identity(),
     });
 
     let geom = scene.load_obj("./renderer/assets/migi.obj");
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        material_id: MaterialId::new(0),
+        surface_material: Arc::new(SurfaceMaterial {
+            bsdf: None,
+            edf: None,
+        }),
         transform: Transform::identity(),
     });
 
     let geom = scene.load_obj("./renderer/assets/yuka.obj");
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        material_id: MaterialId::new(0),
+        surface_material: Arc::new(SurfaceMaterial {
+            bsdf: None,
+            edf: None,
+        }),
         transform: Transform::identity(),
     });
 
     let geom = scene.load_obj("./renderer/assets/oku.obj");
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        material_id: MaterialId::new(0),
+        surface_material: Arc::new(SurfaceMaterial {
+            bsdf: None,
+            edf: None,
+        }),
         transform: Transform::identity(),
     });
 
     let geom = scene.load_obj("./renderer/assets/tenjou.obj");
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        material_id: MaterialId::new(0),
+        surface_material: Arc::new(SurfaceMaterial {
+            bsdf: None,
+            edf: None,
+        }),
         transform: Transform::identity(),
     });
 
     let geom = scene.load_obj("./renderer/assets/light.obj");
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        material_id: MaterialId::new(0),
+        surface_material: Arc::new(SurfaceMaterial {
+            bsdf: None,
+            edf: None,
+        }),
         transform: Transform::identity(),
     });
 
@@ -74,12 +100,18 @@ pub fn load_scene_1<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let geom = scene.load_obj("./renderer/assets/bunny.obj");
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        material_id: MaterialId::new(0),
+        surface_material: Arc::new(SurfaceMaterial {
+            bsdf: None,
+            edf: None,
+        }),
         transform: Transform::identity(),
     });
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        material_id: MaterialId::new(0),
+        surface_material: Arc::new(SurfaceMaterial {
+            bsdf: None,
+            edf: None,
+        }),
         transform: Transform::rotation(glam::Quat::from_rotation_y(30_f32.to_radians()))
             .translate(glam::vec3(-1.0, 1.0, 3.0)),
     });
@@ -87,7 +119,10 @@ pub fn load_scene_1<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let geom = scene.load_obj("./renderer/assets/yuka.obj");
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        material_id: MaterialId::new(0),
+        surface_material: Arc::new(SurfaceMaterial {
+            bsdf: None,
+            edf: None,
+        }),
         transform: Transform::identity(),
     });
 
@@ -107,7 +142,10 @@ pub fn load_scene_1<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
             glam::Vec2::new(1.0, 0.0),
             glam::Vec2::new(0.0, 1.0),
         ],
-        material_id: MaterialId::new(0),
+        surface_material: Arc::new(SurfaceMaterial {
+            bsdf: None,
+            edf: None,
+        }),
         transform: Transform::rotation(glam::Quat::from_rotation_y(60_f32.to_radians())),
     });
 

@@ -85,13 +85,19 @@ impl<Id: SceneId> BvhItem<Local> for Triangle<Id> {
         };
 
         // 交差していれば、交差点の情報を計算する
+
+        // shading_normalを頂点法線のbarycentric補間で計算する
         let shading_normal = Normal::from(
             shading_normals[0].to_vec3() * hit.barycentric[0]
                 + shading_normals[1].to_vec3() * hit.barycentric[1]
                 + shading_normals[2].to_vec3() * hit.barycentric[2],
         );
+
+        // uvを頂点uvのbarycentric補間で計算する
         let uv =
             uvs[0] * hit.barycentric[0] + uvs[1] * hit.barycentric[1] + uvs[2] * hit.barycentric[2];
+
+        // Tangentを計算する。
         let tangent = if data.tangents.is_empty() {
             if shading_normal.to_vec3().x.abs() > 0.999 {
                 Vector3::from(glam::Vec3::Y)
@@ -101,6 +107,13 @@ impl<Id: SceneId> BvhItem<Local> for Triangle<Id> {
         } else {
             data.tangents[self.triangle_index as usize]
         };
+
+        // tangentを再度正規直行化する。
+        let tangent = Vector3::from(
+            tangent.to_vec3()
+                - shading_normal.to_vec3().dot(tangent.to_vec3()) * shading_normal.to_vec3(),
+        )
+        .normalize();
 
         Some(HitInfo {
             t_hit: hit.t_hit,
@@ -120,13 +133,13 @@ impl<Id: SceneId> BvhItem<Local> for Triangle<Id> {
 /// 三角形メッシュのジオメトリの構造体。
 #[derive(Debug)]
 pub struct TriangleMesh<Id: SceneId> {
-    positions: Vec<Point3<Local>>,
-    normals: Vec<Normal<Local>>,
-    tangents: Vec<Vector3<Local>>,
-    uvs: Vec<glam::Vec2>,
-    indices: Vec<u32>,
+    pub positions: Vec<Point3<Local>>,
+    pub normals: Vec<Normal<Local>>,
+    pub tangents: Vec<Vector3<Local>>,
+    pub uvs: Vec<glam::Vec2>,
+    pub indices: Vec<u32>,
+    pub bounds: Bounds<Local>,
     bvh: Option<Bvh<Local, Triangle<Id>>>,
-    bounds: Bounds<Local>,
 }
 impl<Id: SceneId> TriangleMesh<Id> {
     /// objファイルを読み込み新しい三角形メッシュを作成する。
@@ -209,8 +222,8 @@ impl<Id: SceneId> TriangleMesh<Id> {
             tangents,
             uvs,
             indices,
-            bvh: None,
             bounds,
+            bvh: None,
         }
     }
 }

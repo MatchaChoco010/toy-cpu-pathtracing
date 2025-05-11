@@ -1,14 +1,15 @@
 //! 放射面を含む三角形のプリミティブの実装のモジュール。
 
+use std::sync::Arc;
+
 use math::{
-    Bounds, LightSampleContext, Local, Normal, Point3, Ray, Render, Transform, World,
-    intersect_triangle,
+    Bounds, Local, Normal, Point3, Ray, Render, Transform, Vector3, World, intersect_triangle,
 };
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::{
-    InteractGeometryInfo, Interaction, Intersection, LightSampleRadiance, MaterialId,
-    PrimitiveIndex, SceneId,
+    InteractGeometryInfo, Intersection, LightSampleRadiance, PrimitiveIndex, SceneId,
+    SurfaceInteraction, SurfaceMaterial,
     geometry::GeometryRepository,
     primitive::traits::{
         Primitive, PrimitiveAreaLight, PrimitiveDeltaLight, PrimitiveGeometry,
@@ -21,9 +22,10 @@ pub struct EmissiveSingleTriangle<Id: SceneId> {
     positions: [Point3<Local>; 3],
     normals: [Normal<Local>; 3],
     uvs: [glam::Vec2; 3],
-    material_id: MaterialId<Id>,
+    material: Arc<SurfaceMaterial<Id>>,
     local_to_world: Transform<Local, World>,
     local_to_render: Transform<Local, Render>,
+    area: f32,
 }
 impl<Id: SceneId> EmissiveSingleTriangle<Id> {
     /// 新しい放射面を含む三角形のプリミティブを作成する。
@@ -31,16 +33,25 @@ impl<Id: SceneId> EmissiveSingleTriangle<Id> {
         positions: [Point3<Local>; 3],
         normals: [Normal<Local>; 3],
         uvs: [glam::Vec2; 3],
-        material_id: MaterialId<Id>,
+        material: Arc<SurfaceMaterial<Id>>,
         local_to_world: Transform<Local, World>,
     ) -> Self {
+        // ワールド空間での面積を計算しておく。
+        let p0 = &local_to_world * positions[0];
+        let p1 = &local_to_world * positions[1];
+        let p2 = &local_to_world * positions[2];
+        let e0 = p0.vector_to(p1);
+        let e1 = p0.vector_to(p2);
+        let area = e0.cross(e1).length() * 0.5;
+
         Self {
             positions,
             normals,
             uvs,
-            material_id,
+            material,
             local_to_world,
             local_to_render: Transform::identity(),
+            area,
         }
     }
 }
@@ -95,8 +106,8 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for EmissiveSingleTriangle<Id> {
         Bounds::new(min, max)
     }
 
-    fn material_id(&self) -> MaterialId<Id> {
-        self.material_id
+    fn surface_material(&self) -> &SurfaceMaterial<Id> {
+        &self.material
     }
 
     fn intersect(
@@ -136,7 +147,7 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for EmissiveSingleTriangle<Id> {
 
         Some(Intersection {
             t_hit: hit.t_hit,
-            interaction: Interaction::Surface {
+            interaction: SurfaceInteraction {
                 position: &self.local_to_render * hit.position,
                 normal: &self.local_to_render * hit.normal,
                 shading_normal: &self.local_to_render * shading_normal,
@@ -152,37 +163,155 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for EmissiveSingleTriangle<Id> {
 }
 impl<Id: SceneId> PrimitiveLight<Id> for EmissiveSingleTriangle<Id> {
     fn phi(&self, lambda: &SampledWavelengths) -> SampledSpectrum {
-        todo!()
+        // マテリアルの放射発散度の平均値に三角形の面積を掛けて全体の放射束とする。
+        self.material
+            .edf
+            .as_ref()
+            .unwrap()
+            .average_intensity(lambda)
+            * self.area
     }
 }
 impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveSingleTriangle<Id> {
     fn sample_radiance(
         &self,
+        primitive_index: PrimitiveIndex<Id>,
         _geometry_repository: &GeometryRepository<Id>,
-        _light_sample_context: &LightSampleContext<Render>,
-        _lambda: &SampledWavelengths,
+        shading_point: &SurfaceInteraction<Id, Render>,
+        lambda: &SampledWavelengths,
         _s: f32,
-        _uv: glam::Vec2,
+        uv: glam::Vec2,
     ) -> LightSampleRadiance<Id, Render> {
-        todo!()
-        // uvを使って三角形から位置要サンプリングして、local_to_renderを使ってレンダリング空間に変換する
+        // サンプリングする点のbarycentric座標を計算する。
+        let b0;
+        let b1;
+        if uv[0] < uv[1] {
+            b0 = uv[0] / 2.0;
+            b1 = uv[1] - b0;
+        } else {
+            b1 = uv[0] / 2.0;
+            b0 = uv[1] - b1;
+        }
+        let b2 = 1.0 - b0 - b1;
+        let barycentric = [b0, b1, b2];
+
+        // サンプリングする点のRender空間での位置を計算する。
+        let p0 = &self.local_to_render * self.positions[0];
+        let p1 = &self.local_to_render * self.positions[1];
+        let p2 = &self.local_to_render * self.positions[2];
+        let p = Point3::from(
+            p0.to_vec3() * barycentric[0]
+                + p1.to_vec3() * barycentric[1]
+                + p2.to_vec3() * barycentric[2],
+        );
+
+        // サンプリングする点のRender空間での幾何法線を計算する。
+        let normal = Normal::from(
+            p1.vector_to(p0)
+                .cross(p2.vector_to(p0))
+                .normalize()
+                .to_vec3(),
+        );
+
+        // サンプリングする点のRender空間でのShading法線を計算する。
+        let n0 = &self.local_to_render * self.normals[0];
+        let n1 = &self.local_to_render * self.normals[1];
+        let n2 = &self.local_to_render * self.normals[2];
+        let shading_normal = Normal::from(
+            n0.to_vec3() * barycentric[0]
+                + n1.to_vec3() * barycentric[1]
+                + n2.to_vec3() * barycentric[2],
+        );
+
+        // サンプリングする点のRender空間でのTangentを計算する。
+        let edge1 = p0.vector_to(p1);
+        let edge2 = p0.vector_to(p2);
+        let delta_uv1 = self.uvs[1] - self.uvs[0];
+        let delta_uv2 = self.uvs[2] - self.uvs[0];
+        let r = 1.0 / (delta_uv1.x * delta_uv2.y - delta_uv1.y * delta_uv2.x);
+        let tangent = r * (edge1 * delta_uv2.y - edge2 * delta_uv1.y);
+        let tangent = tangent.normalize();
+
+        // tangentを再度正規直行化する。
+        let tangent = Vector3::from(
+            tangent.to_vec3()
+                - shading_normal.to_vec3().dot(tangent.to_vec3()) * shading_normal.to_vec3(),
+        )
+        .normalize();
+
+        // Render空間からサンプルした点のTangent空間への変換Transformを計算する。
+        let render_to_tangent = Transform::from_shading_normal_tangent(&shading_normal, &tangent);
+
+        // サンプリングする光の出力方向を計算する。
+        let wo = p.vector_to(shading_point.position).normalize();
+
+        // マテリアルから放射輝度を取得する。
+        let radiance = self
+            .material
+            .edf
+            .as_ref()
+            .unwrap()
+            .radiance(
+                lambda,
+                &render_to_tangent * shading_point,
+                &render_to_tangent * wo,
+            )
+            .unwrap_or(SampledSpectrum::zero());
+
+        // 面積を計算して一様サンプリングしたときのpdfを計算する。
+        let pdf = 1.0 / self.area;
+
+        LightSampleRadiance {
+            radiance,
+            pdf,
+            interaction: SurfaceInteraction {
+                position: p,
+                normal,
+                shading_normal,
+                tangent,
+                uv,
+                primitive_index,
+                geometry_info: InteractGeometryInfo::None,
+            },
+        }
     }
 
-    fn pdf_light_sample(
-        &self,
-        _light_sample_context: &LightSampleContext<Render>,
-        _interaction: &Interaction<Id, Render>,
-    ) -> f32 {
-        todo!()
+    fn pdf_light_sample(&self, _interaction: &SurfaceInteraction<Id, Render>) -> f32 {
+        // 一様サンプリングしたときのpdfを計算する。
+        1.0 / self.area
     }
 }
 impl<Id: SceneId> PrimitiveAreaLight<Id> for EmissiveSingleTriangle<Id> {
     fn intersect_radiance(
         &self,
-        // material_repository
-        _interaction: &Interaction<Id, Render>,
-        _lambda: &SampledWavelengths,
+        shading_point: &SurfaceInteraction<Id, Render>,
+        interaction: &SurfaceInteraction<Id, Render>,
+        lambda: &SampledWavelengths,
     ) -> SampledSpectrum {
-        todo!()
+        // 交差した光源上の点のTangent空間への変換Transformを計算する。
+        let render_to_tangent = Transform::from_shading_normal_tangent(
+            &interaction.shading_normal,
+            &interaction.tangent,
+        );
+
+        // サンプリングした点のTangent空間での方向を計算する。
+        let wo = interaction
+            .position
+            .vector_to(shading_point.position)
+            .normalize();
+
+        let radiance = self
+            .material
+            .edf
+            .as_ref()
+            .unwrap()
+            .radiance(
+                lambda,
+                &render_to_tangent * interaction,
+                &render_to_tangent * wo,
+            )
+            .unwrap_or(SampledSpectrum::zero());
+
+        radiance
     }
 }

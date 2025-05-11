@@ -43,27 +43,29 @@ impl<Id: SceneId> PrimitiveRepository<Id> {
         let primitive: Box<dyn Primitive<Id>> = match desc {
             CreatePrimitiveDesc::GeometryPrimitive {
                 geometry_index,
-                material_id,
+                surface_material,
                 transform,
             } => {
                 let geometry = geometry_repository.get(geometry_index);
 
                 if geometry.as_any().is::<geometry::impls::TriangleMesh<Id>>() {
                     // ジオメトリがTriangleMeshの場合。
+                    let triangle_mesh = geometry
+                        .as_any()
+                        .downcast_ref::<geometry::impls::TriangleMesh<Id>>()
+                        .unwrap();
 
-                    // TODO: materialがemissiveか判断する
-                    if true {
-                        Box::new(primitive::impls::TriangleMesh::new(
+                    if surface_material.edf.is_some() {
+                        Box::new(primitive::impls::EmissiveTriangleMesh::new(
+                            triangle_mesh,
                             geometry_index,
-                            material_id,
+                            surface_material,
                             transform,
                         ))
                     } else {
-                        Box::new(primitive::impls::EmissiveTriangleMesh::new(
-                            geometry_repository,
-                            self,
+                        Box::new(primitive::impls::TriangleMesh::new(
                             geometry_index,
-                            material_id,
+                            surface_material,
                             transform,
                         ))
                     }
@@ -76,24 +78,23 @@ impl<Id: SceneId> PrimitiveRepository<Id> {
                 positions,
                 normals,
                 uvs,
-                material_id,
+                surface_material,
                 transform,
             } => {
-                // TODO: materialがemissiveか判断する
-                if true {
-                    Box::new(primitive::impls::SingleTriangle::new(
-                        positions,
-                        normals,
-                        uvs,
-                        material_id,
-                        transform,
-                    ))
-                } else {
+                if surface_material.edf.is_some() {
                     Box::new(primitive::impls::EmissiveSingleTriangle::new(
                         positions,
                         normals,
                         uvs,
-                        material_id,
+                        surface_material,
+                        transform,
+                    ))
+                } else {
+                    Box::new(primitive::impls::SingleTriangle::new(
+                        positions,
+                        normals,
+                        uvs,
+                        surface_material,
                         transform,
                     ))
                 }

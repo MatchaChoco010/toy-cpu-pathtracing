@@ -1,9 +1,12 @@
 //! 三角形のプリミティブの実装のモジュール。
 
+use std::sync::Arc;
+
 use math::{Bounds, Local, Normal, Point3, Ray, Render, Transform, World, intersect_triangle};
 
 use crate::{
-    InteractGeometryInfo, Interaction, Intersection, MaterialId, PrimitiveIndex, SceneId,
+    InteractGeometryInfo, Intersection, PrimitiveIndex, SceneId, SurfaceInteraction,
+    SurfaceMaterial,
     geometry::GeometryRepository,
     primitive::traits::{
         Primitive, PrimitiveAreaLight, PrimitiveDeltaLight, PrimitiveGeometry,
@@ -16,7 +19,7 @@ pub struct SingleTriangle<Id: SceneId> {
     positions: [Point3<Local>; 3],
     normals: [Normal<Local>; 3],
     uvs: [glam::Vec2; 3],
-    material_id: MaterialId<Id>,
+    material: Arc<SurfaceMaterial<Id>>,
     local_to_world: Transform<Local, World>,
     local_to_render: Transform<Local, Render>,
 }
@@ -26,14 +29,14 @@ impl<Id: SceneId> SingleTriangle<Id> {
         positions: [Point3<Local>; 3],
         normals: [Normal<Local>; 3],
         uvs: [glam::Vec2; 3],
-        material_id: MaterialId<Id>,
+        material: Arc<SurfaceMaterial<Id>>,
         local_to_world: Transform<Local, World>,
     ) -> Self {
         Self {
             positions,
             normals,
             uvs,
-            material_id,
+            material,
             local_to_world,
             local_to_render: Transform::identity(),
         }
@@ -90,13 +93,13 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for SingleTriangle<Id> {
         Bounds::new(min, max)
     }
 
-    fn material_id(&self) -> MaterialId<Id> {
-        self.material_id
+    fn surface_material(&self) -> &SurfaceMaterial<Id> {
+        &self.material
     }
 
     fn intersect(
         &self,
-        _primitive_index: PrimitiveIndex<Id>,
+        primitive_index: PrimitiveIndex<Id>,
         _geometry_repository: &GeometryRepository<Id>,
         ray: &Ray<Render>,
         t_max: f32,
@@ -131,16 +134,14 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for SingleTriangle<Id> {
 
         Some(Intersection {
             t_hit: hit.t_hit,
-            interaction: Interaction::Surface {
+            interaction: SurfaceInteraction {
                 position: &self.local_to_render * hit.position,
                 normal: &self.local_to_render * hit.normal,
                 shading_normal: &self.local_to_render * shading_normal,
                 tangent: &self.local_to_render * tangent,
                 uv,
-                primitive_index: _primitive_index,
-                geometry_info: InteractGeometryInfo::TriangleMesh {
-                    triangle_index: 0, // TODO: 三角形のインデックスを取得する
-                },
+                primitive_index,
+                geometry_info: InteractGeometryInfo::None,
             },
         })
     }
