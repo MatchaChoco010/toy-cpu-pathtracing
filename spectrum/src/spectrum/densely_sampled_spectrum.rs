@@ -1,6 +1,8 @@
 //! 密にサンプルされたスペクトルを定義するモジュール。
 
-use crate::spectrum::{LAMBDA_MAX, LAMBDA_MIN, Spectrum};
+use std::sync::Arc;
+
+use crate::spectrum::{LAMBDA_MAX, LAMBDA_MIN, Spectrum, SpectrumTrait};
 
 const N_SPECTRUM_SAMPLES: usize = (LAMBDA_MAX - LAMBDA_MIN) as usize;
 
@@ -13,7 +15,7 @@ pub struct DenselySampledSpectrum {
 }
 impl DenselySampledSpectrum {
     /// 新しい密にサンプリングされたスペクトルを作成する。
-    pub const fn new(values: [f32; N_SPECTRUM_SAMPLES]) -> Self {
+    pub fn new(values: [f32; N_SPECTRUM_SAMPLES]) -> Spectrum {
         let mut max_value = 0.0;
         let mut i = 0;
         while i < N_SPECTRUM_SAMPLES {
@@ -22,11 +24,11 @@ impl DenselySampledSpectrum {
             }
             i += 1;
         }
-        Self { values, max_value }
+        Arc::new(Self { values, max_value })
     }
 
     /// 与えられたスペクトルをサンプリングして、密にサンプリングされたスペクトルを作成する。
-    pub fn from(spectrum: &impl Spectrum) -> Self {
+    pub fn from(spectrum: &Spectrum) -> Spectrum {
         let mut values = [0.0; N_SPECTRUM_SAMPLES];
         let mut max_value = 0.0;
         for i in 0..N_SPECTRUM_SAMPLES {
@@ -36,10 +38,10 @@ impl DenselySampledSpectrum {
                 max_value = values[i];
             }
         }
-        Self { values, max_value }
+        Arc::new(Self { values, max_value })
     }
 }
-impl Spectrum for DenselySampledSpectrum {
+impl SpectrumTrait for DenselySampledSpectrum {
     fn value(&self, lambda: f32) -> f32 {
         if lambda < LAMBDA_MIN || lambda > LAMBDA_MAX {
             return 0.0;

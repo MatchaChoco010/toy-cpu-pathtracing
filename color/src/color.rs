@@ -4,7 +4,8 @@ use std::marker::PhantomData;
 
 use crate::eotf::{Eotf, Gamma2_2, Gamma2_6, GammaRec709, GammaSrgb, Linear, NonLinearEotf};
 use crate::gamut::{
-    GamutAces2065_1, GamutAcesCg, GamutAdobeRgb, ColorGamut, GamutDciP3D65, GamutSrgb, GamutRec2020, xy_to_xyz,
+    ColorGamut, GamutAces2065_1, GamutAcesCg, GamutAdobeRgb, GamutDciP3D65, GamutRec2020,
+    GamutSrgb, xy_to_xyz,
 };
 use crate::tone_map::{InvertibleToneMap, NoneToneMap, ToneMap};
 
@@ -98,7 +99,12 @@ impl<G: ColorGamut, T: ToneMap, E: Eotf> Color for ColorImpl<G, T, E> {
 // 必要があればその後トーンマップを適用する。
 impl<G: ColorGamut, E: Eotf> ColorImpl<G, NoneToneMap, E> {
     /// RGB値を持つColorを生成する。
-    pub fn new(rgb: glam::Vec3) -> Self {
+    pub fn new(r: f32, g: f32, b: f32) -> Self {
+        Self::create(glam::vec3(r, g, b), G::new(), NoneToneMap)
+    }
+
+    /// RGB値を持つColorを生成する。
+    pub fn from_vec3(rgb: glam::Vec3) -> Self {
         Self::create(rgb, G::new(), NoneToneMap)
     }
 }

@@ -37,7 +37,7 @@ pub enum CreatePrimitiveDesc<Id: SceneId> {
         /// 点光源の強度。
         intensity: f32,
         /// 点光源のスペクトル。
-        spectrum: Arc<dyn Spectrum>,
+        spectrum: Spectrum,
         /// モデルのワールド座標系への座標変換。
         transform: Transform<Local, World>,
     },
@@ -51,7 +51,7 @@ pub enum CreatePrimitiveDesc<Id: SceneId> {
         /// スポットライトの強度。
         intensity: f32,
         /// スポットライトのスペクトル。
-        spectrum: Arc<dyn Spectrum>,
+        spectrum: Spectrum,
         /// モデルのワールド座標系への座標変換。
         transform: Transform<Local, World>,
     },
@@ -61,7 +61,7 @@ pub enum CreatePrimitiveDesc<Id: SceneId> {
         /// 指向性光源の強度。
         intensity: f32,
         /// 指向性光源のスペクトル。
-        spectrum: Arc<dyn Spectrum>,
+        spectrum: Spectrum,
         /// モデルのワールド座標系への座標変換。
         transform: Transform<Local, World>,
     },

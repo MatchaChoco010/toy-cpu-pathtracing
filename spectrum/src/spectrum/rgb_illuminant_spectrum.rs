@@ -1,5 +1,7 @@
 //! RGBから光源のスペクトルを生成するモジュール。
 
+use std::sync::Arc;
+
 use color::{
     Color, ColorAces2065_1, ColorAcesCg, ColorAdobeRGB, ColorDisplayP3, ColorP3D65, ColorRec709,
     ColorRec2020, ColorSrgb,
@@ -7,11 +9,11 @@ use color::{
 
 use crate::presets;
 use crate::rgb_sigmoid_polynomial::RgbSigmoidPolynomial;
-use crate::spectrum::{DenselySampledSpectrum, Spectrum};
+use crate::spectrum::{Spectrum, SpectrumTrait};
 
 #[derive(Clone)]
 pub struct RgbIlluminantSpectrum<C: Color + Clone> {
-    illuminant: DenselySampledSpectrum,
+    illuminant: Spectrum,
     scale: f32,
     table: RgbSigmoidPolynomial<C>,
 }
@@ -20,21 +22,21 @@ macro_rules! impl_rgb_illuminant_spectrum {
     ($color:ty) => {
         impl RgbIlluminantSpectrum<$color> {
             /// 新しいRGB反射率スペクトルを作成する。
-            pub fn new(color: $color) -> Self {
+            pub fn new(color: $color) -> Spectrum {
                 let illuminant = presets::cie_illum_d6500();
                 let rgb = color.rgb();
                 let max = rgb.max_element();
                 let scale = 2.0 * max;
-                let scaled_color = <$color>::new(rgb / scale);
+                let scaled_color = <$color>::from_vec3(rgb / scale);
                 let table = RgbSigmoidPolynomial::from(scaled_color);
-                Self {
+                Arc::new(Self {
                     illuminant,
                     scale,
                     table,
-                }
+                })
             }
         }
-        impl Spectrum for RgbIlluminantSpectrum<$color> {
+        impl SpectrumTrait for RgbIlluminantSpectrum<$color> {
             fn value(&self, lambda: f32) -> f32 {
                 self.scale * self.table.value(lambda) * self.illuminant.value(lambda)
             }

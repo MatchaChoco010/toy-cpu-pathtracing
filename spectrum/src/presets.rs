@@ -2,50 +2,52 @@
 
 use std::sync::LazyLock;
 
-use crate::spectrum::{BlackBodySpectrum, DenselySampledSpectrum, PiecewiseLinearSpectrum};
+use crate::spectrum::{
+    BlackBodySpectrum, DenselySampledSpectrum, PiecewiseLinearSpectrum, Spectrum,
+};
 
-/// 定義済みのスペクトルをDenselySampledSpectrumとしてキャッシュするための構造体。
+/// 定義済みのスペクトルをキャッシュするための構造体。
 struct CachedSpectrum {
-    cie_x: DenselySampledSpectrum,
-    cie_y: DenselySampledSpectrum,
-    cie_z: DenselySampledSpectrum,
-    cie_illum_a: DenselySampledSpectrum,
-    cie_illum_d5000: DenselySampledSpectrum,
-    aces_illum_d60: DenselySampledSpectrum,
-    cie_illum_d6500: DenselySampledSpectrum,
-    cie_illum_f1: DenselySampledSpectrum,
-    cie_illum_f2: DenselySampledSpectrum,
-    cie_illum_f3: DenselySampledSpectrum,
-    cie_illum_f4: DenselySampledSpectrum,
-    cie_illum_f5: DenselySampledSpectrum,
-    cie_illum_f6: DenselySampledSpectrum,
-    cie_illum_f7: DenselySampledSpectrum,
-    cie_illum_f8: DenselySampledSpectrum,
-    cie_illum_f9: DenselySampledSpectrum,
-    cie_illum_f10: DenselySampledSpectrum,
-    cie_illum_f11: DenselySampledSpectrum,
-    cie_illum_f12: DenselySampledSpectrum,
-    ag_eta: DenselySampledSpectrum,
-    ag_k: DenselySampledSpectrum,
-    al_eta: DenselySampledSpectrum,
-    al_k: DenselySampledSpectrum,
-    au_eta: DenselySampledSpectrum,
-    au_k: DenselySampledSpectrum,
-    cu_eta: DenselySampledSpectrum,
-    cu_k: DenselySampledSpectrum,
-    cu_zn_eta: DenselySampledSpectrum,
-    cu_zn_k: DenselySampledSpectrum,
-    mg_o_eta: DenselySampledSpectrum,
-    mg_o_k: DenselySampledSpectrum,
-    ti_o2_eta: DenselySampledSpectrum,
-    ti_o2_k: DenselySampledSpectrum,
-    glass_bk7_eta: DenselySampledSpectrum,
-    glass_baf10_eta: DenselySampledSpectrum,
-    glass_fk51a_eta: DenselySampledSpectrum,
-    glass_lasf9_eta: DenselySampledSpectrum,
-    glass_sf5_eta: DenselySampledSpectrum,
-    glass_sf10_eta: DenselySampledSpectrum,
-    glass_sf11_eta: DenselySampledSpectrum,
+    cie_x: Spectrum,
+    cie_y: Spectrum,
+    cie_z: Spectrum,
+    cie_illum_a: Spectrum,
+    cie_illum_d5000: Spectrum,
+    aces_illum_d60: Spectrum,
+    cie_illum_d6500: Spectrum,
+    cie_illum_f1: Spectrum,
+    cie_illum_f2: Spectrum,
+    cie_illum_f3: Spectrum,
+    cie_illum_f4: Spectrum,
+    cie_illum_f5: Spectrum,
+    cie_illum_f6: Spectrum,
+    cie_illum_f7: Spectrum,
+    cie_illum_f8: Spectrum,
+    cie_illum_f9: Spectrum,
+    cie_illum_f10: Spectrum,
+    cie_illum_f11: Spectrum,
+    cie_illum_f12: Spectrum,
+    ag_eta: Spectrum,
+    ag_k: Spectrum,
+    al_eta: Spectrum,
+    al_k: Spectrum,
+    au_eta: Spectrum,
+    au_k: Spectrum,
+    cu_eta: Spectrum,
+    cu_k: Spectrum,
+    cu_zn_eta: Spectrum,
+    cu_zn_k: Spectrum,
+    mg_o_eta: Spectrum,
+    mg_o_k: Spectrum,
+    ti_o2_eta: Spectrum,
+    ti_o2_k: Spectrum,
+    glass_bk7_eta: Spectrum,
+    glass_baf10_eta: Spectrum,
+    glass_fk51a_eta: Spectrum,
+    glass_lasf9_eta: Spectrum,
+    glass_sf5_eta: Spectrum,
+    glass_sf10_eta: Spectrum,
+    glass_sf11_eta: Spectrum,
 }
 impl CachedSpectrum {
     fn init() -> Self {
@@ -203,19 +205,19 @@ static CACHED_SPECTRUM: LazyLock<CachedSpectrum> = LazyLock::new(CachedSpectrum:
 
 /// CIEの定義したXYZマッチン曲線のXに対応するスペクトルを返す関数。
 #[inline(always)]
-pub fn x() -> DenselySampledSpectrum {
+pub fn x() -> Spectrum {
     CACHED_SPECTRUM.cie_x.clone()
 }
 
 /// CIEの定義したXYZマッチン曲線のYに対応するスペクトルを返す関数。
 #[inline(always)]
-pub fn y() -> DenselySampledSpectrum {
+pub fn y() -> Spectrum {
     CACHED_SPECTRUM.cie_y.clone()
 }
 
 /// CIEの定義したXYZマッチン曲線のZに対応するスペクトルを返す関数。
 #[inline(always)]
-pub fn z() -> DenselySampledSpectrum {
+pub fn z() -> Spectrum {
     CACHED_SPECTRUM.cie_z.clone()
 }
 
@@ -226,14 +228,14 @@ pub const fn y_integral() -> f32 {
 
 /// CIEの定義した標準光源のA光源に対応するスペクトルを返す関数。
 #[inline(always)]
-pub fn cie_illum_a() -> DenselySampledSpectrum {
+pub fn cie_illum_a() -> Spectrum {
     CACHED_SPECTRUM.cie_illum_a.clone()
 }
 
 /// CIEの定義した標準光源のD光源に対応するスペクトルを返す関数。
 /// およそ6504Kを与えるとほぼD65の光源になる。
 #[inline(always)]
-pub fn cie_d(temperature: f32) -> DenselySampledSpectrum {
+pub fn cie_d(temperature: f32) -> Spectrum {
     // temperatureをCCTに変換する。
     let cct = temperature / 1.4388 / 1.4380;
 
@@ -275,26 +277,26 @@ pub fn cie_d(temperature: f32) -> DenselySampledSpectrum {
 
 /// CIEのD光源5000Kに対応するスペクトルを返す関数。
 #[inline(always)]
-pub fn cie_illum_d5000() -> DenselySampledSpectrum {
+pub fn cie_illum_d5000() -> Spectrum {
     CACHED_SPECTRUM.cie_illum_d5000.clone()
 }
 
 /// ACESのD60光源に対応するスペクトルを返す関数。
 #[inline(always)]
-pub fn aces_illum_d60() -> DenselySampledSpectrum {
+pub fn aces_illum_d60() -> Spectrum {
     CACHED_SPECTRUM.aces_illum_d60.clone()
 }
 
 /// CIEのD光源6500Kに対応するスペクトルを返す関数。
 #[inline(always)]
-pub fn cie_illum_d6500() -> DenselySampledSpectrum {
+pub fn cie_illum_d6500() -> Spectrum {
     CACHED_SPECTRUM.cie_illum_d6500.clone()
 }
 
 /// CIEの定義した標準光源のF光源に対応するスペクトルを返す関数。
 /// 蛍光灯に対応する。
 #[inline(always)]
-pub fn cie_f<const INDEX: u8>() -> DenselySampledSpectrum {
+pub fn cie_f<const INDEX: u8>() -> Spectrum {
     assert!(INDEX <= 12);
     match INDEX {
         1 => CACHED_SPECTRUM.cie_illum_f1.clone(),
@@ -315,127 +317,127 @@ pub fn cie_f<const INDEX: u8>() -> DenselySampledSpectrum {
 
 /// 銀の屈折率を返す関数。
 #[inline(always)]
-pub fn ag_eta() -> DenselySampledSpectrum {
+pub fn ag_eta() -> Spectrum {
     CACHED_SPECTRUM.ag_eta.clone()
 }
 
 /// 銀の消衰率を返す関数。
 #[inline(always)]
-pub fn ag_k() -> DenselySampledSpectrum {
+pub fn ag_k() -> Spectrum {
     CACHED_SPECTRUM.ag_k.clone()
 }
 
 /// アルミニウムの屈折率を返す関数。
 #[inline(always)]
-pub fn al_eta() -> DenselySampledSpectrum {
+pub fn al_eta() -> Spectrum {
     CACHED_SPECTRUM.al_eta.clone()
 }
 
 /// アルミニウムの消衰率を返す関数。
 #[inline(always)]
-pub fn al_k() -> DenselySampledSpectrum {
+pub fn al_k() -> Spectrum {
     CACHED_SPECTRUM.al_k.clone()
 }
 
 /// 金の屈折率を返す関数。
 #[inline(always)]
-pub fn au_eta() -> DenselySampledSpectrum {
+pub fn au_eta() -> Spectrum {
     CACHED_SPECTRUM.au_eta.clone()
 }
 
 /// 金の消衰率を返す関数。
 #[inline(always)]
-pub fn au_k() -> DenselySampledSpectrum {
+pub fn au_k() -> Spectrum {
     CACHED_SPECTRUM.au_k.clone()
 }
 
 /// 銅の屈折率を返す関数。
 #[inline(always)]
-pub fn cu_eta() -> DenselySampledSpectrum {
+pub fn cu_eta() -> Spectrum {
     CACHED_SPECTRUM.cu_eta.clone()
 }
 
 /// 銅の消衰率を返す関数。
 #[inline(always)]
-pub fn cu_k() -> DenselySampledSpectrum {
+pub fn cu_k() -> Spectrum {
     CACHED_SPECTRUM.cu_k.clone()
 }
 
 /// 真鍮の屈折率を返す関数。
 #[inline(always)]
-pub fn cu_zn_eta() -> DenselySampledSpectrum {
+pub fn cu_zn_eta() -> Spectrum {
     CACHED_SPECTRUM.cu_zn_eta.clone()
 }
 
 /// 真鍮の消衰率を返す関数。
 #[inline(always)]
-pub fn cu_zn_k() -> DenselySampledSpectrum {
+pub fn cu_zn_k() -> Spectrum {
     CACHED_SPECTRUM.cu_zn_k.clone()
 }
 
 /// 酸化マグネシウムの屈折率を返す関数。
 #[inline(always)]
-pub fn mg_o_eta() -> DenselySampledSpectrum {
+pub fn mg_o_eta() -> Spectrum {
     CACHED_SPECTRUM.mg_o_eta.clone()
 }
 
 /// 酸化マグネシウムの消衰率を返す関数。
 #[inline(always)]
-pub fn mg_o_k() -> DenselySampledSpectrum {
+pub fn mg_o_k() -> Spectrum {
     CACHED_SPECTRUM.mg_o_k.clone()
 }
 
 /// 二酸化チタンの屈折率を返す関数。
 #[inline(always)]
-pub fn ti_o2_eta() -> DenselySampledSpectrum {
+pub fn ti_o2_eta() -> Spectrum {
     CACHED_SPECTRUM.ti_o2_eta.clone()
 }
 
 /// 二酸化チタンの消衰率を返す関数。
 #[inline(always)]
-pub fn ti_o2_k() -> DenselySampledSpectrum {
+pub fn ti_o2_k() -> Spectrum {
     CACHED_SPECTRUM.ti_o2_k.clone()
 }
 
 /// BK7ガラスの屈折率を返す関数。
 #[inline(always)]
-pub fn glass_bk7_eta() -> DenselySampledSpectrum {
+pub fn glass_bk7_eta() -> Spectrum {
     CACHED_SPECTRUM.glass_bk7_eta.clone()
 }
 
 /// BAF10ガラスの屈折率を返す関数。
 #[inline(always)]
-pub fn glass_baf10_eta() -> DenselySampledSpectrum {
+pub fn glass_baf10_eta() -> Spectrum {
     CACHED_SPECTRUM.glass_baf10_eta.clone()
 }
 
 /// FK51Aガラスの屈折率を返す関数。
 #[inline(always)]
-pub fn glass_fk51a_eta() -> DenselySampledSpectrum {
+pub fn glass_fk51a_eta() -> Spectrum {
     CACHED_SPECTRUM.glass_fk51a_eta.clone()
 }
 
 /// LASF9ガラスの屈折率を返す関数。
 #[inline(always)]
-pub fn glass_lasf9_eta() -> DenselySampledSpectrum {
+pub fn glass_lasf9_eta() -> Spectrum {
     CACHED_SPECTRUM.glass_lasf9_eta.clone()
 }
 
 /// SF5ガラスの屈折率を返す関数。
 #[inline(always)]
-pub fn glass_sf5_eta() -> DenselySampledSpectrum {
+pub fn glass_sf5_eta() -> Spectrum {
     CACHED_SPECTRUM.glass_sf5_eta.clone()
 }
 
 /// SF10ガラスの屈折率を返す関数。
 #[inline(always)]
-pub fn glass_sf10_eta() -> DenselySampledSpectrum {
+pub fn glass_sf10_eta() -> Spectrum {
     CACHED_SPECTRUM.glass_sf10_eta.clone()
 }
 
 /// SF11ガラスの屈折率を返す関数。
 #[inline(always)]
-pub fn glass_sf11_eta() -> DenselySampledSpectrum {
+pub fn glass_sf11_eta() -> Spectrum {
     CACHED_SPECTRUM.glass_sf11_eta.clone()
 }
 
