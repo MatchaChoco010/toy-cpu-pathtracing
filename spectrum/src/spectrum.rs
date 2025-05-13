@@ -52,6 +52,10 @@ pub trait SpectrumTrait: Send + Sync {
             inner_product(self, &presets::y()),
             inner_product(self, &presets::z()),
         ) / presets::y_integral();
+
+        assert!(xyz.is_finite());
+        assert!(xyz.x >= 0.0 && xyz.y >= 0.0 && xyz.z >= 0.0);
+
         Xyz::from(xyz)
     }
 }
@@ -65,6 +69,8 @@ where
     let range = 0..(LAMBDA_MAX - LAMBDA_MIN) as usize;
     for i in range {
         let lambda = LAMBDA_MIN + i as f32;
+        assert!(s1.value(lambda) >= 0.0);
+        assert!(s2.value(lambda) >= 0.0);
         sum += s1.value(lambda) * s2.value(lambda);
     }
     sum

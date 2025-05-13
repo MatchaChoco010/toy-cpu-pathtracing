@@ -139,6 +139,7 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for EmissiveTriangleMesh<Id> {
                         shading_normal: intersection.shading_normal,
                         tangent: intersection.tangent,
                         uv: intersection.uv,
+                        material: self.material.clone(),
                         primitive_index,
                         geometry_info: InteractGeometryInfo::TriangleMesh {
                             triangle_index: intersection.index,
@@ -302,6 +303,7 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveTriangleMesh<Id> {
                 shading_normal,
                 tangent,
                 uv,
+                material: self.material.clone(),
                 primitive_index,
                 geometry_info: InteractGeometryInfo::None,
             },

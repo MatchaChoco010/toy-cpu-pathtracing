@@ -5,8 +5,8 @@ pub trait Eotf: Sync + Send + Clone {}
 
 /// ノンリニアなEOTFのトレイト。
 pub trait NonLinearEotf: Eotf {
-    fn transform(color: glam::Vec3) -> glam::Vec3;
-    fn inverse_transform(color: glam::Vec3) -> glam::Vec3;
+    fn transform(color: glam::DVec3) -> glam::DVec3;
+    fn inverse_transform(color: glam::DVec3) -> glam::DVec3;
 }
 
 /// ガンマ2.2のガンマ補正のEOTF。
@@ -14,11 +14,11 @@ pub trait NonLinearEotf: Eotf {
 pub struct Gamma2_2;
 impl Eotf for Gamma2_2 {}
 impl NonLinearEotf for Gamma2_2 {
-    fn transform(color: glam::Vec3) -> glam::Vec3 {
+    fn transform(color: glam::DVec3) -> glam::DVec3 {
         color.powf(1.0 / 2.2)
     }
 
-    fn inverse_transform(color: glam::Vec3) -> glam::Vec3 {
+    fn inverse_transform(color: glam::DVec3) -> glam::DVec3 {
         color.powf(2.2)
     }
 }
@@ -28,11 +28,11 @@ impl NonLinearEotf for Gamma2_2 {
 pub struct Gamma2_4;
 impl Eotf for Gamma2_4 {}
 impl NonLinearEotf for Gamma2_4 {
-    fn transform(color: glam::Vec3) -> glam::Vec3 {
+    fn transform(color: glam::DVec3) -> glam::DVec3 {
         color.powf(1.0 / 2.4)
     }
 
-    fn inverse_transform(color: glam::Vec3) -> glam::Vec3 {
+    fn inverse_transform(color: glam::DVec3) -> glam::DVec3 {
         color.powf(2.4)
     }
 }
@@ -42,11 +42,11 @@ impl NonLinearEotf for Gamma2_4 {
 pub struct Gamma2_6;
 impl Eotf for Gamma2_6 {}
 impl NonLinearEotf for Gamma2_6 {
-    fn transform(color: glam::Vec3) -> glam::Vec3 {
+    fn transform(color: glam::DVec3) -> glam::DVec3 {
         color.powf(1.0 / 2.6)
     }
 
-    fn inverse_transform(color: glam::Vec3) -> glam::Vec3 {
+    fn inverse_transform(color: glam::DVec3) -> glam::DVec3 {
         color.powf(2.6)
     }
 }
@@ -57,7 +57,7 @@ impl NonLinearEotf for Gamma2_6 {
 pub struct GammaSrgb;
 impl Eotf for GammaSrgb {}
 impl NonLinearEotf for GammaSrgb {
-    fn transform(color: glam::Vec3) -> glam::Vec3 {
+    fn transform(color: glam::DVec3) -> glam::DVec3 {
         color.map(|c| {
             if c <= 0.0031308 {
                 12.92 * c
@@ -67,7 +67,7 @@ impl NonLinearEotf for GammaSrgb {
         })
     }
 
-    fn inverse_transform(color: glam::Vec3) -> glam::Vec3 {
+    fn inverse_transform(color: glam::DVec3) -> glam::DVec3 {
         color.map(|c| {
             if c <= 0.04045 {
                 c / 12.92
@@ -84,12 +84,12 @@ impl NonLinearEotf for GammaSrgb {
 pub struct GammaAdobeRgb;
 impl Eotf for GammaAdobeRgb {}
 impl NonLinearEotf for GammaAdobeRgb {
-    fn transform(color: glam::Vec3) -> glam::Vec3 {
+    fn transform(color: glam::DVec3) -> glam::DVec3 {
         let gamma = 563.0 / 256.0;
         color.map(|c| c.powf(1.0 / gamma))
     }
 
-    fn inverse_transform(color: glam::Vec3) -> glam::Vec3 {
+    fn inverse_transform(color: glam::DVec3) -> glam::DVec3 {
         let gamma = 563.0 / 256.0;
         color.map(|c| c.powf(gamma))
     }
@@ -101,7 +101,7 @@ impl NonLinearEotf for GammaAdobeRgb {
 pub struct GammaRec709;
 impl Eotf for GammaRec709 {}
 impl NonLinearEotf for GammaRec709 {
-    fn transform(color: glam::Vec3) -> glam::Vec3 {
+    fn transform(color: glam::DVec3) -> glam::DVec3 {
         color.map(|c| {
             if c < 0.018 {
                 4.5 * c
@@ -111,7 +111,7 @@ impl NonLinearEotf for GammaRec709 {
         })
     }
 
-    fn inverse_transform(color: glam::Vec3) -> glam::Vec3 {
+    fn inverse_transform(color: glam::DVec3) -> glam::DVec3 {
         color.map(|c| {
             if c < 0.081 {
                 c / 4.5

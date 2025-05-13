@@ -1,5 +1,13 @@
 [workspace]
-members = ["color", "math", "renderer", "scene", "spectrum", "util_macros"]
+members = [
+  "color",
+  "math",
+  "renderer",
+  "rgb_to_spec",
+  "scene",
+  "spectrum",
+  "util_macros",
+]
 resolver = "3"
 
 [workspace.package]
@@ -10,7 +18,7 @@ edition = "2024"
 anyhow = "1.0.98"
 image = "0.25.6"
 glam = "0.30.3"
-clap = { version = "4.5.37", features = ["derive"] }
+clap = { version = "4.5.38", features = ["derive"] }
 proc-macro2 = "1.0.95"
 quote = "1.0.40"
 rand = "0.9.1"
@@ -20,6 +28,7 @@ tobj = "4.0.3"
 
 color = { path = "color" }
 math = { path = "math" }
+rgb_to_spec = { path = "rgb_to_spec" }
 scene = { path = "scene" }
 spectrum = { path = "spectrum" }
 util_macros = { path = "util_macros" }

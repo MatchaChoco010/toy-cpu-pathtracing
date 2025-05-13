@@ -19,9 +19,9 @@ fn xyy_to_xyz(xy: glam::Vec2, y: f32) -> glam::Vec3 {
     if xy.y == 0.0 {
         return glam::Vec3::ZERO;
     }
-    let x = xy.x * y;
+    let x = xy.x * y / xy.y;
     let z = (1.0 - xy.x - xy.y) * y / xy.y;
-    glam::Vec3::new(x, y, z)
+    glam::vec3(x, y, z)
 }
 
 pub(crate) fn xy_to_xyz(xy: glam::Vec2) -> glam::Vec3 {

@@ -9,14 +9,19 @@ use crate::{Edf, SceneId, SurfaceInteraction};
 pub struct Uniform {
     /// 放射輝度スペクトル。
     pub radiance: Spectrum,
+    /// 強度。
+    pub intensity: f32,
 }
 impl Uniform {
     /// 新しいUniformを作成する。
     ///
     /// # Arguments
     /// - `radiance` - 放射輝度スペクトル
-    pub fn new(radiance: Spectrum) -> Box<Self> {
-        Box::new(Self { radiance })
+    pub fn new(radiance: Spectrum, intensity: f32) -> Box<Self> {
+        Box::new(Self {
+            radiance,
+            intensity,
+        })
     }
 }
 impl<Id: SceneId> Edf<Id> for Uniform {
@@ -26,10 +31,10 @@ impl<Id: SceneId> Edf<Id> for Uniform {
         _emissive_point: SurfaceInteraction<Id, Tangent>,
         _wo: Vector3<Tangent>,
     ) -> Option<SampledSpectrum> {
-        Some(self.radiance.sample(lambda))
+        Some(self.radiance.sample(lambda) * self.intensity)
     }
 
     fn average_intensity(&self, lambda: &SampledWavelengths) -> SampledSpectrum {
-        self.radiance.sample(lambda)
+        self.radiance.sample(lambda) * self.intensity
     }
 }
