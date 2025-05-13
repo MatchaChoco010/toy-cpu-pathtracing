@@ -1,19 +1,19 @@
 /// 可視光の波長の範囲の最小値 (nm)。
-pub const LAMBDA_MIN: f64 = 360.0;
+pub const LAMBDA_MIN: f32 = 360.0;
 /// 可視光の波長の範囲の最大値 (nm)。
-pub const LAMBDA_MAX: f64 = 830.0;
+pub const LAMBDA_MAX: f32 = 830.0;
 
 /// 積分の評価に使うサンプル数。
 pub const N_CIE_FINE_SAMPLES: usize = (N_CIE_SAMPLES - 1) * 3 + 1;
 
 /// 積分の評価時のサンプルの間隔。
-pub const H: f64 = (LAMBDA_MAX - LAMBDA_MIN) / (N_CIE_FINE_SAMPLES - 1) as f64;
+pub const H: f32 = (LAMBDA_MAX - LAMBDA_MIN) / (N_CIE_FINE_SAMPLES - 1) as f32;
 
 /// CIEの波長のデータのサンプル数。
 pub const N_CIE_SAMPLES: usize = 95;
 
 /// CIEのXYZマッチン曲線のXの曲線のスペクトルデータ。
-pub const CIE_X: [f64; N_CIE_SAMPLES] = [
+pub const CIE_X: [f32; N_CIE_SAMPLES] = [
     0.000129900000,
     0.000232100000,
     0.000414900000,
@@ -112,7 +112,7 @@ pub const CIE_X: [f64; N_CIE_SAMPLES] = [
 ];
 
 /// CIEのXYZマッチン曲線のYの曲線のスペクトルデータ。
-pub const CIE_Y: [f64; N_CIE_SAMPLES] = [
+pub const CIE_Y: [f32; N_CIE_SAMPLES] = [
     0.000003917000,
     0.000006965000,
     0.000012390000,
@@ -211,7 +211,7 @@ pub const CIE_Y: [f64; N_CIE_SAMPLES] = [
 ];
 
 /// CIEのXYZマッチン曲線のZの曲線のスペクトルデータ。
-pub const CIE_Z: [f64; N_CIE_SAMPLES] = [
+pub const CIE_Z: [f32; N_CIE_SAMPLES] = [
     0.000606100000,
     0.001086000000,
     0.001946000000,

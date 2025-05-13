@@ -2,20 +2,19 @@
 
 use rayon::prelude::*;
 
-use color::f64::gamut::ColorGamut;
+use color::gamut::ColorGamut;
 
 use crate::data::{
     CIE_X, CIE_Y, CIE_Z, H, LAMBDA_MAX, LAMBDA_MIN, N_CIE_FINE_SAMPLES, N_CIE_SAMPLES,
 };
 
+/// 多項式のテーブルのサイズ。
 pub const TABLE_SIZE: usize = 64;
 
-const ITERATION: usize = 16;
-
 /// CIEの波長列を線形保管してサンプルする関数。
-fn cie_interpret(values: &[f64; N_CIE_SAMPLES], lambda: f64) -> f64 {
+fn cie_interpret(values: &[f32; N_CIE_SAMPLES], lambda: f32) -> f32 {
     let x = lambda - LAMBDA_MIN;
-    let mut x = x * ((N_CIE_SAMPLES - 1) as f64 / (LAMBDA_MAX - LAMBDA_MIN));
+    let mut x = x * ((N_CIE_SAMPLES - 1) as f32 / (LAMBDA_MAX - LAMBDA_MIN));
     if x < 0.0 {
         x = 0.0;
     }
@@ -23,12 +22,12 @@ fn cie_interpret(values: &[f64; N_CIE_SAMPLES], lambda: f64) -> f64 {
     if offset > N_CIE_SAMPLES - 2 {
         offset = N_CIE_SAMPLES - 2;
     }
-    let weight = x - offset as f64;
+    let weight = x - offset as f32;
     (1.0 - weight) * values[offset] + weight * values[offset + 1]
 }
 
 /// シグモイド関数。
-fn sigmoid(x: f64) -> f64 {
+fn sigmoid(x: f32) -> f32 {
     if x.is_infinite() {
         return if x > 0.0 { 1.0 } else { 0.0 };
     }
@@ -36,7 +35,7 @@ fn sigmoid(x: f64) -> f64 {
 }
 
 /// 係数から二次式を計算する関数。
-fn parabolic(t: f64, coefficients: &[f64]) -> f64 {
+fn parabolic(t: f32, coefficients: &[f32]) -> f32 {
     // coefficients[0]だけxに平行移動してcoefficients[1]だけyに平行移動した、
     // 係数coefficients[2]に100を乗じた二次式。
     let x = t - coefficients[0];
@@ -44,22 +43,22 @@ fn parabolic(t: f64, coefficients: &[f64]) -> f64 {
     xx + coefficients[1]
 }
 
-fn xyy_to_xyz(xy: glam::DVec2, y: f64) -> glam::DVec3 {
+fn xyy_to_xyz(xy: glam::Vec2, y: f32) -> glam::Vec3 {
     if xy.y == 0.0 {
-        return glam::DVec3::ZERO;
+        return glam::Vec3::ZERO;
     }
     let x = xy.x * y / xy.y;
     let z = (1.0 - xy.x - xy.y) * y / xy.y;
-    glam::dvec3(x, y, z)
+    glam::vec3(x, y, z)
 }
 
-fn xy_to_xyz(xy: glam::DVec2) -> glam::DVec3 {
+fn xy_to_xyz(xy: glam::Vec2) -> glam::Vec3 {
     xyy_to_xyz(xy, 1.0)
 }
 
 /// RGBからCIE Labに変換する関数。
-fn rgb_to_lab(rgb: glam::DVec3, rgb_to_xyz: glam::DMat3) -> [f64; 3] {
-    fn f(t: f64) -> f64 {
+fn rgb_to_lab(rgb: glam::Vec3, rgb_to_xyz: glam::Mat3) -> [f32; 3] {
+    fn f(t: f32) -> f32 {
         if t > 0.008856 {
             t.powf(1.0 / 3.0)
         } else {
@@ -71,7 +70,7 @@ fn rgb_to_lab(rgb: glam::DVec3, rgb_to_xyz: glam::DMat3) -> [f64; 3] {
     let xyz = rgb_to_xyz * rgb;
 
     // D50白色点のXYZ値を取得する。
-    let w = glam::dvec2(0.34567, 0.35850);
+    let w = glam::vec2(0.34567, 0.35850);
     let w_xyz = xy_to_xyz(w);
 
     // Xr, Yr, Zrを計算する。
@@ -90,11 +89,11 @@ fn rgb_to_lab(rgb: glam::DVec3, rgb_to_xyz: glam::DMat3) -> [f64; 3] {
 /// 目標RGBとcoefficientsのスペクトラルから作られるRGBを
 /// Lab空間で距離を計算してdelta Eを計算する関数。
 fn eval_delta_e<G: ColorGamut>(
-    coefficients: [f64; 3],
-    rgb: glam::DVec3,
-    lambda_table: &[f64; N_CIE_FINE_SAMPLES],
-    rgb_table: &[[f64; 3]; N_CIE_FINE_SAMPLES],
-) -> f64 {
+    coefficients: [f32; 3],
+    rgb: glam::Vec3,
+    lambda_table: &[f32; N_CIE_FINE_SAMPLES],
+    rgb_table: &[[f32; 3]; N_CIE_FINE_SAMPLES],
+) -> f32 {
     let mut out_rgb = [0.0; 3];
     for i in 0..N_CIE_FINE_SAMPLES {
         // lambdaの値を0..1の範囲に正規化する。
@@ -113,7 +112,7 @@ fn eval_delta_e<G: ColorGamut>(
     }
 
     // Labに変換する。
-    let out_lab = rgb_to_lab(glam::DVec3::from(out_rgb), G::new().rgb_to_xyz());
+    let out_lab = rgb_to_lab(glam::Vec3::from(out_rgb), G::new().rgb_to_xyz());
     let rgb_lab = rgb_to_lab(rgb, G::new().rgb_to_xyz());
 
     // delta Eを計算する。
@@ -126,12 +125,12 @@ fn eval_delta_e<G: ColorGamut>(
 
 /// 係数の勾配を計算する関数。
 fn eval_gradient<G: ColorGamut>(
-    coefficients: [f64; 3],
-    rgb: glam::DVec3,
-    lambda_table: &[f64; N_CIE_FINE_SAMPLES],
-    rgb_table: &[[f64; 3]; N_CIE_FINE_SAMPLES],
-) -> [f64; 3] {
-    const EPS: f64 = 1e-4;
+    coefficients: [f32; 3],
+    rgb: glam::Vec3,
+    lambda_table: &[f32; N_CIE_FINE_SAMPLES],
+    rgb_table: &[[f32; 3]; N_CIE_FINE_SAMPLES],
+) -> [f32; 3] {
+    const EPS: f32 = 1e-4;
     let mut grad = [0.0; 3];
 
     for i in 0..3 {
@@ -151,10 +150,12 @@ fn eval_gradient<G: ColorGamut>(
 
 /// 渡されたRGBに対してフィットするようにAdamで二次式の係数を更新して計算する関数。
 fn calculate_coefficients<G: ColorGamut>(
-    rgb: glam::DVec3,
-    lambda_table: &[f64; N_CIE_FINE_SAMPLES],
-    rgb_table: &[[f64; 3]; N_CIE_FINE_SAMPLES],
-) -> [f64; 3] {
+    rgb: glam::Vec3,
+    lambda_table: &[f32; N_CIE_FINE_SAMPLES],
+    rgb_table: &[[f32; 3]; N_CIE_FINE_SAMPLES],
+) -> [f32; 3] {
+    const ITERATION: usize = 16;
+
     // 係数の初期化の初期値。
     // 初期値に割と鋭敏で初期値によっては収束しない。
     // この値は試行錯誤してだいたいのRGBで収束しそうなことを確認したもの。
@@ -200,11 +201,11 @@ pub fn init_table<G: ColorGamut>(
     table: &mut [[[[[f32; 3]; TABLE_SIZE]; TABLE_SIZE]; TABLE_SIZE]; 3],
 ) {
     // 精度を0と1の付近に割り振るために、zの非線形なマッピングを計算する。
-    const fn z_mapping(zi: usize) -> f64 {
-        const fn smoothstep(x: f64) -> f64 {
+    const fn z_mapping(zi: usize) -> f32 {
+        const fn smoothstep(x: f32) -> f32 {
             x * x * (3.0 - 2.0 * x)
         }
-        smoothstep(smoothstep(zi as f64 / (TABLE_SIZE - 1) as f64))
+        smoothstep(smoothstep(zi as f32 / (TABLE_SIZE - 1) as f32))
     }
     for i in 0..TABLE_SIZE {
         z_nodes[i] = z_mapping(i) as f32;
@@ -212,11 +213,11 @@ pub fn init_table<G: ColorGamut>(
 
     // CIE Yの360nmから830nmまで積分した値を求める。
     // 定数スペクトルで積分したときにCIE_Yが1になるようにこの値で積分をスケールする。
-    let cie_y_integral: f64 = (0..N_CIE_FINE_SAMPLES)
+    let cie_y_integral: f32 = (0..N_CIE_FINE_SAMPLES)
         .into_par_iter()
         .map(|i| {
             // CIE Yの値を取得する。
-            let lambda = LAMBDA_MIN as f64 + H * i as f64;
+            let lambda = LAMBDA_MIN as f32 + H * i as f32;
             let y = cie_interpret(&CIE_Y, lambda);
 
             // シンプソンの3/8公式で重みを計算する。
@@ -238,7 +239,7 @@ pub fn init_table<G: ColorGamut>(
         .into_par_iter()
         .map(|i| {
             // lambda_tableとxyz_tableを計算する。
-            let lambda = LAMBDA_MIN as f64 + H * i as f64;
+            let lambda = LAMBDA_MIN as f32 + H * i as f32;
             let x = cie_interpret(&CIE_X, lambda);
             let y = cie_interpret(&CIE_Y, lambda);
             let z = cie_interpret(&CIE_Z, lambda);
@@ -253,7 +254,7 @@ pub fn init_table<G: ColorGamut>(
                 weight *= 3.0;
             }
 
-            let xyz = glam::dvec3(x, y, z) * weight / cie_y_integral;
+            let xyz = glam::vec3(x, y, z) * weight / cie_y_integral;
             let rgb = G::new().xyz_to_rgb() * xyz;
 
             // (lambda, [x * weight, y * weight, z * weight])
@@ -274,13 +275,13 @@ pub fn init_table<G: ColorGamut>(
             let xi = i % TABLE_SIZE;
 
             // RGBの成分を計算する。
-            let z = z_nodes[zi] as f64;
-            let y = yi as f64 / (TABLE_SIZE - 1) as f64 * z;
-            let x = xi as f64 / (TABLE_SIZE - 1) as f64 * z;
+            let z = z_nodes[zi] as f32;
+            let y = yi as f32 / (TABLE_SIZE - 1) as f32 * z;
+            let x = xi as f32 / (TABLE_SIZE - 1) as f32 * z;
             let rgb = match max_component {
-                0 => glam::dvec3(z, x, y),
-                1 => glam::dvec3(y, z, x),
-                2 => glam::dvec3(x, y, z),
+                0 => glam::vec3(z, x, y),
+                1 => glam::vec3(y, z, x),
+                2 => glam::vec3(x, y, z),
                 _ => unreachable!(),
             };
 
