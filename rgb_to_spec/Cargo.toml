@@ -1,7 +1,9 @@
 [package]
-name = "color"
+name = "rgb_to_spec"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
+color.workspace = true
 glam.workspace = true
+rayon.workspace = true

@@ -128,6 +128,13 @@ impl SampledSpectrum {
         }
     }
 
+    /// 1のスペクトルを作成する。
+    pub fn one() -> Self {
+        Self {
+            values: [1.0; N_SPECTRUM_SAMPLES],
+        }
+    }
+
     /// 新しいサンプルスペクトルを作成する。
     #[inline(always)]
     pub fn new() -> Self {
@@ -140,6 +147,12 @@ impl SampledSpectrum {
     #[inline(always)]
     pub fn from(values: [f32; N_SPECTRUM_SAMPLES]) -> Self {
         Self { values }
+    }
+
+    /// 値を取得する。
+    #[inline(always)]
+    pub fn value(&self, index: usize) -> f32 {
+        self.values[index]
     }
 
     /// すべての値が0.0であるかどうかをチェックする。
@@ -241,7 +254,7 @@ impl SampledWavelengths {
         let delta = (lambda_max - lambda_min) / (N_SPECTRUM_SAMPLES as f32);
         for i in 1..N_SPECTRUM_SAMPLES {
             result.lambda[i] = result.lambda[i - 1] + delta;
-            if result.lambda[i] > lambda_max {
+            if result.lambda[i] >= lambda_max {
                 result.lambda[i] = lambda_min + (result.lambda[i] - lambda_max);
             }
         }
