@@ -43,7 +43,7 @@ impl Xyz {
     pub fn xyz_to_rgb<G: ColorGamut>(&self) -> ColorImpl<G, NoneToneMap, Linear> {
         let xyz = self.xyz;
         let gamut = G::new();
-        let rgb = gamut.xyz_to_rgb(xyz).max(glam::Vec3::splat(0.0));
+        let rgb = (gamut.xyz_to_rgb() * xyz).max(glam::Vec3::splat(0.0));
         ColorImpl::create(rgb, gamut, NoneToneMap)
     }
 }
@@ -88,7 +88,7 @@ impl<G: ColorGamut, T: ToneMap, E: Eotf> ColorImpl<G, T, E> {
     pub fn from<FromGamut: ColorGamut>(color: &ColorImpl<FromGamut, T, E>) -> Self {
         let gamut = G::new();
         let xyz = color.xyz();
-        let rgb = gamut.xyz_to_rgb(xyz);
+        let rgb = gamut.xyz_to_rgb() * xyz;
         ColorImpl::create(rgb, gamut, color.tone_map.clone())
     }
 
@@ -109,7 +109,7 @@ impl<G: ColorGamut, T: ToneMap, E: Eotf> Color for ColorImpl<G, T, E> {
     }
 
     fn xyz(&self) -> glam::Vec3 {
-        self.gamut.rgb_to_xyz(self.rgb)
+        self.gamut.rgb_to_xyz() * self.rgb
     }
 }
 

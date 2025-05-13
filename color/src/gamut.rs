@@ -6,13 +6,10 @@ pub trait ColorGamut: Sync + Send + Clone {
     fn new() -> Self;
 
     /// 色をXYZからこの色域のRGBに変換する。
-    fn xyz_to_rgb(&self, xyz: glam::Vec3) -> glam::Vec3;
+    fn xyz_to_rgb(&self) -> glam::Mat3;
 
     /// この色域の色をRGBからXYZに変換する。
-    fn rgb_to_xyz(&self, rgb: glam::Vec3) -> glam::Vec3;
-
-    /// この色域の色をRGBからLabに変換する。
-    fn rgb_to_lab(&self, rgb: glam::Vec3) -> glam::Vec3;
+    fn rgb_to_xyz(&self) -> glam::Mat3;
 }
 
 fn xyy_to_xyz(xy: glam::Vec2, y: f32) -> glam::Vec3 {
@@ -41,35 +38,6 @@ fn rgb_to_xyz(r_xy: glam::Vec2, g_xy: glam::Vec2, b_xy: glam::Vec2, w: glam::Vec
     rgb * glam::Mat3::from_diagonal(c)
 }
 
-/// RGBからCIE Labに変換する関数。
-fn lab(rgb: glam::Vec3, rgb_to_xyz: glam::Mat3) -> glam::Vec3 {
-    fn f(t: f32) -> f32 {
-        if t > 0.008856 {
-            t.powf(1.0 / 3.0)
-        } else {
-            (903.3 * t + 16.0) / 116.0
-        }
-    }
-    // RGBをXYZに変換する。
-    let xyz = rgb_to_xyz * rgb;
-
-    // D50白色点のXYZ値を取得する。
-    let w = glam::vec2(0.34567, 0.35850);
-    let w_xyz = xy_to_xyz(w);
-
-    // Xr, Yr, Zrを計算する。
-    let xr = xyz.x / w_xyz.x;
-    let yr = xyz.y / w_xyz.y;
-    let zr = xyz.z / w_xyz.z;
-
-    // Xr, Yr, Zrを使ってL*, a*, b*を計算する。
-    let l = 116.0 * f(yr) - 16.0;
-    let a = 500.0 * (f(xr) - f(yr));
-    let b = 200.0 * (f(yr) - f(zr));
-
-    glam::vec3(l, a, b)
-}
-
 /// sRGBの色域を表す。
 #[derive(Clone)]
 pub struct GamutSrgb {
@@ -91,17 +59,12 @@ impl ColorGamut for GamutSrgb {
         }
     }
 
-    /// sRGBの色をCIE Labに変換する。
-    fn rgb_to_lab(&self, rgb: glam::Vec3) -> glam::Vec3 {
-        lab(rgb, self.rgb_to_xyz)
+    fn xyz_to_rgb(&self) -> glam::Mat3 {
+        self.xyz_to_rgb
     }
 
-    fn xyz_to_rgb(&self, xyz: glam::Vec3) -> glam::Vec3 {
-        self.xyz_to_rgb * xyz
-    }
-
-    fn rgb_to_xyz(&self, rgb: glam::Vec3) -> glam::Vec3 {
-        self.rgb_to_xyz * rgb
+    fn rgb_to_xyz(&self) -> glam::Mat3 {
+        self.rgb_to_xyz
     }
 }
 
@@ -126,17 +89,12 @@ impl ColorGamut for GamutDciP3D65 {
         }
     }
 
-    /// DCI-P3 D65の色をCIE Labに変換する。
-    fn rgb_to_lab(&self, rgb: glam::Vec3) -> glam::Vec3 {
-        lab(rgb, self.rgb_to_xyz)
+    fn xyz_to_rgb(&self) -> glam::Mat3 {
+        self.xyz_to_rgb
     }
 
-    fn xyz_to_rgb(&self, xyz: glam::Vec3) -> glam::Vec3 {
-        self.xyz_to_rgb * xyz
-    }
-
-    fn rgb_to_xyz(&self, rgb: glam::Vec3) -> glam::Vec3 {
-        self.rgb_to_xyz * rgb
+    fn rgb_to_xyz(&self) -> glam::Mat3 {
+        self.rgb_to_xyz
     }
 }
 
@@ -161,17 +119,12 @@ impl ColorGamut for GamutAdobeRgb {
         }
     }
 
-    /// Adobe RGBの色をCIE Labに変換する。
-    fn rgb_to_lab(&self, rgb: glam::Vec3) -> glam::Vec3 {
-        lab(rgb, self.rgb_to_xyz)
+    fn xyz_to_rgb(&self) -> glam::Mat3 {
+        self.xyz_to_rgb
     }
 
-    fn xyz_to_rgb(&self, xyz: glam::Vec3) -> glam::Vec3 {
-        self.xyz_to_rgb * xyz
-    }
-
-    fn rgb_to_xyz(&self, rgb: glam::Vec3) -> glam::Vec3 {
-        self.rgb_to_xyz * rgb
+    fn rgb_to_xyz(&self) -> glam::Mat3 {
+        self.rgb_to_xyz
     }
 }
 
@@ -196,17 +149,12 @@ impl ColorGamut for GamutRec2020 {
         }
     }
 
-    /// Rec. 2020の色をCIE Labに変換する。
-    fn rgb_to_lab(&self, rgb: glam::Vec3) -> glam::Vec3 {
-        lab(rgb, self.rgb_to_xyz)
+    fn xyz_to_rgb(&self) -> glam::Mat3 {
+        self.xyz_to_rgb
     }
 
-    fn xyz_to_rgb(&self, xyz: glam::Vec3) -> glam::Vec3 {
-        self.xyz_to_rgb * xyz
-    }
-
-    fn rgb_to_xyz(&self, rgb: glam::Vec3) -> glam::Vec3 {
-        self.rgb_to_xyz * rgb
+    fn rgb_to_xyz(&self) -> glam::Mat3 {
+        self.rgb_to_xyz
     }
 }
 
@@ -232,17 +180,12 @@ impl ColorGamut for GamutAcesCg {
         }
     }
 
-    /// ACEScgの色をCIE Labに変換する。
-    fn rgb_to_lab(&self, rgb: glam::Vec3) -> glam::Vec3 {
-        lab(rgb, self.rgb_to_xyz)
+    fn xyz_to_rgb(&self) -> glam::Mat3 {
+        self.xyz_to_rgb
     }
 
-    fn xyz_to_rgb(&self, xyz: glam::Vec3) -> glam::Vec3 {
-        self.xyz_to_rgb * xyz
-    }
-
-    fn rgb_to_xyz(&self, rgb: glam::Vec3) -> glam::Vec3 {
-        self.rgb_to_xyz * rgb
+    fn rgb_to_xyz(&self) -> glam::Mat3 {
+        self.rgb_to_xyz
     }
 }
 
@@ -268,16 +211,11 @@ impl ColorGamut for GamutAces2065_1 {
         }
     }
 
-    /// ACES2065-1の色をCIE Labに変換する。
-    fn rgb_to_lab(&self, rgb: glam::Vec3) -> glam::Vec3 {
-        lab(rgb, self.rgb_to_xyz)
+    fn xyz_to_rgb(&self) -> glam::Mat3 {
+        self.xyz_to_rgb
     }
 
-    fn xyz_to_rgb(&self, xyz: glam::Vec3) -> glam::Vec3 {
-        self.xyz_to_rgb * xyz
-    }
-
-    fn rgb_to_xyz(&self, rgb: glam::Vec3) -> glam::Vec3 {
-        self.rgb_to_xyz * rgb
+    fn rgb_to_xyz(&self) -> glam::Mat3 {
+        self.rgb_to_xyz
     }
 }

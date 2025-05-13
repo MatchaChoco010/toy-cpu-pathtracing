@@ -11,20 +11,20 @@ fn main() {
     // エラーが出ずに呼び出せることを確認していく。
 
     println!("GamutSrgb");
-    init::init_table::<color::f64::gamut::GamutSrgb>(&mut z_nodes, &mut table);
+    init::init_table::<color::gamut::GamutSrgb>(&mut z_nodes, &mut table);
 
     println!("GamutDciP3D65");
-    init::init_table::<color::f64::gamut::GamutDciP3D65>(&mut z_nodes, &mut table);
+    init::init_table::<color::gamut::GamutDciP3D65>(&mut z_nodes, &mut table);
 
     println!("GamutAdobeRgb");
-    init::init_table::<color::f64::gamut::GamutAdobeRgb>(&mut z_nodes, &mut table);
+    init::init_table::<color::gamut::GamutAdobeRgb>(&mut z_nodes, &mut table);
 
     println!("GamutRec2020");
-    init::init_table::<color::f64::gamut::GamutRec2020>(&mut z_nodes, &mut table);
+    init::init_table::<color::gamut::GamutRec2020>(&mut z_nodes, &mut table);
 
     println!("GamutAcesCg");
-    init::init_table::<color::f64::gamut::GamutAcesCg>(&mut z_nodes, &mut table);
+    init::init_table::<color::gamut::GamutAcesCg>(&mut z_nodes, &mut table);
 
     println!("GamutAces2065_1");
-    init::init_table::<color::f64::gamut::GamutAces2065_1>(&mut z_nodes, &mut table);
+    init::init_table::<color::gamut::GamutAces2065_1>(&mut z_nodes, &mut table);
 }

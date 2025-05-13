@@ -1,6 +1,6 @@
 //! トーンマッピングのトレイトと実装のモジュール。
 
-use crate::f32::{ColorImpl, eotf::Linear, gamut::ColorGamut};
+use crate::{ColorImpl, eotf::Linear, gamut::ColorGamut};
 
 /// トーンマッピングのトレイト。
 pub trait ToneMap: Sync + Send + Sized + Clone {

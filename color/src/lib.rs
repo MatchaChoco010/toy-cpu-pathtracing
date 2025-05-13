@@ -1,4 +1,6 @@
-pub mod f32;
-pub mod f64;
+mod color;
+pub mod eotf;
+pub mod gamut;
+pub mod tone_map;
 
-pub use f32::*;
+pub use color::*;

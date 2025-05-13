@@ -2,7 +2,7 @@ use std::env;
 use std::fs::File;
 use std::io::Write;
 
-use color::f64::gamut::*;
+use color::gamut::*;
 use rgb_to_spec::{TABLE_SIZE, init_table};
 
 /// 可視光の波長の範囲の最小値 (nm)。

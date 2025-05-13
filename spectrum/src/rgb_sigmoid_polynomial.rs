@@ -50,7 +50,7 @@ impl<G: ColorGamut, E: Eotf> RgbToSpectrumTable<G, E> {
             a + (b - a) * t
         }
 
-        // RGBの成分を取得。
+        // RGBの最大値が1.0を超えている場合はエラーとする。
         let rgb = color.rgb().max(glam::Vec3::splat(0.0));
         if rgb.max_element() > 1.0 {
             panic!("RGB elements must be in the range [0, 1]");
@@ -61,9 +61,8 @@ impl<G: ColorGamut, E: Eotf> RgbToSpectrumTable<G, E> {
             return [0.0, 0.0, (rgb.x - 0.5) / (rgb.x * (1.0 - rgb.x).sqrt())];
         }
 
-        println!("eotf color={:?}", color.rgb());
+        // RGBのEOTFを逆変換してリニアな値にする。
         let color = color.invert_eotf();
-        println!("invert eotf color={:?}", color.rgb());
         let rgb = color.rgb().max(glam::Vec3::splat(0.0));
 
         // RGBの最大成分を元にマップし直す。
@@ -81,11 +80,6 @@ impl<G: ColorGamut, E: Eotf> RgbToSpectrumTable<G, E> {
         let dx = x - xi as f32;
         let dy = y - yi as f32;
         let dz = (z as f32 - self.z_nodes[zi]) / (self.z_nodes[zi + 1] - self.z_nodes[zi]);
-
-        println!("zi={zi}, xi={xi}, yi={yi}, dz={dz}, dx={dx}, dy={dy}");
-        println!("z={z}");
-        println! {"z_nodes[zi]={}", self.z_nodes[zi]};
-        println! {"z_nodes[zi+1]={}", self.z_nodes[zi + 1]};
 
         // シグモイド二次式の係数を補間して計算する。
         let mut cs = [0.0; 3];
