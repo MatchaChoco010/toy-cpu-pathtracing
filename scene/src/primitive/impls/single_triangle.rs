@@ -140,6 +140,7 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for SingleTriangle<Id> {
                 shading_normal: &self.local_to_render * shading_normal,
                 tangent: &self.local_to_render * tangent,
                 uv,
+                material: self.material.clone(),
                 primitive_index,
                 geometry_info: InteractGeometryInfo::None,
             },

@@ -234,7 +234,6 @@ pub fn cie_illum_a() -> Spectrum {
 
 /// CIEの定義した標準光源のD光源に対応するスペクトルを返す関数。
 /// およそ6504Kを与えるとほぼD65の光源になる。
-#[inline(always)]
 pub fn cie_d(temperature: f32) -> Spectrum {
     // temperatureをCCTに変換する。
     let cct = temperature / 1.4388 / 1.4380;

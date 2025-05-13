@@ -39,8 +39,8 @@ pub trait Bsdf<Id: SceneId>: Send + Sync {
     fn sample(
         &self,
         uv: glam::Vec2,
-        lambda: SampledWavelengths,
-        wo: Vector3<Tangent>,
-        shading_point: SurfaceInteraction<Id, Tangent>,
+        lambda: &SampledWavelengths,
+        wo: &Vector3<Tangent>,
+        shading_point: &SurfaceInteraction<Id, Tangent>,
     ) -> Option<BsdfSample>;
 }
