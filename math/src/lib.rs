@@ -4,7 +4,6 @@
 
 mod bounds;
 mod coordinate_system;
-mod matrix;
 mod normal;
 mod point;
 mod ray;
@@ -14,7 +13,6 @@ mod vector;
 
 pub use bounds::*;
 pub use coordinate_system::*;
-pub use matrix::*;
 pub use normal::*;
 pub use point::*;
 pub use ray::*;

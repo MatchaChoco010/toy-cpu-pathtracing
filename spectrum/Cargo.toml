@@ -13,5 +13,5 @@ util_macros.workspace = true
 anyhow.workspace = true
 color.workspace = true
 glam.workspace = true
-math.workspace = true
 rayon.workspace = true
+rgb_to_spec.workspace = true

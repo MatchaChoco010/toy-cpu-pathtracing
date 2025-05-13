@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use color::{
     Color, ColorAces2065_1, ColorAcesCg, ColorAdobeRGB, ColorDisplayP3, ColorP3D65, ColorRec709,
-    ColorRec2020, ColorSrgb,
+    ColorRec2020, ColorSrgb, tone_map,
 };
 
 use crate::presets;
@@ -27,7 +27,7 @@ macro_rules! impl_rgb_illuminant_spectrum {
                 let rgb = color.rgb();
                 let max = rgb.max_element();
                 let scale = 2.0 * max;
-                let scaled_color = <$color>::from_vec3(rgb / scale);
+                let scaled_color = <$color>::from_rgb(rgb / scale);
                 let table = RgbSigmoidPolynomial::from(scaled_color);
                 Arc::new(Self {
                     illuminant,
@@ -48,11 +48,11 @@ macro_rules! impl_rgb_illuminant_spectrum {
     };
 }
 
-impl_rgb_illuminant_spectrum!(ColorSrgb);
-impl_rgb_illuminant_spectrum!(ColorDisplayP3);
-impl_rgb_illuminant_spectrum!(ColorP3D65);
-impl_rgb_illuminant_spectrum!(ColorAdobeRGB);
-impl_rgb_illuminant_spectrum!(ColorRec709);
-impl_rgb_illuminant_spectrum!(ColorRec2020);
-impl_rgb_illuminant_spectrum!(ColorAcesCg);
-impl_rgb_illuminant_spectrum!(ColorAces2065_1);
+impl_rgb_illuminant_spectrum!(ColorSrgb<tone_map::NoneToneMap>);
+impl_rgb_illuminant_spectrum!(ColorDisplayP3<tone_map::NoneToneMap>);
+impl_rgb_illuminant_spectrum!(ColorP3D65<tone_map::NoneToneMap>);
+impl_rgb_illuminant_spectrum!(ColorAdobeRGB<tone_map::NoneToneMap>);
+impl_rgb_illuminant_spectrum!(ColorRec709<tone_map::NoneToneMap>);
+impl_rgb_illuminant_spectrum!(ColorRec2020<tone_map::NoneToneMap>);
+impl_rgb_illuminant_spectrum!(ColorAcesCg<tone_map::NoneToneMap>);
+impl_rgb_illuminant_spectrum!(ColorAces2065_1<tone_map::NoneToneMap>);
