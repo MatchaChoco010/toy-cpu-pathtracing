@@ -4,8 +4,6 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-autodiff = { version = "0.7.0" }
 color.workspace = true
 glam.workspace = true
-rand.workspace = true
 rayon.workspace = true

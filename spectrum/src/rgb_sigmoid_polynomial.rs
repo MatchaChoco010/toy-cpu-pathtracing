@@ -1,4 +1,4 @@
-//! RGBをシグモイドを掛けた多項式を利用してスペクトルを評価し、
+//! RGBをシグモイドを掛けた二次式を利用してスペクトルを評価し、
 //! スペクトルの波長成分を計算するモジュール。
 
 use std::marker::PhantomData;
@@ -17,8 +17,7 @@ use color::{
 use crate::spectrum::{LAMBDA_MAX, LAMBDA_MIN};
 
 ///作成するテーブルの配列のサイズ。
-// const TABLE_SIZE: usize = 64;
-const TABLE_SIZE: usize = 16;
+const TABLE_SIZE: usize = 64;
 
 /// シグモイド関数。
 fn sigmoid(x: f32) -> f32 {
@@ -28,27 +27,8 @@ fn sigmoid(x: f32) -> f32 {
     0.5 + x / (2.0 * (1.0 + x * x).sqrt())
 }
 
-fn exp(x: f32) -> f32 {
-    if x.is_infinite() {
-        return 0.0;
-    }
-    x.exp()
-}
-
-/// 多項式を計算する関数。
-fn evaluate_polynomial(t: f32, coefficients: &[f32]) -> f32 {
-    // if coefficients.len() == 1 {
-    //     return coefficients[0];
-    // }
-    // let (&c, cs) = coefficients.split_first().unwrap();
-    // t * evaluate_polynomial(t, cs) + c
-
-    // let mut x = 0.0;
-    // for c in coefficients.iter() {
-    //     x = x * t + c;
-    // }
-    // x
-
+/// 係数から二次式を計算する関数。
+fn parabolic(t: f32, coefficients: &[f32]) -> f32 {
     // coefficients[0]だけxに平行移動してcoefficients[1]だけyに平行移動した、
     // 係数coefficients[2]に100を乗じた二次式。
     let x = t - coefficients[0];
@@ -63,7 +43,7 @@ struct RgbToSpectrumTable<G: ColorGamut, E: Eotf> {
     _color_space: PhantomData<ColorImpl<G, NoneToneMap, E>>,
 }
 impl<G: ColorGamut, E: Eotf> RgbToSpectrumTable<G, E> {
-    /// テーブルから多項式の係数を取得する。
+    /// テーブルから二次式の係数を取得する。
     fn get(&self, color: ColorImpl<G, NoneToneMap, E>) -> [f32; 3] {
         /// 線形補間を行う関数。
         fn lerp(a: f32, b: f32, t: f32) -> f32 {
@@ -79,7 +59,6 @@ impl<G: ColorGamut, E: Eotf> RgbToSpectrumTable<G, E> {
         // RGBの成分が均一の場合は特別に定数関数になるように返す。
         if rgb.x == rgb.y && rgb.y == rgb.z {
             return [0.0, 0.0, (rgb.x - 0.5) / (rgb.x * (1.0 - rgb.x).sqrt())];
-            // return [(rgb.x - 0.5) / (rgb.x * (1.0 - rgb.x).sqrt()), 0.0, 0.0];
         }
 
         println!("eotf color={:?}", color.rgb());
@@ -108,15 +87,15 @@ impl<G: ColorGamut, E: Eotf> RgbToSpectrumTable<G, E> {
         println! {"z_nodes[zi]={}", self.z_nodes[zi]};
         println! {"z_nodes[zi+1]={}", self.z_nodes[zi + 1]};
 
-        // シグモイド多項式の係数を補間して計算する。
+        // シグモイド二次式の係数を補間して計算する。
         let mut cs = [0.0; 3];
         for i in 0..3 {
-            // シグモイド多項式の係数を参照するラムダを定義する。
+            // シグモイド二次式の係数を参照するラムダを定義する。
             let co = |dx: usize, dy: usize, dz: usize| {
                 self.table[max_component][zi + dz][yi + dy][xi + dx][i]
             };
 
-            // シグモイド多項式の係数cを線形補間する。
+            // シグモイド二次式の係数cを線形補間する。
             cs[i] = lerp(
                 lerp(
                     lerp(co(0, 0, 0), co(1, 0, 0), dx),
@@ -136,7 +115,7 @@ impl<G: ColorGamut, E: Eotf> RgbToSpectrumTable<G, E> {
     }
 }
 
-/// RGBからシグモイドを掛けた多項式でフィッティングしたスペクトルを保持し、
+/// RGBからシグモイドを掛けた二次式でフィッティングしたスペクトルを保持し、
 /// 波長に対するスペクトルの値を引くことができる構造体。
 #[derive(Clone)]
 pub struct RgbSigmoidPolynomial<C: Color + Clone> {
@@ -159,8 +138,7 @@ impl<C: Color> RgbSigmoidPolynomial<C> {
     /// SigmoidPolynomialの特定の波長における値を評価する。
     pub fn value(&self, lambda: f32) -> f32 {
         let lambda = (lambda - LAMBDA_MIN) / (LAMBDA_MAX - LAMBDA_MIN);
-        sigmoid(evaluate_polynomial(lambda, &[self.c0, self.c1, self.c2]))
-        // exp(evaluate_polynomial(lambda, &[self.c0, self.c1, self.c2]))
+        sigmoid(parabolic(lambda, &[self.c0, self.c1, self.c2]))
     }
 
     /// SigmoidPolynomialの最大値を評価する。
