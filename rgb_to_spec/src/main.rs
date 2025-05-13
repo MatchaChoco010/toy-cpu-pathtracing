@@ -1,6 +1,5 @@
 mod data;
 mod init;
-mod matrix;
 
 use init::TABLE_SIZE;
 

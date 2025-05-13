@@ -5,7 +5,7 @@ use std::sync::Arc;
 use color::{ColorSrgb, tone_map::NoneToneMap};
 use math::{Normal, Point3, Transform, Vector3};
 use scene::{CreatePrimitiveDesc, Scene, SceneId, SurfaceMaterial, bsdf, edf};
-use spectrum::{RgbAlbedoSpectrum, RgbIlluminantSpectrum, presets};
+use spectrum::{RgbAlbedoSpectrum, presets};
 
 use crate::camera::Camera;
 use crate::filter::Filter;
@@ -46,9 +46,9 @@ pub fn load_scene_0<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
             bsdf: Some(bsdf::NormalizedLambert::new(RgbAlbedoSpectrum::<
                 ColorSrgb<NoneToneMap>,
             >::new(
-                ColorSrgb::new(0.9, 0.0, 0.0),
+                // ColorSrgb::new(0.9, 0.0, 0.0),
                 // ColorSrgb::new(0.9, 0.0, 0.9),
-                // ColorSrgb::new(0.9, 0.28, 0.28),
+                ColorSrgb::new(0.9, 0.28, 0.28),
                 // ColorSrgb::new(0.8, 0.8, 0.8),
             ))),
             edf: None,
@@ -63,10 +63,10 @@ pub fn load_scene_0<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
             bsdf: Some(bsdf::NormalizedLambert::new(RgbAlbedoSpectrum::<
                 ColorSrgb<NoneToneMap>,
             >::new(
-                // ColorSrgb::new(0.28, 0.9, 0.28),
+                ColorSrgb::new(0.28, 0.9, 0.28),
                 // ColorSrgb::new(0.0, 0.1, 0.0),
                 // ColorSrgb::new(0.0, 0.9, 0.0),
-                ColorSrgb::new(107.0 / 255.0, 123.0 / 255.0, 110.0 / 255.0),
+                // ColorSrgb::new(107.0 / 255.0, 123.0 / 255.0, 110.0 / 255.0),
                 // ColorSrgb::new(0.0, 0.9, 0.9),
                 // ColorSrgb::new(0.8, 0.8, 0.8),
             ))),
@@ -122,10 +122,6 @@ pub fn load_scene_0<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
         geometry_index: geom,
         surface_material: Arc::new(SurfaceMaterial {
             bsdf: None,
-            // edf: Some(edf::Uniform::new(
-            //     RgbIlluminantSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(1.0, 1.0, 1.0)),
-            //     1.0,
-            // )),
             edf: Some(edf::Uniform::new(presets::cie_illum_d6500(), 1.0)),
         }),
         transform: Transform::identity(),
