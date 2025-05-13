@@ -17,6 +17,13 @@ impl<C: CoordinateSystem> Ray<C> {
         let dir = dir.as_ref().clone();
         Self { origin, dir }
     }
+
+    /// Rayの原点を少しだけdirの方向に移動させたRayを返す。
+    #[inline(always)]
+    pub fn move_forward(&self, distance: f32) -> Self {
+        let origin = self.origin + self.dir * distance;
+        Self::new(origin, self.dir)
+    }
 }
 impl<C: CoordinateSystem> AsRef<Ray<C>> for Ray<C> {
     #[inline(always)]
@@ -103,6 +110,7 @@ pub fn intersect_triangle<C: CoordinateSystem>(
     if det == 0.0 {
         return None;
     }
+    assert!(det.is_finite());
 
     // zのシアー変形を適用する。
     p0_o.z *= s_z;

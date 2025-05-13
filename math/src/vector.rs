@@ -1,6 +1,7 @@
 //! 空間での方向を表すベクトルを定義するモジュール
 
 use std::marker::PhantomData;
+use std::ops::Neg;
 
 use util_macros::impl_binary_ops;
 
@@ -91,6 +92,13 @@ impl<C: CoordinateSystem> AsRef<Vector3<C>> for Vector3<C> {
     #[inline(always)]
     fn as_ref(&self) -> &Vector3<C> {
         &self
+    }
+}
+impl<C: CoordinateSystem> Neg for Vector3<C> {
+    type Output = Self;
+    #[inline(always)]
+    fn neg(self) -> Self::Output {
+        Self::from(-self.vec)
     }
 }
 #[impl_binary_ops(Mul)]

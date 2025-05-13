@@ -4,8 +4,7 @@ use std::marker::PhantomData;
 
 use crate::eotf::{Eotf, Gamma2_2, Gamma2_6, GammaRec709, GammaSrgb, Linear};
 use crate::gamut::{
-    ColorGamut, GamutAces2065_1, GamutAcesCg, GamutAdobeRgb, GamutDciP3D65, GamutRec2020,
-    GamutSrgb, xy_to_xyz,
+    ColorGamut, GamutAces2065_1, GamutAcesCg, GamutAdobeRgb, GamutDciP3D65, GamutRec2020, GamutSrgb,
 };
 use crate::tone_map::{InvertibleToneMap, NoneToneMap, ToneMap};
 

@@ -1,6 +1,6 @@
 //! RgbSpectrumTableのテーブル配列を定義するためのビルドスクリプト。
 
-use std::env;use std::env;
+use std::env;
 use std::fs::File;
 use std::io::Write;
 
