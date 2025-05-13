@@ -90,14 +90,14 @@ impl<Id: SceneId> Scene<Id> {
 
     /// ライトのサンプラーを取得する。
     /// build()を呼び出す前に呼び出すとpanicする。
-    pub fn light_sampler(&self, lambda: SampledWavelengths) -> LightSampler<Id> {
+    pub fn light_sampler(&self, lambda: &SampledWavelengths) -> LightSampler<Id> {
         if self.light_sampler_factory.is_none() {
             panic!("Light sampler is not built");
         }
         self.light_sampler_factory
             .as_ref()
             .unwrap()
-            .create(&self.primitive_repository, &lambda)
+            .create(&self.primitive_repository, lambda)
     }
 }
 

@@ -1,9 +1,12 @@
 //! シーン上の点をサンプルした結果を持つ構造体を定義するモジュール。
 
+use std::sync::Arc;
+
 use math::{CoordinateSystem, Normal, Point3, Transform, Vector3};
 use spectrum::SampledSpectrum;
 use util_macros::impl_binary_ops;
 
+use crate::SurfaceMaterial;
 use crate::{SceneId, primitive::PrimitiveIndex};
 
 /// サンプルしたジオメトリを特定するための情報を持つ列挙型。
@@ -30,6 +33,8 @@ pub struct SurfaceInteraction<Id: SceneId, C: CoordinateSystem> {
     pub tangent: Vector3<C>,
     /// サンプルしたUV座標。
     pub uv: glam::Vec2,
+    /// マテリアル。
+    pub material: Arc<SurfaceMaterial<Id>>,
     /// サンプルしたプリミティブのインデックス。
     pub primitive_index: PrimitiveIndex<Id>,
     /// サンプルしたジオメトリの追加情報。
@@ -46,6 +51,7 @@ fn mul<Id: SceneId, From: CoordinateSystem, To: CoordinateSystem>(
         shading_normal: lhs * rhs.shading_normal,
         tangent: lhs * rhs.tangent,
         uv: rhs.uv,
+        material: rhs.material.clone(),
         primitive_index: rhs.primitive_index,
         geometry_info: rhs.geometry_info,
     }

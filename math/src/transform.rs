@@ -153,16 +153,19 @@ impl Transform<Render, Tangent> {
         shading_normal: &Normal<Render>,
         tangent: &Vector3<Render>,
     ) -> Transform<Render, Tangent> {
-        let shading_tangent = (tangent.to_vec3()
-            - shading_normal.to_vec3().dot(tangent.to_vec3()) * shading_normal.to_vec3())
-        .normalize();
-        let shading_bitangent = shading_normal.to_vec3().cross(shading_tangent).normalize();
+        // let shading_tangent = (tangent.to_vec3()
+        //     - shading_normal.to_vec3().dot(tangent.to_vec3()) * shading_normal.to_vec3())
+        // .normalize();
+        // let shading_bitangent = shading_tangent.cross(shading_normal.to_vec3()).normalize();
+        let shading_normal = shading_normal.to_vec3().normalize();
+        let shading_bitangent = tangent.to_vec3().cross(shading_normal).normalize();
+        let shading_tangent = shading_bitangent.cross(shading_normal);
         let matrix = glam::Mat4::from_cols(
             shading_tangent.extend(0.0),
-            shading_normal.to_vec3().extend(0.0),
+            shading_normal.extend(0.0),
             shading_bitangent.extend(0.0),
-            glam::Vec4::ZERO,
+            glam::vec4(0.0, 0.0, 0.0, 1.0),
         );
-        Transform::from_matrix(matrix)
+        Transform::from_matrix(matrix.inverse())
     }
 }

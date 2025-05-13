@@ -5,11 +5,13 @@ pub mod filter;
 pub mod renderer;
 pub mod sampler;
 pub mod scene;
+pub mod tone_map;
 
 use camera::Camera;
 use filter::BoxFilter;
-use renderer::{NormalRenderer, RendererArgs, RendererImage};
+use renderer::{NormalRenderer, RendererArgs, RendererImage, SrgbRenderer};
 use sampler::RandomSamplerFactory;
+use tone_map::ReinhardToneMap;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -35,6 +37,9 @@ struct Args {
     /// Output image height
     #[arg(short, long, default_value_t = 600)]
     height: u32,
+    /// Maximum depth for the renderer
+    #[arg(short = 'd', long, default_value_t = 16)]
+    max_depth: usize,
 }
 
 fn main() {
@@ -65,6 +70,8 @@ fn main() {
 
     let spp = args.spp;
 
+    let max_depth = args.max_depth;
+
     // シーンのビルド。
     println!("Start build scene...");
     let start = std::time::Instant::now();
@@ -83,21 +90,40 @@ fn main() {
         camera: &camera,
         sampler_factory: &sampler_factory,
     };
-    let renderer = match args.renderer.as_str() {
-        "normal" => NormalRenderer::new(renderer_args),
+    match args.renderer.as_str() {
+        "normal" => {
+            let renderer = NormalRenderer::new(renderer_args);
+            let mut image = RendererImage::new(width, height, renderer);
+
+            // レンダリングを開始する。
+            println!("Start rendering...");
+            let start = std::time::Instant::now();
+
+            image.render();
+
+            let end = start.elapsed();
+            println!("Finish rendering: {} seconds.", end.as_secs_f32());
+
+            // 画像を保存する。
+            image.save("output.png");
+        }
+        "srgb" => {
+            let tone_map = ReinhardToneMap::new();
+            let renderer = SrgbRenderer::new(renderer_args, tone_map, 0.1, max_depth);
+            let mut image = RendererImage::new(width, height, renderer);
+
+            // レンダリングを開始する。
+            println!("Start rendering...");
+            let start = std::time::Instant::now();
+
+            image.render();
+
+            let end = start.elapsed();
+            println!("Finish rendering: {} seconds.", end.as_secs_f32());
+
+            // 画像を保存する。
+            image.save("output.png");
+        }
         _ => panic!("Invalid renderer"),
     };
-    let mut image = RendererImage::new(width, height, renderer);
-
-    // レンダリングを開始する。
-    println!("Start rendering...");
-    let start = std::time::Instant::now();
-
-    image.render();
-
-    let end = start.elapsed();
-    println!("Finish rendering: {} seconds.", end.as_secs_f32());
-
-    // 画像を保存する。
-    image.save("output.png");
 }

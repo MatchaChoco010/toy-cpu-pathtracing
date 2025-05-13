@@ -2,13 +2,16 @@
 
 use std::sync::Arc;
 
+use util_macros::impl_assign_ops;
+
 use crate::spectrum::{LAMBDA_MAX, LAMBDA_MIN, Spectrum, SpectrumTrait};
+use crate::{SampledSpectrum, SampledWavelengths};
 
 const N_SPECTRUM_SAMPLES: usize = (LAMBDA_MAX - LAMBDA_MIN) as usize;
 
 /// 密にサンプリングされたスペクトルを表す構造体。
 /// 1nmごとにサンプリングされたスペクトル強度を格納する。
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct DenselySampledSpectrum {
     values: [f32; N_SPECTRUM_SAMPLES],
     max_value: f32,
@@ -27,6 +30,26 @@ impl DenselySampledSpectrum {
         Arc::new(Self { values, max_value })
     }
 
+    /// ゼロで初期化された密にサンプリングされたスペクトルを作成する。
+    pub fn zero() -> Self {
+        let values = [0.0; N_SPECTRUM_SAMPLES];
+        Self {
+            values,
+            max_value: 0.0,
+        }
+    }
+
+    /// SampledSpectrumを足し合わせる。
+    pub fn add_sample(&mut self, lambda: &SampledWavelengths, s: SampledSpectrum) {
+        for index in 0..crate::N_SPECTRUM_SAMPLES {
+            let l = lambda.lambda(index);
+            let i = (l - LAMBDA_MIN).floor() as usize;
+            let i = if i == N_SPECTRUM_SAMPLES { 0 } else { i };
+            self.values[i] += s.value(index) / lambda.pdf().value(index);
+            self.max_value = self.max_value.max(self.values[i]);
+        }
+    }
+
     /// 与えられたスペクトルをサンプリングして、密にサンプリングされたスペクトルを作成する。
     pub fn from(spectrum: &Spectrum) -> Spectrum {
         let mut values = [0.0; N_SPECTRUM_SAMPLES];
@@ -34,6 +57,7 @@ impl DenselySampledSpectrum {
         for i in 0..N_SPECTRUM_SAMPLES {
             let lambda = LAMBDA_MIN + i as f32;
             values[i] = spectrum.value(lambda);
+            assert!(values[i] >= 0.0);
             if values[i] > max_value {
                 max_value = values[i];
             }
@@ -46,7 +70,7 @@ impl SpectrumTrait for DenselySampledSpectrum {
         if lambda < LAMBDA_MIN || lambda > LAMBDA_MAX {
             return 0.0;
         }
-        let index = (lambda - LAMBDA_MIN).round() as usize;
+        let index = (lambda - LAMBDA_MIN).floor() as usize;
         if index < self.values.len() {
             self.values[index]
         } else {
@@ -56,5 +80,11 @@ impl SpectrumTrait for DenselySampledSpectrum {
 
     fn max_value(&self) -> f32 {
         self.max_value
+    }
+}
+#[impl_assign_ops(DivAssign)]
+fn div_assign(lhs: &mut DenselySampledSpectrum, rhs: &f32) {
+    for i in 0..N_SPECTRUM_SAMPLES {
+        lhs.values[i] /= *rhs;
     }
 }

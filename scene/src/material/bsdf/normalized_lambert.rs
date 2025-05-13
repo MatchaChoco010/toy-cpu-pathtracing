@@ -32,11 +32,11 @@ impl<Id: SceneId> Bsdf<Id> for NormalizedLambert {
     fn sample(
         &self,
         uv: glam::Vec2,
-        lambda: SampledWavelengths,
-        wo: Vector3<Tangent>,
-        _shading_point: SurfaceInteraction<Id, Tangent>,
+        lambda: &SampledWavelengths,
+        wo: &Vector3<Tangent>,
+        _shading_point: &SurfaceInteraction<Id, Tangent>,
     ) -> Option<BsdfSample> {
-        if wo.y() < 0.0 {
+        if wo.y() == 0.0 {
             // woが完全に接戦方向の場合はBsdfをサンプリングしない。
             return None;
         }
@@ -44,7 +44,7 @@ impl<Id: SceneId> Bsdf<Id> for NormalizedLambert {
         // ランダムな方向をサンプリングする。
         let wi = sample_cosine_hemisphere(uv);
         let wi = if wo.y() < 0.0 {
-            // woが接戦方向の場合はwiを反転する。
+            // woが法線と逆の方向の場合はwiを反転する。
             Vector3::new(wi.x(), -wi.y(), wi.z())
         } else {
             wi

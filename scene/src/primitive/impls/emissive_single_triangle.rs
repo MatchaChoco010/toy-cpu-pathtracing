@@ -153,6 +153,7 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for EmissiveSingleTriangle<Id> {
                 shading_normal: &self.local_to_render * shading_normal,
                 tangent: &self.local_to_render * tangent,
                 uv,
+                material: self.material.clone(),
                 primitive_index: _primitive_index,
                 geometry_info: InteractGeometryInfo::TriangleMesh {
                     triangle_index: 0, // TODO: 三角形のインデックスを取得する
@@ -270,6 +271,7 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveSingleTriangle<Id> {
                 shading_normal,
                 tangent,
                 uv,
+                material: self.material.clone(),
                 primitive_index,
                 geometry_info: InteractGeometryInfo::None,
             },

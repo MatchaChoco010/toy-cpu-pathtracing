@@ -104,7 +104,6 @@ impl<G: ColorGamut, E: Eotf> RgbToSpectrumTable<G, E> {
                 dz,
             );
         }
-        println! {"cs={:?}", cs};
         cs
     }
 }
