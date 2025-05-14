@@ -9,8 +9,8 @@ use crate::{
     SurfaceMaterial,
     geometry::GeometryRepository,
     primitive::traits::{
-        Primitive, PrimitiveAreaLight, PrimitiveDeltaLight, PrimitiveGeometry,
-        PrimitiveInfiniteLight, PrimitiveLight, PrimitiveNonDeltaLight,
+        Primitive, PrimitiveAreaLight, PrimitiveDeltaDirectionalLight, PrimitiveDeltaPointLight,
+        PrimitiveGeometry, PrimitiveInfiniteLight, PrimitiveLight, PrimitiveNonDeltaLight,
     },
 };
 
@@ -67,7 +67,11 @@ impl<Id: SceneId> Primitive<Id> for SingleTriangle<Id> {
         None
     }
 
-    fn as_delta_light(&self) -> Option<&dyn PrimitiveDeltaLight<Id>> {
+    fn as_delta_point_light(&self) -> Option<&dyn PrimitiveDeltaPointLight<Id>> {
+        None
+    }
+
+    fn as_delta_directional_light(&self) -> Option<&dyn PrimitiveDeltaDirectionalLight<Id>> {
         None
     }
 
@@ -104,6 +108,7 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for SingleTriangle<Id> {
         ray: &Ray<Render>,
         t_max: f32,
     ) -> Option<Intersection<Id, Render>> {
+        let wo = -ray.dir;
         let ray = &self.local_to_render.inverse() * ray;
         let hit = match intersect_triangle(&ray, t_max, self.positions) {
             Some(hit) => hit,
@@ -134,6 +139,7 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for SingleTriangle<Id> {
 
         Some(Intersection {
             t_hit: hit.t_hit,
+            wo,
             interaction: SurfaceInteraction {
                 position: &self.local_to_render * hit.position,
                 normal: &self.local_to_render * hit.normal,
@@ -145,5 +151,19 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for SingleTriangle<Id> {
                 geometry_info: InteractGeometryInfo::None,
             },
         })
+    }
+
+    fn intersect_p(
+        &self,
+        _primitive_index: PrimitiveIndex<Id>,
+        _geometry_repository: &GeometryRepository<Id>,
+        ray: &Ray<Render>,
+        t_max: f32,
+    ) -> bool {
+        let ray = &self.local_to_render.inverse() * ray;
+        match intersect_triangle(&ray, t_max, self.positions) {
+            Some(_) => true,
+            None => false,
+        }
     }
 }

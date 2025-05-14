@@ -17,6 +17,7 @@ impl Uniform {
     ///
     /// # Arguments
     /// - `radiance` - 放射輝度スペクトル
+    /// - `intensity` - 強度
     pub fn new(radiance: Spectrum, intensity: f32) -> Box<Self> {
         Box::new(Self {
             radiance,

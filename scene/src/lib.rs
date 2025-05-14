@@ -9,7 +9,8 @@ pub use geometry::{Geometry, GeometryIndex};
 pub use light_sampler::{LightSample, LightSampler};
 pub use material::{Bsdf, BsdfSample, Edf, SurfaceMaterial, bsdf, edf};
 pub use primitive::{
-    CreatePrimitiveDesc, InteractGeometryInfo, Intersection, LightIrradiance, LightSampleRadiance,
-    PrimitiveBvh, PrimitiveIndex, SurfaceInteraction,
+    AreaLightSampleRadiance, CreatePrimitiveDesc, DeltaDirectionalLightLightIrradiance,
+    DeltaPointLightIrradiance, InteractGeometryInfo, Intersection, LightIntensity, PrimitiveBvh,
+    PrimitiveIndex, SurfaceInteraction,
 };
 pub use scene::{Scene, SceneId, WorldToRender, internal};

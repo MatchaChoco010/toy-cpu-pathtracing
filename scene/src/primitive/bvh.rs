@@ -1,6 +1,6 @@
 //! プリミティブのBVHを構築するモジュール。
 
-use math::{Bounds, CoordinateSystem, Ray, Render, Transform};
+use math::{Bounds, CoordinateSystem, Ray, Render, Transform, Vector3};
 use util_macros::impl_binary_ops;
 
 use crate::{
@@ -52,6 +52,19 @@ impl<Id: SceneId> BvhItem<Render> for PrimitiveIndex<Id> {
             intersection,
         })
     }
+
+    fn intersect_p<'a>(&self, data: &Self::Data<'a>, ray: &Ray<Render>, t_max: f32) -> bool
+    where
+        Id: 'a,
+    {
+        let (geometry_repository, primitive_repository) = data;
+        let primitive = primitive_repository.get(*self);
+        let geometry = match primitive.as_geometry() {
+            Some(geometry) => geometry,
+            None => unreachable!(),
+        };
+        geometry.intersect_p(*self, geometry_repository, ray, t_max)
+    }
 }
 
 /// BVHのアイテム用のデータトレイトをリポジトリのタプルに実装する。
@@ -71,6 +84,8 @@ impl<Id: SceneId> BvhItemData<PrimitiveIndex<Id>>
 pub struct Intersection<Id: SceneId, C: CoordinateSystem> {
     /// 交差した位置。
     pub t_hit: f32,
+    /// 出射方向。
+    pub wo: Vector3<C>,
     /// 交差した情報。
     pub interaction: SurfaceInteraction<Id, C>,
 }
@@ -81,6 +96,7 @@ fn mul<Id: SceneId, From: CoordinateSystem, To: CoordinateSystem>(
 ) -> Intersection<Id, To> {
     Intersection {
         t_hit: rhs.t_hit,
+        wo: lhs * rhs.wo,
         interaction: lhs * &rhs.interaction,
     }
 }
@@ -118,7 +134,7 @@ impl<Id: SceneId> PrimitiveBvh<Id> {
         self.bvh.bounds()
     }
 
-    /// シーン内のプリミティブとの交差判定を行う。
+    /// シーン内のプリミティブとの交差判定を行い情報を返す。
     pub fn intersect(
         &self,
         geometry_repository: &GeometryRepository<Id>,
@@ -128,5 +144,17 @@ impl<Id: SceneId> PrimitiveBvh<Id> {
     ) -> Option<Intersection<Id, Render>> {
         let data = (geometry_repository, primitive_repository);
         self.bvh.intersect(&data, ray, t_max)
+    }
+
+    /// シーン内のプリミティブとの交差判定を行う。
+    pub fn intersect_p(
+        &self,
+        geometry_repository: &GeometryRepository<Id>,
+        primitive_repository: &PrimitiveRepository<Id>,
+        ray: &Ray<Render>,
+        t_max: f32,
+    ) -> bool {
+        let data = (geometry_repository, primitive_repository);
+        self.bvh.intersect_p(&data, ray, t_max)
     }
 }

@@ -2,3 +2,4 @@
 .direnv/
 /result
 output.png
+output.*.png

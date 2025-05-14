@@ -36,13 +36,18 @@ pub trait BvhItem<C: CoordinateSystem>: Clone + Copy {
     where
         Self: 'a;
 
-    /// アイテムとレイの交差判定を行う。
+    /// アイテムとレイの交差判定を行い情報を返す。
     fn intersect<'a>(
         &self,
         data: &Self::Data<'a>,
         ray: &Ray<C>,
         t_max: f32,
     ) -> Option<HitInfo<Self::Intersection>>
+    where
+        Self: 'a;
+
+    /// アイテムとレイの交差判定を行う。
+    fn intersect_p<'a>(&self, data: &Self::Data<'a>, ray: &Ray<C>, t_max: f32) -> bool
     where
         Self: 'a;
 }
@@ -440,5 +445,81 @@ impl<C: CoordinateSystem, Item: BvhItem<C>> Bvh<C, Item> {
         } else {
             None
         }
+    }
+
+    /// 交差判定を行う。
+    pub fn intersect_p<'a>(&self, data: &Item::Data<'a>, ray: &Ray<C>, t_max: f32) -> bool {
+        // ルートノードから再帰的に探索を行う。
+        // flat化されたノードをindexでたどることで、ノードを探索する。
+        fn traverse<'a, C: CoordinateSystem, Item: BvhItem<C>>(
+            data: &Item::Data<'a>,
+            nodes: &Vec<BvhNode<C, Item>>,
+            index: usize,
+            ray: &Ray<C>,
+            t_max: f32,
+            inv_dir: glam::Vec3,
+        ) -> bool {
+            let item = &nodes[index];
+            match item {
+                BvhNode::Node {
+                    bounds,
+                    second_offset,
+                } => {
+                    // ノードのバウンディングボックスとレイの交差判定を行い、交差していなければスキップ。
+                    if bounds.intersect(ray, t_max, inv_dir).is_none() {
+                        return false;
+                    }
+
+                    // firstノードの交差判定を行う。
+                    let first = traverse(data, nodes, index + 1, ray, t_max, inv_dir);
+                    if first {
+                        return true;
+                    }
+
+                    // secondノードの交差判定を行う。
+                    let second = traverse(
+                        data,
+                        nodes,
+                        index + *second_offset as usize,
+                        ray,
+                        t_max,
+                        inv_dir,
+                    );
+                    if second {
+                        return true;
+                    }
+
+                    false
+                }
+                BvhNode::Leaf { bounds, item_count } => {
+                    // ノードのバウンディングボックスとレイの交差判定を行い、交差していなければスキップ。
+                    if bounds.intersect(ray, t_max, inv_dir).is_none() {
+                        return false;
+                    }
+
+                    // アイテムの数だけループして、交差判定を行う。
+                    for i in 1..(*item_count + 1) {
+                        let item = match &nodes[index + i as usize] {
+                            BvhNode::Item { item } => *item,
+                            _ => unreachable!(),
+                        };
+                        let intersection = item.intersect_p(data, ray, t_max);
+
+                        if intersection {
+                            return true;
+                        }
+                    }
+
+                    false
+                }
+                _ => unreachable!(),
+            }
+        }
+
+        // レイのヒット計算で利用する、レイの方向ベクトルの要素ごとの逆数を計算する。
+        let inv_dir = 1.0 / ray.dir.to_vec3();
+
+        // レイのヒット計算を行う。
+        traverse(data, &self.nodes, 0, ray, t_max, inv_dir)
     }
 }

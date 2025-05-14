@@ -6,7 +6,8 @@ use math::{Ray, Render, World};
 use spectrum::SampledWavelengths;
 
 use crate::{
-    CreatePrimitiveDesc, GeometryIndex, Intersection, LightSampler, PrimitiveIndex,
+    CreatePrimitiveDesc, GeometryIndex, Intersection, LightIntensity, LightSampler, PrimitiveIndex,
+    SurfaceInteraction,
     geometry::GeometryRepository,
     light_sampler::LightSamplerFactory,
     primitive::{PrimitiveBvh, PrimitiveRepository},
@@ -88,6 +89,19 @@ impl<Id: SceneId> Scene<Id> {
         )
     }
 
+    /// 交差判定を計算する。
+    pub fn intersect_p(&self, ray: &Ray<Render>, t_max: f32) -> bool {
+        if self.bvh.is_none() {
+            panic!("BVH is not built");
+        }
+        self.bvh.as_ref().unwrap().intersect_p(
+            &self.geometry_repository,
+            &self.primitive_repository,
+            ray,
+            t_max,
+        )
+    }
+
     /// ライトのサンプラーを取得する。
     /// build()を呼び出す前に呼び出すとpanicする。
     pub fn light_sampler(&self, lambda: &SampledWavelengths) -> LightSampler<Id> {
@@ -98,6 +112,48 @@ impl<Id: SceneId> Scene<Id> {
             .as_ref()
             .unwrap()
             .create(&self.primitive_repository, lambda)
+    }
+
+    /// 光源の強さを計算する。
+    /// 光源がデルタライトの場合はLightIntensity::Irradianceを返す。
+    /// 面積光源の場合はLightIntensity::Radianceを返す。
+    ///
+    /// # Arguments
+    /// * `primitive_index` - ライトのプリミティブのインデックス
+    /// * `shading_point` - シェーディングポイントの情報
+    /// * `lambda` - サンプルする波長
+    /// * `s` - サンプリングのための1次元のランダム値
+    /// * `uv` - サンプリングのための2次元のランダム値
+    pub fn calculate_light(
+        &self,
+        primitive_index: PrimitiveIndex<Id>,
+        shading_point: &SurfaceInteraction<Id, Render>,
+        lambda: &SampledWavelengths,
+        s: f32,
+        uv: glam::Vec2,
+    ) -> LightIntensity<Id, Render> {
+        let primitive = self.primitive_repository.get(primitive_index);
+        if let Some(delta_light) = primitive.as_delta_point_light() {
+            let irradiance = delta_light.calculate_irradiance(shading_point, lambda);
+            LightIntensity::IrradianceDeltaPointLight(irradiance)
+        } else if let Some(delta_light) = primitive.as_delta_directional_light() {
+            let irradiance = delta_light.calculate_irradiance(shading_point, lambda);
+            LightIntensity::IrradianceDeltaDirectionalLight(irradiance)
+        } else if let Some(_inf_light) = primitive.as_infinite_light() {
+            todo!()
+        } else if let Some(area_light) = primitive.as_area_light() {
+            let radiance = area_light.sample_radiance(
+                primitive_index,
+                &self.geometry_repository,
+                shading_point,
+                lambda,
+                s,
+                uv,
+            );
+            LightIntensity::RadianceAreaLight(radiance)
+        } else {
+            panic!("Primitive is not a light");
+        }
     }
 }
 

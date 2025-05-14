@@ -6,10 +6,10 @@ use math::{Local, Point3, Render, Transform, World};
 use spectrum::{SampledSpectrum, SampledWavelengths, Spectrum};
 
 use crate::{
-    LightIrradiance, SceneId, SurfaceInteraction,
+    DeltaPointLightIrradiance, SceneId, SurfaceInteraction,
     primitive::traits::{
-        Primitive, PrimitiveAreaLight, PrimitiveDeltaLight, PrimitiveGeometry,
-        PrimitiveInfiniteLight, PrimitiveLight, PrimitiveNonDeltaLight,
+        Primitive, PrimitiveAreaLight, PrimitiveDeltaDirectionalLight, PrimitiveDeltaPointLight,
+        PrimitiveGeometry, PrimitiveInfiniteLight, PrimitiveLight, PrimitiveNonDeltaLight,
     },
 };
 
@@ -60,8 +60,12 @@ impl<Id: SceneId> Primitive<Id> for PointLight {
         None
     }
 
-    fn as_delta_light(&self) -> Option<&dyn PrimitiveDeltaLight<Id>> {
+    fn as_delta_point_light(&self) -> Option<&dyn PrimitiveDeltaPointLight<Id>> {
         Some(self)
+    }
+
+    fn as_delta_directional_light(&self) -> Option<&dyn PrimitiveDeltaDirectionalLight<Id>> {
+        None
     }
 
     fn as_area_light(&self) -> Option<&dyn PrimitiveAreaLight<Id>> {
@@ -78,12 +82,12 @@ impl<Id: SceneId> PrimitiveLight<Id> for PointLight {
         4.0 * PI * self.intensity * self.spectrum.sample(lambda)
     }
 }
-impl<Id: SceneId> PrimitiveDeltaLight<Id> for PointLight {
+impl<Id: SceneId> PrimitiveDeltaPointLight<Id> for PointLight {
     fn calculate_irradiance(
         &self,
         shading_point: &SurfaceInteraction<Id, Render>,
         lambda: &SampledWavelengths,
-    ) -> LightIrradiance {
+    ) -> DeltaPointLightIrradiance<Render> {
         // Render空間でのライトの方向と距離の二乗とcos成分を計算する。
         let position = &self.local_to_render * Point3::ZERO;
         let distance_vec = shading_point.position.vector_to(position);
@@ -94,6 +98,9 @@ impl<Id: SceneId> PrimitiveDeltaLight<Id> for PointLight {
         // 放射照度を計算する。
         let irradiance =
             self.intensity * self.spectrum.sample(lambda) * cos_theta / distance_squared;
-        LightIrradiance { irradiance }
+        DeltaPointLightIrradiance {
+            irradiance,
+            position,
+        }
     }
 }

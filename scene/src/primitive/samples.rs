@@ -57,18 +57,40 @@ fn mul<Id: SceneId, From: CoordinateSystem, To: CoordinateSystem>(
     }
 }
 
-/// ライト上のサンプルされた放射輝度情報とPDFを持つ構造体。
-pub struct LightSampleRadiance<Id: SceneId, C: CoordinateSystem> {
+/// ライト上のサンプルされた放射輝度情報とpdfを持つ構造体。
+pub struct AreaLightSampleRadiance<Id: SceneId, C: CoordinateSystem> {
     /// サンプルした放射輝度。
     pub radiance: SampledSpectrum,
-    /// サンプルのPDF。
+    /// サンプルのpdf。
     pub pdf: f32,
+    /// 幾何項。
+    pub g: f32,
     /// シーンをサンプルした結果の情報。
     pub interaction: SurfaceInteraction<Id, C>,
 }
 
-/// ライト上のサンプルされた放射照度情報を持つ構造体。
-pub struct LightIrradiance {
+/// ライトからの放射照度情報を持つ構造体。
+pub struct DeltaPointLightIrradiance<C: CoordinateSystem> {
     /// 計算した放射照度。
     pub irradiance: SampledSpectrum,
+    /// 光源の位置。
+    pub position: Point3<C>,
+}
+
+/// ライトからの放射照度情報を持つ構造体。
+pub struct DeltaDirectionalLightLightIrradiance<C: CoordinateSystem> {
+    /// 計算した放射照度。
+    pub irradiance: SampledSpectrum,
+    /// 光源の方向。
+    pub direction: Vector3<C>,
+}
+
+/// ライトのサンプル結果を持つ列挙子。
+pub enum LightIntensity<Id: SceneId, C: CoordinateSystem> {
+    /// 面積光源 からサンプルした放射輝度情報。
+    RadianceAreaLight(AreaLightSampleRadiance<Id, C>),
+    /// デルタ点光源の放射照度情報。
+    IrradianceDeltaPointLight(DeltaPointLightIrradiance<C>),
+    /// デルタ方向光源の放射照度情報。
+    IrradianceDeltaDirectionalLight(DeltaDirectionalLightLightIrradiance<C>),
 }

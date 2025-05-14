@@ -223,3 +223,117 @@ pub fn load_scene_1<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
         Vector3::new(0.0, 1.0, 0.0),
     );
 }
+
+pub fn load_scene_2<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut Camera<F>) {
+    let geom = scene.load_obj("./renderer/assets/bunny.obj");
+    scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
+        geometry_index: geom,
+        surface_material: Arc::new(SurfaceMaterial {
+            bsdf: Some(bsdf::NormalizedLambert::new(RgbAlbedoSpectrum::<
+                ColorSrgb<NoneToneMap>,
+            >::new(
+                ColorSrgb::new(0.8, 0.8, 0.8),
+            ))),
+            edf: None,
+        }),
+        transform: Transform::identity(),
+    });
+
+    let geom = scene.load_obj("./renderer/assets/box.obj");
+    scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
+        geometry_index: geom,
+        surface_material: Arc::new(SurfaceMaterial {
+            bsdf: Some(bsdf::NormalizedLambert::new(RgbAlbedoSpectrum::<
+                ColorSrgb<NoneToneMap>,
+            >::new(
+                ColorSrgb::new(0.8, 0.8, 0.8),
+            ))),
+            edf: None,
+        }),
+        transform: Transform::identity(),
+    });
+
+    let geom = scene.load_obj("./renderer/assets/hidari.obj");
+    scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
+        geometry_index: geom,
+        surface_material: Arc::new(SurfaceMaterial {
+            bsdf: Some(bsdf::NormalizedLambert::new(RgbAlbedoSpectrum::<
+                ColorSrgb<NoneToneMap>,
+            >::new(
+                ColorSrgb::new(0.9, 0.0, 0.0),
+                // ColorSrgb::new(0.9, 0.0, 0.9),
+                // ColorSrgb::new(0.8, 0.8, 0.8),
+            ))),
+            edf: None,
+        }),
+        transform: Transform::identity(),
+    });
+
+    let geom = scene.load_obj("./renderer/assets/migi.obj");
+    scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
+        geometry_index: geom,
+        surface_material: Arc::new(SurfaceMaterial {
+            bsdf: Some(bsdf::NormalizedLambert::new(RgbAlbedoSpectrum::<
+                ColorSrgb<NoneToneMap>,
+            >::new(
+                ColorSrgb::new(0.0, 0.9, 0.0),
+            ))),
+            edf: None,
+        }),
+        transform: Transform::identity(),
+    });
+
+    let geom = scene.load_obj("./renderer/assets/yuka.obj");
+    scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
+        geometry_index: geom,
+        surface_material: Arc::new(SurfaceMaterial {
+            bsdf: Some(bsdf::NormalizedLambert::new(RgbAlbedoSpectrum::<
+                ColorSrgb<NoneToneMap>,
+            >::new(
+                ColorSrgb::new(0.8, 0.8, 0.8),
+            ))),
+            edf: None,
+        }),
+        transform: Transform::identity(),
+    });
+
+    let geom = scene.load_obj("./renderer/assets/oku.obj");
+    scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
+        geometry_index: geom,
+        surface_material: Arc::new(SurfaceMaterial {
+            bsdf: Some(bsdf::NormalizedLambert::new(RgbAlbedoSpectrum::<
+                ColorSrgb<NoneToneMap>,
+            >::new(
+                ColorSrgb::new(0.8, 0.8, 0.8),
+            ))),
+            edf: None,
+        }),
+        transform: Transform::identity(),
+    });
+
+    let geom = scene.load_obj("./renderer/assets/tenjou.obj");
+    scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
+        geometry_index: geom,
+        surface_material: Arc::new(SurfaceMaterial {
+            bsdf: Some(bsdf::NormalizedLambert::new(RgbAlbedoSpectrum::<
+                ColorSrgb<NoneToneMap>,
+            >::new(
+                ColorSrgb::new(0.8, 0.8, 0.8),
+            ))),
+            edf: None,
+        }),
+        transform: Transform::identity(),
+    });
+
+    scene.create_primitive(CreatePrimitiveDesc::PointLightPrimitive {
+        intensity: 1.0,
+        spectrum: presets::cie_illum_d6500(),
+        transform: Transform::from_translate(glam::vec3(0.0, 3.0, 0.0)),
+    });
+
+    camera.set_look_to(
+        Point3::new(0.0, 3.5, 6.0),
+        Vector3::new(0.0, -1.0, -3.0).normalize(),
+        Vector3::new(0.0, 1.0, 0.0),
+    );
+}

@@ -9,7 +9,7 @@ pub mod tone_map;
 
 use camera::Camera;
 use filter::BoxFilter;
-use renderer::{NormalRenderer, RendererArgs, RendererImage, SrgbRenderer};
+use renderer::{NormalRenderer, RendererArgs, RendererImage, SrgbRendererNee, SrgbRendererPt};
 use sampler::RandomSamplerFactory;
 use tone_map::ReinhardToneMap;
 
@@ -40,6 +40,9 @@ struct Args {
     /// Maximum depth for the renderer
     #[arg(short = 'd', long, default_value_t = 16)]
     max_depth: usize,
+    /// Output image file name
+    #[arg(short, long, default_value = "output.png")]
+    output: String,
 }
 
 fn main() {
@@ -65,12 +68,15 @@ fn main() {
     match args.scene {
         0 => scene::load_scene_0(&mut scene, &mut camera),
         1 => scene::load_scene_1(&mut scene, &mut camera),
+        2 => scene::load_scene_2(&mut scene, &mut camera),
         _ => panic!("Invalid scene number"),
     };
 
     let spp = args.spp;
 
     let max_depth = args.max_depth;
+
+    let output = args.output;
 
     // シーンのビルド。
     println!("Start build scene...");
@@ -105,11 +111,11 @@ fn main() {
             println!("Finish rendering: {} seconds.", end.as_secs_f32());
 
             // 画像を保存する。
-            image.save("output.png");
+            image.save(output);
         }
-        "srgb" => {
+        "pt" => {
             let tone_map = ReinhardToneMap::new();
-            let renderer = SrgbRenderer::new(renderer_args, tone_map, 0.1, max_depth);
+            let renderer = SrgbRendererPt::new(renderer_args, tone_map, 0.01, max_depth);
             let mut image = RendererImage::new(width, height, renderer);
 
             // レンダリングを開始する。
@@ -122,7 +128,24 @@ fn main() {
             println!("Finish rendering: {} seconds.", end.as_secs_f32());
 
             // 画像を保存する。
-            image.save("output.png");
+            image.save(output);
+        }
+        "nee" => {
+            let tone_map = ReinhardToneMap::new();
+            let renderer = SrgbRendererNee::new(renderer_args, tone_map, 0.01, max_depth);
+            let mut image = RendererImage::new(width, height, renderer);
+
+            // レンダリングを開始する。
+            println!("Start rendering...");
+            let start = std::time::Instant::now();
+
+            image.render();
+
+            let end = start.elapsed();
+            println!("Finish rendering: {} seconds.", end.as_secs_f32());
+
+            // 画像を保存する。
+            image.save(output);
         }
         _ => panic!("Invalid renderer"),
     };
