@@ -286,10 +286,14 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveSingleTriangle<Id> {
         let distance = p.distance(shading_point.position);
         let g = shading_point.normal.dot(-wo).abs() * normal.dot(wo).abs() / (distance * distance);
 
+        // 方向要素のpdfを計算する。
+        let pdf_dir = pdf * (distance * distance) / normal.dot(wo).abs();
+
         AreaLightSampleRadiance {
             radiance,
             pdf,
             g,
+            pdf_dir,
             interaction: SurfaceInteraction {
                 position: p,
                 normal,

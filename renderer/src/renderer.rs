@@ -12,10 +12,12 @@ use crate::camera::Camera;
 use crate::filter::Filter;
 use crate::sampler::SamplerFactory;
 
+mod mis_renderer;
 mod nee_renderer;
 mod normal_renderer;
 mod pt_renderer;
 
+pub use mis_renderer::SrgbRendererMis;
 pub use nee_renderer::SrgbRendererNee;
 pub use normal_renderer::NormalRenderer;
 pub use pt_renderer::SrgbRendererPt;

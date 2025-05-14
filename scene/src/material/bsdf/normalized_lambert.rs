@@ -87,4 +87,28 @@ impl<Id: SceneId> Bsdf<Id> for NormalizedLambert {
 
         f
     }
+
+    fn pdf(
+        &self,
+        _lambda: &SampledWavelengths,
+        wo: &Vector3<Tangent>,
+        wi: &Vector3<Tangent>,
+        _shading_point: &SurfaceInteraction<Id, Tangent>,
+    ) -> f32 {
+        if wo.y() == 0.0 || wi.y() == 0.0 {
+            // woまたはwiが完全に接戦方向の場合はサンプリングされないのでpdfは0とする。
+            return 0.0;
+        }
+
+        if wo.y().signum() != wi.y().signum() {
+            // woとwiが逆方向の場合はpdfはBSDFの値が0なのでpdfも0。
+            return 0.0;
+        }
+
+        // pdfを計算する。
+        let cos_theta = wi.y().abs();
+        let pdf = cos_theta / PI;
+
+        pdf
+    }
 }
