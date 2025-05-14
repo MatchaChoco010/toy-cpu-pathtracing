@@ -229,6 +229,16 @@ impl<'a, Id: SceneId, F: Filter, SF: SamplerFactory, T: ToneMap> Renderer
                         break 'depth_loop;
                     }
                 }
+
+                // ロシアンルーレットで打ち切る。
+                let p_russian_roulette = throughout.max_value();
+                let u = sampler.get_1d();
+                if u < p_russian_roulette {
+                    // throughoutをp_russian_rouletteで割る。
+                    throughout /= p_russian_roulette;
+                } else {
+                    break 'depth_loop;
+                }
             }
         }
 
