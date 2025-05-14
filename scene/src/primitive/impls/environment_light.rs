@@ -6,11 +6,11 @@ use math::{Local, Ray, Render, Transform, World};
 use spectrum::{SampledSpectrum, SampledWavelengths, SpectrumTrait};
 
 use crate::{
-    LightSampleRadiance, PrimitiveIndex, SceneId, SurfaceInteraction,
+    AreaLightSampleRadiance, PrimitiveIndex, SceneId, SurfaceInteraction,
     geometry::GeometryRepository,
     primitive::traits::{
-        Primitive, PrimitiveAreaLight, PrimitiveDeltaLight, PrimitiveGeometry,
-        PrimitiveInfiniteLight, PrimitiveLight, PrimitiveNonDeltaLight,
+        Primitive, PrimitiveAreaLight, PrimitiveDeltaDirectionalLight, PrimitiveDeltaPointLight,
+        PrimitiveGeometry, PrimitiveInfiniteLight, PrimitiveLight, PrimitiveNonDeltaLight,
     },
 };
 
@@ -63,7 +63,11 @@ impl<Id: SceneId> Primitive<Id> for EnvironmentLight {
         Some(self)
     }
 
-    fn as_delta_light(&self) -> Option<&dyn PrimitiveDeltaLight<Id>> {
+    fn as_delta_point_light(&self) -> Option<&dyn PrimitiveDeltaPointLight<Id>> {
+        None
+    }
+
+    fn as_delta_directional_light(&self) -> Option<&dyn PrimitiveDeltaDirectionalLight<Id>> {
         None
     }
 
@@ -89,7 +93,7 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EnvironmentLight {
         _lambda: &SampledWavelengths,
         _s: f32,
         _uv: glam::Vec2,
-    ) -> LightSampleRadiance<Id, Render> {
+    ) -> AreaLightSampleRadiance<Id, Render> {
         todo!()
     }
 

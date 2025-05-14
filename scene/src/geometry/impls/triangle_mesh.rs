@@ -128,6 +128,24 @@ impl<Id: SceneId> BvhItem<Local> for Triangle<Id> {
             },
         })
     }
+
+    fn intersect_p<'a>(&self, data: &Self::Data<'a>, ray: &Ray<Local>, t_max: f32) -> bool
+    where
+        Id: 'a,
+    {
+        // ジオメトリデータを取得
+        let positions = [
+            data.positions[data.indices[self.triangle_index as usize * 3] as usize],
+            data.positions[data.indices[self.triangle_index as usize * 3 + 1] as usize],
+            data.positions[data.indices[self.triangle_index as usize * 3 + 2] as usize],
+        ];
+
+        // 三角形の交差判定を行う
+        match intersect_triangle(ray, t_max, positions) {
+            Some(_) => true,
+            None => false,
+        }
+    }
 }
 
 /// 三角形メッシュのジオメトリの構造体。
@@ -245,6 +263,14 @@ impl<Id: SceneId> Geometry<Id> for TriangleMesh<Id> {
     fn intersect(&self, ray: &Ray<Local>, t_max: f32) -> Option<Intersection> {
         if let Some(bvh) = &self.bvh {
             bvh.intersect(self, ray, t_max)
+        } else {
+            panic!("BVH is not built");
+        }
+    }
+
+    fn intersect_p(&self, ray: &Ray<Local>, t_max: f32) -> bool {
+        if let Some(bvh) = &self.bvh {
+            bvh.intersect_p(self, ray, t_max)
         } else {
             panic!("BVH is not built");
         }

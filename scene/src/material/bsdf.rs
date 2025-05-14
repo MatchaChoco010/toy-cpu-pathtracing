@@ -14,7 +14,7 @@ pub enum BsdfSample {
     Bsdf {
         /// 波長ごとにサンプリングしたBSDFの値。
         f: SampledSpectrum,
-        /// サンプリングした際のPDF。
+        /// サンプリングした際のpdf。
         pdf: f32,
         /// サンプリングした方向。
         wi: Vector3<Tangent>,
@@ -43,4 +43,19 @@ pub trait Bsdf<Id: SceneId>: Send + Sync {
         wo: &Vector3<Tangent>,
         shading_point: &SurfaceInteraction<Id, Tangent>,
     ) -> Option<BsdfSample>;
+
+    /// BSDFの値を計算する。
+    ///
+    /// # Arguments
+    /// - `lambda` - サンプリングする波長。
+    /// - `wo` - 出射方向。
+    /// - `wi` - 入射方向。
+    /// - `shading_point` - シェーディング点の情報。
+    fn evaluate(
+        &self,
+        lambda: &SampledWavelengths,
+        wo: &Vector3<Tangent>,
+        wi: &Vector3<Tangent>,
+        shading_point: &SurfaceInteraction<Id, Tangent>,
+    ) -> SampledSpectrum;
 }

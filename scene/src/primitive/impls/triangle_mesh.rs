@@ -9,8 +9,8 @@ use crate::{
     SurfaceMaterial,
     geometry::GeometryRepository,
     primitive::traits::{
-        Primitive, PrimitiveAreaLight, PrimitiveDeltaLight, PrimitiveGeometry,
-        PrimitiveInfiniteLight, PrimitiveLight, PrimitiveNonDeltaLight,
+        Primitive, PrimitiveAreaLight, PrimitiveDeltaDirectionalLight, PrimitiveDeltaPointLight,
+        PrimitiveGeometry, PrimitiveInfiniteLight, PrimitiveLight, PrimitiveNonDeltaLight,
     },
 };
 
@@ -61,7 +61,11 @@ impl<Id: SceneId> Primitive<Id> for TriangleMesh<Id> {
         None
     }
 
-    fn as_delta_light(&self) -> Option<&dyn PrimitiveDeltaLight<Id>> {
+    fn as_delta_point_light(&self) -> Option<&dyn PrimitiveDeltaPointLight<Id>> {
+        None
+    }
+
+    fn as_delta_directional_light(&self) -> Option<&dyn PrimitiveDeltaDirectionalLight<Id>> {
         None
     }
 
@@ -102,6 +106,7 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for TriangleMesh<Id> {
             &self.local_to_render
                 * Intersection {
                     t_hit: intersection.t_hit,
+                    wo: -ray.dir,
                     interaction: SurfaceInteraction {
                         position: intersection.position,
                         normal: intersection.normal,
@@ -116,5 +121,17 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for TriangleMesh<Id> {
                     },
                 }
         })
+    }
+
+    fn intersect_p(
+        &self,
+        _primitive_index: PrimitiveIndex<Id>,
+        geometry_repository: &GeometryRepository<Id>,
+        ray: &Ray<Render>,
+        t_max: f32,
+    ) -> bool {
+        let geometry = geometry_repository.get(self.geometry_index);
+        let ray = self.local_to_render.inverse() * ray;
+        geometry.intersect_p(&ray, t_max)
     }
 }

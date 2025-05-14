@@ -6,12 +6,12 @@ use math::{Bounds, Local, Normal, Point3, Ray, Render, Transform, Vector3, World
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::{
-    GeometryIndex, InteractGeometryInfo, Intersection, LightSampleRadiance, PrimitiveIndex,
+    AreaLightSampleRadiance, GeometryIndex, InteractGeometryInfo, Intersection, PrimitiveIndex,
     SceneId, SurfaceInteraction, SurfaceMaterial,
     geometry::{GeometryRepository, impls::TriangleMesh},
     primitive::traits::{
-        Primitive, PrimitiveAreaLight, PrimitiveDeltaLight, PrimitiveGeometry,
-        PrimitiveInfiniteLight, PrimitiveLight, PrimitiveNonDeltaLight,
+        Primitive, PrimitiveAreaLight, PrimitiveDeltaDirectionalLight, PrimitiveDeltaPointLight,
+        PrimitiveGeometry, PrimitiveInfiniteLight, PrimitiveLight, PrimitiveNonDeltaLight,
     },
 };
 
@@ -38,10 +38,12 @@ impl<Id: SceneId> EmissiveTriangleMesh<Id> {
         // 三角形の面積のリスト。
         let mut area_list = vec![];
         for index in triangle_mesh.indices.chunks(3) {
-            let p0 = triangle_mesh.positions[index[0] as usize];
-            let p1 = triangle_mesh.positions[index[1] as usize];
-            let p2 = triangle_mesh.positions[index[2] as usize];
-            let area = ((p0.vector_to(p1)).cross(p0.vector_to(p2))).length() / 2.0;
+            let p0 = &local_to_world * triangle_mesh.positions[index[0] as usize];
+            let p1 = &local_to_world * triangle_mesh.positions[index[1] as usize];
+            let p2 = &local_to_world * triangle_mesh.positions[index[2] as usize];
+            let e0 = p1.vector_to(p0);
+            let e1 = p2.vector_to(p0);
+            let area = (e0.cross(e1)).length() * 0.5;
             area_list.push(area);
         }
 
@@ -92,7 +94,11 @@ impl<Id: SceneId> Primitive<Id> for EmissiveTriangleMesh<Id> {
         Some(self)
     }
 
-    fn as_delta_light(&self) -> Option<&dyn PrimitiveDeltaLight<Id>> {
+    fn as_delta_point_light(&self) -> Option<&dyn PrimitiveDeltaPointLight<Id>> {
+        None
+    }
+
+    fn as_delta_directional_light(&self) -> Option<&dyn PrimitiveDeltaDirectionalLight<Id>> {
         None
     }
 
@@ -133,6 +139,7 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for EmissiveTriangleMesh<Id> {
             &self.local_to_render
                 * Intersection {
                     t_hit: intersection.t_hit,
+                    wo: -ray.dir,
                     interaction: SurfaceInteraction {
                         position: intersection.position,
                         normal: intersection.normal,
@@ -147,6 +154,18 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for EmissiveTriangleMesh<Id> {
                     },
                 }
         })
+    }
+
+    fn intersect_p(
+        &self,
+        _primitive_index: PrimitiveIndex<Id>,
+        geometry_repository: &GeometryRepository<Id>,
+        ray: &Ray<Render>,
+        t_max: f32,
+    ) -> bool {
+        let geometry = geometry_repository.get(self.geometry_index);
+        let ray = self.local_to_render.inverse() * ray;
+        geometry.intersect_p(&ray, t_max)
     }
 }
 impl<Id: SceneId> PrimitiveLight<Id> for EmissiveTriangleMesh<Id> {
@@ -169,7 +188,7 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveTriangleMesh<Id> {
         lambda: &SampledWavelengths,
         s: f32,
         uv: glam::Vec2,
-    ) -> LightSampleRadiance<Id, Render> {
+    ) -> AreaLightSampleRadiance<Id, Render> {
         // sを使って三角形をarea_tableからサンプリングする.
         let mut index = 0;
         for (i, area) in self.area_table.iter().enumerate() {
@@ -183,13 +202,6 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveTriangleMesh<Id> {
             .as_any()
             .downcast_ref::<TriangleMesh<Id>>()
             .unwrap();
-
-        // 三角形のサンプリングの選択確率を取得する。
-        let probability = if index == 0 {
-            self.area_table[0]
-        } else {
-            self.area_table[index] - self.area_table[index - 1]
-        };
 
         // サンプリングする点のbarycentric座標を計算する。
         let b0;
@@ -279,7 +291,7 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveTriangleMesh<Id> {
         // サンプリングする光の出力方向を計算する。
         let wo = p.vector_to(shading_point.position).normalize();
 
-        // マテリアルから放射輝度を取得する。
+        // マテリアルのedfから放射輝度を取得する。
         let radiance = self
             .material
             .edf
@@ -292,11 +304,22 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveTriangleMesh<Id> {
             )
             .unwrap_or(SampledSpectrum::zero());
 
-        let pdf = 1.0 / self.area_list[index] * probability;
+        // pdfを計算する。
+        // 三角形から一様に取得するので三角形の面積で割ったものをpdfとする。
+        // 三角形の選択確率もpdfに組み込む。
+        // let pdf = 1.0 / self.area_list[index];
+        // let probability = self.area_list[index] / self.area_sum;
+        // let pdf = pdf * probability;
+        let pdf = 1.0 / self.area_sum;
 
-        LightSampleRadiance {
+        // 幾何項を計算する。
+        let distance = p.distance(shading_point.position);
+        let g = shading_point.normal.dot(-wo).abs() * normal.dot(wo).abs() / (distance * distance);
+
+        AreaLightSampleRadiance {
             radiance,
             pdf,
+            g,
             interaction: SurfaceInteraction {
                 position: p,
                 normal,
@@ -350,6 +373,7 @@ impl<Id: SceneId> PrimitiveAreaLight<Id> for EmissiveTriangleMesh<Id> {
             .vector_to(shading_point.position)
             .normalize();
 
+        // マテリアルのedfから放射輝度を取得する。
         let radiance = self
             .material
             .edf

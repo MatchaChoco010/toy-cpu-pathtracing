@@ -17,8 +17,11 @@ pub trait Geometry<Id: SceneId>: Send + Sync + Any + Debug {
         // デフォルトでは何もしない。
     }
 
-    /// ジオメトリとレイの交差判定を計算する。
+    /// ジオメトリとレイの交差判定を行い情報を取得する。
     fn intersect(&self, ray: &Ray<Local>, t_max: f32) -> Option<Intersection>;
+
+    /// ジオメトリとレイの交差判定を行う。
+    fn intersect_p(&self, ray: &Ray<Local>, t_max: f32) -> bool;
 
     /// Anyトレイトにキャストする。
     fn as_any(&self) -> &dyn Any;

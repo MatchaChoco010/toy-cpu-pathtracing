@@ -8,12 +8,12 @@ use math::{
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::{
-    InteractGeometryInfo, Intersection, LightSampleRadiance, PrimitiveIndex, SceneId,
+    AreaLightSampleRadiance, InteractGeometryInfo, Intersection, PrimitiveIndex, SceneId,
     SurfaceInteraction, SurfaceMaterial,
     geometry::GeometryRepository,
     primitive::traits::{
-        Primitive, PrimitiveAreaLight, PrimitiveDeltaLight, PrimitiveGeometry,
-        PrimitiveInfiniteLight, PrimitiveLight, PrimitiveNonDeltaLight,
+        Primitive, PrimitiveAreaLight, PrimitiveDeltaDirectionalLight, PrimitiveDeltaPointLight,
+        PrimitiveGeometry, PrimitiveInfiniteLight, PrimitiveLight, PrimitiveNonDeltaLight,
     },
 };
 
@@ -80,7 +80,11 @@ impl<Id: SceneId> Primitive<Id> for EmissiveSingleTriangle<Id> {
         Some(self)
     }
 
-    fn as_delta_light(&self) -> Option<&dyn PrimitiveDeltaLight<Id>> {
+    fn as_delta_point_light(&self) -> Option<&dyn PrimitiveDeltaPointLight<Id>> {
+        None
+    }
+
+    fn as_delta_directional_light(&self) -> Option<&dyn PrimitiveDeltaDirectionalLight<Id>> {
         None
     }
 
@@ -117,6 +121,7 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for EmissiveSingleTriangle<Id> {
         ray: &Ray<Render>,
         t_max: f32,
     ) -> Option<Intersection<Id, Render>> {
+        let wo = -ray.dir;
         let ray = &self.local_to_render.inverse() * ray;
         let hit = match intersect_triangle(&ray, t_max, self.positions) {
             Some(hit) => hit,
@@ -147,6 +152,7 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for EmissiveSingleTriangle<Id> {
 
         Some(Intersection {
             t_hit: hit.t_hit,
+            wo,
             interaction: SurfaceInteraction {
                 position: &self.local_to_render * hit.position,
                 normal: &self.local_to_render * hit.normal,
@@ -160,6 +166,20 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for EmissiveSingleTriangle<Id> {
                 },
             },
         })
+    }
+
+    fn intersect_p(
+        &self,
+        _primitive_index: PrimitiveIndex<Id>,
+        _geometry_repository: &GeometryRepository<Id>,
+        ray: &Ray<Render>,
+        t_max: f32,
+    ) -> bool {
+        let ray = &self.local_to_render.inverse() * ray;
+        match intersect_triangle(&ray, t_max, self.positions) {
+            Some(_) => true,
+            None => false,
+        }
     }
 }
 impl<Id: SceneId> PrimitiveLight<Id> for EmissiveSingleTriangle<Id> {
@@ -182,7 +202,7 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveSingleTriangle<Id> {
         lambda: &SampledWavelengths,
         _s: f32,
         uv: glam::Vec2,
-    ) -> LightSampleRadiance<Id, Render> {
+    ) -> AreaLightSampleRadiance<Id, Render> {
         // サンプリングする点のbarycentric座標を計算する。
         let b0;
         let b1;
@@ -262,9 +282,14 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveSingleTriangle<Id> {
         // 面積を計算して一様サンプリングしたときのpdfを計算する。
         let pdf = 1.0 / self.area;
 
-        LightSampleRadiance {
+        // 幾何項を計算する。
+        let distance = p.distance(shading_point.position);
+        let g = shading_point.normal.dot(-wo).abs() * normal.dot(wo).abs() / (distance * distance);
+
+        AreaLightSampleRadiance {
             radiance,
             pdf,
+            g,
             interaction: SurfaceInteraction {
                 position: p,
                 normal,

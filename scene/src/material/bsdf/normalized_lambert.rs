@@ -3,7 +3,7 @@
 use std::f32::consts::PI;
 
 use math::{Tangent, Vector3};
-use spectrum::{SampledWavelengths, Spectrum};
+use spectrum::{SampledSpectrum, SampledWavelengths, Spectrum};
 
 use crate::{Bsdf, BsdfSample, SceneId, SurfaceInteraction};
 
@@ -50,12 +50,41 @@ impl<Id: SceneId> Bsdf<Id> for NormalizedLambert {
             wi
         };
 
+        if wi.y() == 0.0 {
+            // wiが完全に接戦方向の場合はBsdfをサンプリングしない。
+            return None;
+        }
+
         // BSDFの値を計算する。
         let f = self.rho.sample(&lambda) / PI;
 
-        // PDFを計算する。
-        let pdf = 1.0;
+        // pdfを計算する。
+        let cos_theta = wi.y().abs();
+        let pdf = cos_theta / PI;
 
         Some(BsdfSample::Bsdf { f, pdf, wi })
+    }
+
+    fn evaluate(
+        &self,
+        lambda: &SampledWavelengths,
+        wo: &Vector3<Tangent>,
+        wi: &Vector3<Tangent>,
+        _shading_point: &SurfaceInteraction<Id, Tangent>,
+    ) -> SampledSpectrum {
+        if wo.y() == 0.0 || wi.y() == 0.0 {
+            // woまたはwiが完全に接戦方向の場合はBSDFを評価しない。
+            return SampledSpectrum::zero();
+        }
+
+        if wo.y().signum() != wi.y().signum() {
+            // woとwiが逆方向の場合はBSDFを評価しない。
+            return SampledSpectrum::zero();
+        }
+
+        // BSDFの値を計算する。
+        let f = self.rho.sample(&lambda) / PI;
+
+        f
     }
 }

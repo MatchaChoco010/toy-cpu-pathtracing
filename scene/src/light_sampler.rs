@@ -25,13 +25,13 @@ impl<'a, Id: SceneId> LightSampler<'a, Id> {
         for i in 0..self.sample_table.len() {
             if u < self.sample_table[i] {
                 return LightSample {
-                    primitive_index: self.factory.primitive_index_list[i],
+                    primitive_index: self.factory.light_list[i],
                     probability: self.sample_table[i],
                 };
             }
         }
         LightSample {
-            primitive_index: self.factory.primitive_index_list[self.sample_table.len() - 1],
+            primitive_index: self.factory.light_list[self.sample_table.len() - 1],
             probability: self.sample_table[self.sample_table.len() - 1],
         }
     }
@@ -40,7 +40,7 @@ impl<'a, Id: SceneId> LightSampler<'a, Id> {
     pub fn probability(&self, primitive_index: &PrimitiveIndex<Id>) -> f32 {
         if let Some(index) = self
             .factory
-            .primitive_index_list
+            .light_list
             .iter()
             .position(|id| id == primitive_index)
         {
@@ -56,7 +56,7 @@ impl<'a, Id: SceneId> LightSampler<'a, Id> {
 /// サンプルする波長を設定して、LightSamplerを作成するファクトリ。
 #[derive(Clone, Debug)]
 pub struct LightSamplerFactory<Id: SceneId> {
-    primitive_index_list: Vec<PrimitiveIndex<Id>>,
+    light_list: Vec<PrimitiveIndex<Id>>,
 }
 impl<Id: SceneId> LightSamplerFactory<Id> {
     /// LightSamplerを構築する。
@@ -65,18 +65,21 @@ impl<Id: SceneId> LightSamplerFactory<Id> {
         primitive_repository: &mut PrimitiveRepository<Id>,
         scene_bounds: &Bounds<Render>,
     ) -> Self {
+        // 全てのプリミティブのインデックスを取得する。
         let primitive_index_list = primitive_repository
             .get_all_primitive_indices()
             .collect::<Vec<_>>();
+
+        // ライトのプリミティブを取得しリストに格納しつつ、preprocessを呼び出す。
+        let mut light_list = vec![];
         for primitive_index in &primitive_index_list {
             let primitive = primitive_repository.get_mut(*primitive_index);
             if let Some(light) = primitive.as_light_mut() {
                 light.preprocess(scene_bounds);
+                light_list.push(*primitive_index);
             }
         }
-        LightSamplerFactory {
-            primitive_index_list,
-        }
+        LightSamplerFactory { light_list }
     }
 
     /// サンプルする波長を設定し、サンプリングのテーブルを構築してLightSamplerを作成する。
@@ -85,17 +88,19 @@ impl<Id: SceneId> LightSamplerFactory<Id> {
         primitive_repository: &PrimitiveRepository<Id>,
         lambda: &SampledWavelengths,
     ) -> LightSampler<Id> {
+        // ライトの選択確率のウエイトの合計値とウエイトのリストを構築する。
         let mut weight_sum = 0.0;
         let mut sample_weight_list = vec![];
-        for primitive_index in &self.primitive_index_list {
+        for primitive_index in &self.light_list {
             let primitive = primitive_repository.get(*primitive_index);
-            if let Some(light) = primitive.as_light() {
-                let weight = light.phi(lambda).average();
-                weight_sum += weight;
-                sample_weight_list.push(weight);
-            }
+            let light = primitive.as_light().unwrap();
+            let weight = light.phi(lambda).average();
+            weight_sum += weight;
+            sample_weight_list.push(weight);
         }
-        let mut sample_table = vec![0.0; self.primitive_index_list.len()];
+
+        // ウエイトの累積和を計算し、サンプリング用のテーブルを構築する。
+        let mut sample_table = vec![0.0; sample_weight_list.len()];
         let mut cumulative_sum = 0.0;
         for i in 0..sample_table.len() {
             cumulative_sum += sample_weight_list[i];

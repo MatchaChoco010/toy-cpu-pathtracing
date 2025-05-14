@@ -17,6 +17,18 @@ impl<C: CoordinateSystem> Normal<C> {
         Self::from(Vector3::new(x, y, z).normalize())
     }
 
+    /// 内積を計算する。
+    #[inline(always)]
+    pub fn dot(&self, other: impl AsRef<Vector3<C>>) -> f32 {
+        self.vec.dot(other)
+    }
+
+    /// 外積を計算する。
+    #[inline(always)]
+    pub fn cross(&self, other: impl AsRef<Vector3<C>>) -> Vector3<C> {
+        self.vec.cross(other)
+    }
+
     /// Normal3をglam::Vec3に変換する。
     #[inline(always)]
     pub fn to_vec3(&self) -> glam::Vec3 {
