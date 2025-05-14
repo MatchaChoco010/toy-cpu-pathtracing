@@ -39,6 +39,13 @@ pub trait SpectrumTrait: Send + Sync {
     /// スペクトルをサンプルする。
     fn sample(&self, lambda: &SampledWavelengths) -> SampledSpectrum {
         let mut values = [0.0; N_SPECTRUM_SAMPLES];
+
+        // 最初の波長以外が終了している場合は、最初の波長の値を返す。
+        if lambda.is_secondary_terminated() {
+            values[0] = self.value(lambda.lambda(0));
+            return SampledSpectrum::from(values);
+        }
+
         for i in 0..N_SPECTRUM_SAMPLES {
             values[i] = self.value(lambda.lambda(i));
         }

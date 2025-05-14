@@ -203,6 +203,17 @@ impl SampledSpectrum {
         result
     }
 
+    /// 最初の波長以外を0にする。
+    pub fn terminate_secondary(&mut self) {
+        if self.is_zero() {
+            return;
+        }
+
+        for i in 1..N_SPECTRUM_SAMPLES {
+            self.values[i] = 0.0;
+        }
+    }
+
     /// 最小値を取得する。
     #[inline(always)]
     pub fn min_value(&self) -> f32 {
