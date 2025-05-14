@@ -9,7 +9,9 @@ pub mod tone_map;
 
 use camera::Camera;
 use filter::BoxFilter;
-use renderer::{NormalRenderer, RendererArgs, RendererImage, SrgbRendererNee, SrgbRendererPt};
+use renderer::{
+    NormalRenderer, RendererArgs, RendererImage, SrgbRendererMis, SrgbRendererNee, SrgbRendererPt,
+};
 use sampler::RandomSamplerFactory;
 use tone_map::ReinhardToneMap;
 
@@ -133,6 +135,23 @@ fn main() {
         "nee" => {
             let tone_map = ReinhardToneMap::new();
             let renderer = SrgbRendererNee::new(renderer_args, tone_map, 0.01, max_depth);
+            let mut image = RendererImage::new(width, height, renderer);
+
+            // レンダリングを開始する。
+            println!("Start rendering...");
+            let start = std::time::Instant::now();
+
+            image.render();
+
+            let end = start.elapsed();
+            println!("Finish rendering: {} seconds.", end.as_secs_f32());
+
+            // 画像を保存する。
+            image.save(output);
+        }
+        "mis" => {
+            let tone_map = ReinhardToneMap::new();
+            let renderer = SrgbRendererMis::new(renderer_args, tone_map, 0.01, max_depth);
             let mut image = RendererImage::new(width, height, renderer);
 
             // レンダリングを開始する。

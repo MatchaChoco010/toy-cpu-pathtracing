@@ -58,4 +58,13 @@ pub trait Bsdf<Id: SceneId>: Send + Sync {
         wi: &Vector3<Tangent>,
         shading_point: &SurfaceInteraction<Id, Tangent>,
     ) -> SampledSpectrum;
+
+    /// BSDFのpdfを計算する。
+    fn pdf(
+        &self,
+        lambda: &SampledWavelengths,
+        wo: &Vector3<Tangent>,
+        wi: &Vector3<Tangent>,
+        shading_point: &SurfaceInteraction<Id, Tangent>,
+    ) -> f32;
 }

@@ -155,6 +155,35 @@ impl<Id: SceneId> Scene<Id> {
             panic!("Primitive is not a light");
         }
     }
+
+    /// シーン上の点を光源としてサンプルする場合のpdfを計算する。
+    pub fn pdf_light_sample(
+        &self,
+        light_sampler: &LightSampler<Id>,
+        shading_point: &SurfaceInteraction<Id, Render>,
+        interaction: &SurfaceInteraction<Id, Render>,
+    ) -> f32 {
+        let primitive_index = interaction.primitive_index;
+        let primitive = self.primitive_repository.get(primitive_index);
+        if let Some(light) = primitive.as_non_delta_light() {
+            // ライトの選択確率を計算する。
+            let probability = light_sampler.probability(&primitive_index);
+
+            // ライトのpdfを計算する。
+            let light_pdf_area = light.pdf_light_sample(interaction);
+
+            // pdfを面積要素から方向要素に変換する。
+            let distance_vector = interaction.position.vector_to(shading_point.position);
+            let distance = distance_vector.length();
+            let wo = -distance_vector.normalize();
+            let light_pdf_dir =
+                light_pdf_area * (distance * distance) / interaction.normal.dot(wo).abs();
+
+            probability * light_pdf_dir
+        } else {
+            0.0
+        }
+    }
 }
 
 // マクロからしか使わない想定の関数をinternalに隔離する。

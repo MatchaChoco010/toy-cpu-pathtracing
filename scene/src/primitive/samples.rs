@@ -65,6 +65,8 @@ pub struct AreaLightSampleRadiance<Id: SceneId, C: CoordinateSystem> {
     pub pdf: f32,
     /// 幾何項。
     pub g: f32,
+    /// サンプルの方向要素のpdf。
+    pub pdf_dir: f32,
     /// シーンをサンプルした結果の情報。
     pub interaction: SurfaceInteraction<Id, C>,
 }

@@ -212,9 +212,15 @@ pub fn load_scene_1<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     });
 
     scene.create_primitive(CreatePrimitiveDesc::PointLightPrimitive {
-        intensity: 10.0,
-        spectrum: presets::cie_d(6504.0),
+        intensity: 1.0,
+        spectrum: presets::cie_illum_d6500(),
         transform: Transform::from_translate(glam::vec3(0.0, 3.0, 0.0)),
+    });
+
+    scene.create_primitive(CreatePrimitiveDesc::PointLightPrimitive {
+        intensity: 2.0,
+        spectrum: presets::cie_illum_d6500(),
+        transform: Transform::from_translate(glam::vec3(3.0, 5.0, 0.0)),
     });
 
     camera.set_look_to(
