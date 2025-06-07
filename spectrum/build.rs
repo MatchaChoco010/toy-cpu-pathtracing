@@ -1,4 +1,4 @@
-//! RgbSpectrumTableのテーブル配列を定義するためのビルドスクリプト。
+//! RgbSpectrumTableのテーブル配列をバイナリデータとして出力するためのビルドスクリプト。
 
 use std::env;
 use std::fs::File;
@@ -12,94 +12,39 @@ pub const LAMBDA_MIN: f64 = 360.0;
 /// 可視光の波長の範囲の最大値 (nm)。
 pub const LAMBDA_MAX: f64 = 830.0;
 
-/// ファイルにテーブルの定義を書き出す。
-fn write_table<G: ColorGamut>(
-    writer: &mut impl Write,
-    color_name: &str,
-    gamut_name: &str,
-    eotf_name: &str,
+/// テーブルをバイナリファイルに書き出す。
+fn write_binary_table(
+    file_name: &str,
     z_nodes: &Vec<f32>,
     table: &Vec<Vec<Vec<Vec<[f32; 3]>>>>,
+    out_dir: &str,
 ) -> anyhow::Result<()> {
-    // テーブルのサイズを出力する。
-    writeln!(
-        writer,
-        r#"
-impl From<{color_name}<NoneToneMap>> for RgbSigmoidPolynomial<{color_name}<NoneToneMap>> {{
-    fn from(color: {color_name}<NoneToneMap>) -> Self {{
-        const TABLE_VALUES: [[[[[f32; 3]; {TABLE_SIZE}]; {TABLE_SIZE}]; {TABLE_SIZE}]; 3] = [
-        "#
-    )?;
+    let path = format!("{out_dir}/{file_name}");
+    let mut file = File::create(path)?;
 
+    // z_nodesを書き込み (TABLE_SIZE個のf32)
+    for &value in z_nodes {
+        file.write_all(&value.to_le_bytes())?;
+    }
+
+    // tableを書き込み (3 × TABLE_SIZE³ × 3個のf32)
     for max_component in 0..3 {
-        writeln!(writer, "[")?;
         for zi in 0..TABLE_SIZE {
-            writeln!(writer, "[")?;
             for yi in 0..TABLE_SIZE {
-                writeln!(writer, "[")?;
                 for xi in 0..TABLE_SIZE {
-                    let mut x = table[max_component][zi][yi][xi][0].to_string();
-                    if !x.contains('.') {
-                        x.push_str(".0");
+                    for component in 0..3 {
+                        file.write_all(&table[max_component][zi][yi][xi][component].to_le_bytes())?;
                     }
-                    let mut y = table[max_component][zi][yi][xi][1].to_string();
-                    if !y.contains('.') {
-                        y.push_str(".0");
-                    }
-                    let mut z = table[max_component][zi][yi][xi][2].to_string();
-                    if !z.contains('.') {
-                        z.push_str(".0");
-                    }
-                    writeln!(writer, "[{x}, {y}, {z}],",)?;
                 }
-                writeln!(writer, "],")?;
             }
-            writeln!(writer, "],")?;
         }
-        writeln!(writer, "],")?;
     }
 
-    writeln!(
-        writer,
-        r#"
-        ];
-        const Z_NODES: [f32; {TABLE_SIZE}] = [
-        "#
-    )?;
-
-    for i in 0..TABLE_SIZE {
-        let mut z = z_nodes[i].to_string();
-        if !z.contains('.') {
-            z.push_str(".0");
-        }
-        writeln!(writer, "{z},")?;
-    }
-
-    writeln!(
-        writer,
-        r#"
-        ];
-        const TABLE: RgbToSpectrumTable<{gamut_name}, {eotf_name}> = RgbToSpectrumTable {{
-            z_nodes: Z_NODES,
-            table: TABLE_VALUES,
-            _color_space: PhantomData,
-        }};
-        let [c0, c1, c2] = TABLE.get(color);
-        Self::new(c0, c1, c2)
-    }}
-}}
-    "#
-    )?;
     Ok(())
 }
 
 fn main() -> anyhow::Result<()> {
-    // 出力のテーブル用のファイルのパスを構築する。。
     let out_dir = env::var("OUT_DIR")?;
-    let table_file = format!("{out_dir}/spectrum_table.rs");
-
-    // テーブルファイルを開く。
-    let mut file = File::create(table_file)?;
 
     // Vecを用意する。
     let mut z_nodes = vec![0.0; TABLE_SIZE];
@@ -107,89 +52,33 @@ fn main() -> anyhow::Result<()> {
 
     // sRGB
     init_table::<GamutSrgb>(&mut z_nodes, &mut table);
-    write_table::<GamutSrgb>(
-        &mut file,
-        "ColorSrgb",
-        "GamutSrgb",
-        "GammaSrgb",
-        &z_nodes,
-        &table,
-    )?;
+    write_binary_table("srgb_table.bin", &z_nodes, &table, &out_dir)?;
 
-    // Rec. 709
-    write_table::<GamutSrgb>(
-        &mut file,
-        "ColorRec709",
-        "GamutSrgb",
-        "GammaRec709",
-        &z_nodes,
-        &table,
-    )?;
+    // Rec. 709は同じガマットなのでsRGBと同じテーブルを使用
+    write_binary_table("rec709_table.bin", &z_nodes, &table, &out_dir)?;
 
     // Display P3
     init_table::<GamutDciP3D65>(&mut z_nodes, &mut table);
-    write_table::<GamutDciP3D65>(
-        &mut file,
-        "ColorDisplayP3",
-        "GamutDciP3D65",
-        "GammaSrgb",
-        &z_nodes,
-        &table,
-    )?;
+    write_binary_table("displayp3_table.bin", &z_nodes, &table, &out_dir)?;
 
-    // // P3-D65
-    write_table::<GamutDciP3D65>(
-        &mut file,
-        "ColorP3D65",
-        "GamutDciP3D65",
-        "Gamma2_6",
-        &z_nodes,
-        &table,
-    )?;
+    // P3-D65は同じガマットなのでDisplay P3と同じテーブルを使用
+    write_binary_table("p3d65_table.bin", &z_nodes, &table, &out_dir)?;
 
     // Adobe RGB
     init_table::<GamutAdobeRgb>(&mut z_nodes, &mut table);
-    write_table::<GamutAdobeRgb>(
-        &mut file,
-        "ColorAdobeRGB",
-        "GamutAdobeRgb",
-        "Gamma2_2",
-        &z_nodes,
-        &table,
-    )?;
+    write_binary_table("adobergb_table.bin", &z_nodes, &table, &out_dir)?;
 
     // Rec. 2020
     init_table::<GamutRec2020>(&mut z_nodes, &mut table);
-    write_table::<GamutRec2020>(
-        &mut file,
-        "ColorRec2020",
-        "GamutRec2020",
-        "GammaRec709",
-        &z_nodes,
-        &table,
-    )?;
+    write_binary_table("rec2020_table.bin", &z_nodes, &table, &out_dir)?;
 
     // ACEScg
     init_table::<GamutAcesCg>(&mut z_nodes, &mut table);
-    write_table::<GamutAcesCg>(
-        &mut file,
-        "ColorAcesCg",
-        "GamutAcesCg",
-        "Linear",
-        &z_nodes,
-        &table,
-    )?;
+    write_binary_table("acescg_table.bin", &z_nodes, &table, &out_dir)?;
 
     // ACES2065-1
     init_table::<GamutAces2065_1>(&mut z_nodes, &mut table);
-    write_table::<GamutAces2065_1>(
-        &mut file,
-        "ColorAces2065_1",
-        "GamutAces2065_1",
-        "Linear",
-        &z_nodes,
-        &table,
-    )?;
+    write_binary_table("aces2065_1_table.bin", &z_nodes, &table, &out_dir)?;
 
     // build.rsがdirtyなときだけ実行するようにする。
     println!("cargo:rerun-if-changed=build.rs");
