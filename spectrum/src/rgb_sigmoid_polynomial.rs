@@ -2,22 +2,30 @@
 //! スペクトルの波長成分を計算するモジュール。
 
 use std::marker::PhantomData;
+use std::sync::OnceLock;
 
 use color::{
     Color, ColorAces2065_1, ColorAcesCg, ColorAdobeRGB, ColorDisplayP3, ColorImpl, ColorP3D65,
     ColorRec709, ColorRec2020, ColorSrgb,
-    eotf::{Eotf, Gamma2_2, Gamma2_6, GammaRec709, GammaSrgb, Linear},
-    gamut::{
-        ColorGamut, GamutAces2065_1, GamutAcesCg, GamutAdobeRgb, GamutDciP3D65, GamutRec2020,
-        GamutSrgb,
-    },
+    eotf::Eotf,
+    gamut::ColorGamut,
     tone_map::NoneToneMap,
 };
 
 use crate::spectrum::{LAMBDA_MAX, LAMBDA_MIN};
 
-///作成するテーブルの配列のサイズ。
+/// 作成するテーブルの配列のサイズ。
 const TABLE_SIZE: usize = 64;
+
+/// 各色空間のバイナリデータ
+static SRGB_DATA: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/srgb_table.bin"));
+static REC709_DATA: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/rec709_table.bin"));
+static DISPLAYP3_DATA: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/displayp3_table.bin"));
+static P3D65_DATA: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/p3d65_table.bin"));
+static ADOBERGB_DATA: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/adobergb_table.bin"));
+static REC2020_DATA: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/rec2020_table.bin"));
+static ACESCG_DATA: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/acescg_table.bin"));
+static ACES2065_1_DATA: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/aces2065_1_table.bin"));
 
 /// シグモイド関数。
 fn sigmoid(x: f32) -> f32 {
@@ -36,15 +44,56 @@ fn parabolic(t: f32, coefficients: &[f32]) -> f32 {
     xx + coefficients[1]
 }
 
-/// RgbからSigmoidPolynomialを引くための事前計算テーブルの構造体。
-struct RgbToSpectrumTable<G: ColorGamut, E: Eotf> {
-    table: [[[[[f32; 3]; TABLE_SIZE]; TABLE_SIZE]; TABLE_SIZE]; 3],
+/// バイナリデータから変換されたテーブル構造体
+struct RgbToSpectrumTable {
     z_nodes: [f32; TABLE_SIZE],
-    _color_space: PhantomData<ColorImpl<G, NoneToneMap, E>>,
+    table: [[[[[f32; 3]; TABLE_SIZE]; TABLE_SIZE]; TABLE_SIZE]; 3],
 }
-impl<G: ColorGamut, E: Eotf> RgbToSpectrumTable<G, E> {
+
+/// バイナリデータからテーブルを読み込む
+fn load_table_from_binary(data: &[u8]) -> RgbToSpectrumTable {
+    let expected_size = TABLE_SIZE * 4 + (3 * TABLE_SIZE * TABLE_SIZE * TABLE_SIZE * 3 * 4);
+    assert_eq!(data.len(), expected_size, "Binary data size mismatch");
+
+    let mut offset = 0;
+
+    // z_nodes を読み込み
+    let mut z_nodes = [0.0f32; TABLE_SIZE];
+    for i in 0..TABLE_SIZE {
+        z_nodes[i] = f32::from_le_bytes([
+            data[offset],
+            data[offset + 1],
+            data[offset + 2],
+            data[offset + 3],
+        ]);
+        offset += 4;
+    }
+
+    // table を読み込み
+    let mut table = [[[[[0.0f32; 3]; TABLE_SIZE]; TABLE_SIZE]; TABLE_SIZE]; 3];
+    for max_component in 0..3 {
+        for zi in 0..TABLE_SIZE {
+            for yi in 0..TABLE_SIZE {
+                for xi in 0..TABLE_SIZE {
+                    for component in 0..3 {
+                        table[max_component][zi][yi][xi][component] = f32::from_le_bytes([
+                            data[offset],
+                            data[offset + 1],
+                            data[offset + 2],
+                            data[offset + 3],
+                        ]);
+                        offset += 4;
+                    }
+                }
+            }
+        }
+    }
+
+    RgbToSpectrumTable { z_nodes, table }
+}
+impl RgbToSpectrumTable {
     /// テーブルから二次式の係数を取得する。
-    fn get(&self, color: ColorImpl<G, NoneToneMap, E>) -> [f32; 3] {
+    fn get<G: ColorGamut, E: Eotf>(&self, color: ColorImpl<G, NoneToneMap, E>) -> [f32; 3] {
         /// 線形補間を行う関数。
         fn lerp(a: f32, b: f32, t: f32) -> f32 {
             a + (b - a) * t
@@ -146,5 +195,75 @@ impl<C: Color> RgbSigmoidPolynomial<C> {
     }
 }
 
-// ビルドスクリプトで生成したテーブルを読み込む。
-include!(concat!(env!("OUT_DIR"), "/spectrum_table.rs"));
+/// 各色空間のテーブルを遅延初期化で取得
+macro_rules! get_table {
+    ($data:expr, $lock:ident) => {{
+        static $lock: OnceLock<RgbToSpectrumTable> = OnceLock::new();
+        $lock.get_or_init(|| load_table_from_binary($data))
+    }};
+}
+
+// 各色空間のFromトレイト実装
+impl From<ColorSrgb<NoneToneMap>> for RgbSigmoidPolynomial<ColorSrgb<NoneToneMap>> {
+    fn from(color: ColorSrgb<NoneToneMap>) -> Self {
+        let table = get_table!(SRGB_DATA, SRGB_TABLE);
+        let [c0, c1, c2] = table.get(color);
+        Self::new(c0, c1, c2)
+    }
+}
+
+impl From<ColorRec709<NoneToneMap>> for RgbSigmoidPolynomial<ColorRec709<NoneToneMap>> {
+    fn from(color: ColorRec709<NoneToneMap>) -> Self {
+        let table = get_table!(REC709_DATA, REC709_TABLE);
+        let [c0, c1, c2] = table.get(color);
+        Self::new(c0, c1, c2)
+    }
+}
+
+impl From<ColorDisplayP3<NoneToneMap>> for RgbSigmoidPolynomial<ColorDisplayP3<NoneToneMap>> {
+    fn from(color: ColorDisplayP3<NoneToneMap>) -> Self {
+        let table = get_table!(DISPLAYP3_DATA, DISPLAYP3_TABLE);
+        let [c0, c1, c2] = table.get(color);
+        Self::new(c0, c1, c2)
+    }
+}
+
+impl From<ColorP3D65<NoneToneMap>> for RgbSigmoidPolynomial<ColorP3D65<NoneToneMap>> {
+    fn from(color: ColorP3D65<NoneToneMap>) -> Self {
+        let table = get_table!(P3D65_DATA, P3D65_TABLE);
+        let [c0, c1, c2] = table.get(color);
+        Self::new(c0, c1, c2)
+    }
+}
+
+impl From<ColorAdobeRGB<NoneToneMap>> for RgbSigmoidPolynomial<ColorAdobeRGB<NoneToneMap>> {
+    fn from(color: ColorAdobeRGB<NoneToneMap>) -> Self {
+        let table = get_table!(ADOBERGB_DATA, ADOBERGB_TABLE);
+        let [c0, c1, c2] = table.get(color);
+        Self::new(c0, c1, c2)
+    }
+}
+
+impl From<ColorRec2020<NoneToneMap>> for RgbSigmoidPolynomial<ColorRec2020<NoneToneMap>> {
+    fn from(color: ColorRec2020<NoneToneMap>) -> Self {
+        let table = get_table!(REC2020_DATA, REC2020_TABLE);
+        let [c0, c1, c2] = table.get(color);
+        Self::new(c0, c1, c2)
+    }
+}
+
+impl From<ColorAcesCg<NoneToneMap>> for RgbSigmoidPolynomial<ColorAcesCg<NoneToneMap>> {
+    fn from(color: ColorAcesCg<NoneToneMap>) -> Self {
+        let table = get_table!(ACESCG_DATA, ACESCG_TABLE);
+        let [c0, c1, c2] = table.get(color);
+        Self::new(c0, c1, c2)
+    }
+}
+
+impl From<ColorAces2065_1<NoneToneMap>> for RgbSigmoidPolynomial<ColorAces2065_1<NoneToneMap>> {
+    fn from(color: ColorAces2065_1<NoneToneMap>) -> Self {
+        let table = get_table!(ACES2065_1_DATA, ACES2065_1_TABLE);
+        let [c0, c1, c2] = table.get(color);
+        Self::new(c0, c1, c2)
+    }
+}

@@ -993,6 +993,7 @@ name = "spectrum"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bytemuck",
  "color",
  "glam",
  "math",
