@@ -18,8 +18,8 @@ fn write_table<G: ColorGamut>(
     color_name: &str,
     gamut_name: &str,
     eotf_name: &str,
-    z_nodes: &[f32; TABLE_SIZE],
-    table: &[[[[[f32; 3]; TABLE_SIZE]; TABLE_SIZE]; TABLE_SIZE]; 3],
+    z_nodes: &Vec<f32>,
+    table: &Vec<Vec<Vec<Vec<[f32; 3]>>>>,
 ) -> anyhow::Result<()> {
     // テーブルのサイズを出力する。
     writeln!(
@@ -101,9 +101,9 @@ fn main() -> anyhow::Result<()> {
     // テーブルファイルを開く。
     let mut file = File::create(table_file)?;
 
-    // 配列を用意する。
-    let mut z_nodes = [0.0; TABLE_SIZE];
-    let mut table = [[[[[0.0; 3]; TABLE_SIZE]; TABLE_SIZE]; TABLE_SIZE]; 3];
+    // Vecを用意する。
+    let mut z_nodes = vec![0.0; TABLE_SIZE];
+    let mut table = vec![vec![vec![vec![[0.0_f32; 3]; TABLE_SIZE]; TABLE_SIZE]; TABLE_SIZE]; 3];
 
     // sRGB
     init_table::<GamutSrgb>(&mut z_nodes, &mut table);
