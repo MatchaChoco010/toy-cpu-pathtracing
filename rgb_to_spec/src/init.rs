@@ -197,8 +197,8 @@ fn calculate_coefficients<G: ColorGamut>(
 /// delta Eを計算する関数を与えて、
 /// RgbからSigmoidPolynomialの二次式の係数を引くための事前計算テーブルをコンパイル時に生成する。
 pub fn init_table<G: ColorGamut>(
-    z_nodes: &mut [f32; TABLE_SIZE],
-    table: &mut [[[[[f32; 3]; TABLE_SIZE]; TABLE_SIZE]; TABLE_SIZE]; 3],
+    z_nodes: &mut Vec<f32>,
+    table: &mut Vec<Vec<Vec<Vec<[f32; 3]>>>>,
 ) {
     // 精度を0と1の付近に割り振るために、zの非線形なマッピングを計算する。
     const fn z_mapping(zi: usize) -> f32 {
@@ -299,6 +299,6 @@ pub fn init_table<G: ColorGamut>(
             let xi = i % TABLE_SIZE;
 
             // テーブルに格納する。
-            table[max_component][zi][yi][xi] = [item[0] as f32, item[1] as f32, item[2] as f32];
+            table[max_component][zi][yi][xi] = [item[0], item[1], item[2]];
         });
 }
