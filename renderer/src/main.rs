@@ -12,7 +12,7 @@ use filter::BoxFilter;
 use renderer::{
     NormalRenderer, RendererArgs, RendererImage, SrgbRendererMis, SrgbRendererNee, SrgbRendererPt,
 };
-use sampler::RandomSamplerFactory;
+use sampler::{RandomSampler, ZSobolSampler};
 use tone_map::ReinhardToneMap;
 
 #[derive(Parser, Debug)]
@@ -24,10 +24,13 @@ struct Args {
     /// Number of samples per pixel
     #[arg(short, long, default_value_t = 64)]
     spp: u32,
+    /// Seed for the random number generator
+    #[arg(long, default_value_t = 0)]
+    seed: u32,
     /// Filter type: [box, ]
     #[arg(long, default_value = "box")]
     filter: String,
-    /// Sampler type: [random, ]
+    /// Sampler type: [random, sobol]
     #[arg(long, default_value = "random")]
     sampler: String,
     /// Renderer type: [normal, ]
@@ -56,11 +59,6 @@ fn main() {
         _ => panic!("Invalid filter"),
     };
 
-    let sampler_factory = match args.sampler.as_str() {
-        "random" => RandomSamplerFactory::new(),
-        _ => panic!("Invalid sampler"),
-    };
-
     let width = args.width;
     let height = args.height;
 
@@ -76,6 +74,8 @@ fn main() {
 
     let spp = args.spp;
 
+    let seed = args.seed;
+
     let max_depth = args.max_depth;
 
     let output = args.output;
@@ -89,30 +89,69 @@ fn main() {
     let end = start.elapsed();
     println!("Finish build scene: {} seconds.", end.as_secs_f32());
 
-    // レンダラーを作成する。
+    match args.sampler.as_str() {
+        "random" => {
+            render_with_sampler::<_, _, RandomSampler>(
+                args.renderer.as_str(),
+                width,
+                height,
+                spp,
+                seed,
+                &scene,
+                &camera,
+                max_depth,
+                output,
+            );
+        }
+        "sobol" => {
+            render_with_sampler::<_, _, ZSobolSampler>(
+                args.renderer.as_str(),
+                width,
+                height,
+                spp,
+                seed,
+                &scene,
+                &camera,
+                max_depth,
+                output,
+            );
+        }
+        _ => panic!("Invalid sampler type"),
+    }
+}
+
+fn render_with_sampler<Id: ::scene::SceneId, F: filter::Filter, S: sampler::Sampler>(
+    renderer_type: &str,
+    width: u32,
+    height: u32,
+    spp: u32,
+    seed: u32,
+    scene: &::scene::Scene<Id>,
+    camera: &Camera<F>,
+    max_depth: usize,
+    output: String,
+) {
     let renderer_args = RendererArgs {
-        width,
-        height,
+        resolution: glam::uvec2(width, height),
         spp,
-        scene: &scene,
-        camera: &camera,
-        sampler_factory: &sampler_factory,
+        scene,
+        camera,
+        seed,
     };
-    match args.renderer.as_str() {
+
+    match renderer_type {
         "normal" => {
             let renderer = NormalRenderer::new(renderer_args);
             let mut image = RendererImage::new(width, height, renderer);
 
-            // レンダリングを開始する。
             println!("Start rendering...");
             let start = std::time::Instant::now();
 
-            image.render();
+            image.render::<S>();
 
             let end = start.elapsed();
             println!("Finish rendering: {} seconds.", end.as_secs_f32());
 
-            // 画像を保存する。
             image.save(output);
         }
         "pt" => {
@@ -120,16 +159,14 @@ fn main() {
             let renderer = SrgbRendererPt::new(renderer_args, tone_map, 0.01, max_depth);
             let mut image = RendererImage::new(width, height, renderer);
 
-            // レンダリングを開始する。
             println!("Start rendering...");
             let start = std::time::Instant::now();
 
-            image.render();
+            image.render::<S>();
 
             let end = start.elapsed();
             println!("Finish rendering: {} seconds.", end.as_secs_f32());
 
-            // 画像を保存する。
             image.save(output);
         }
         "nee" => {
@@ -137,16 +174,14 @@ fn main() {
             let renderer = SrgbRendererNee::new(renderer_args, tone_map, 0.01, max_depth);
             let mut image = RendererImage::new(width, height, renderer);
 
-            // レンダリングを開始する。
             println!("Start rendering...");
             let start = std::time::Instant::now();
 
-            image.render();
+            image.render::<S>();
 
             let end = start.elapsed();
             println!("Finish rendering: {} seconds.", end.as_secs_f32());
 
-            // 画像を保存する。
             image.save(output);
         }
         "mis" => {
@@ -154,18 +189,16 @@ fn main() {
             let renderer = SrgbRendererMis::new(renderer_args, tone_map, 0.01, max_depth);
             let mut image = RendererImage::new(width, height, renderer);
 
-            // レンダリングを開始する。
             println!("Start rendering...");
             let start = std::time::Instant::now();
 
-            image.render();
+            image.render::<S>();
 
             let end = start.elapsed();
             println!("Finish rendering: {} seconds.", end.as_secs_f32());
 
-            // 画像を保存する。
             image.save(output);
         }
         _ => panic!("Invalid renderer"),
-    };
+    }
 }

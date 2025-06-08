@@ -65,11 +65,11 @@ impl<F: Filter> Camera<F> {
     }
 
     /// 指定されたピクセル座標からレイをサンプリングする。
-    pub fn sample_ray(&self, x: u32, y: u32, uv: glam::Vec2) -> RaySample {
+    pub fn sample_ray(&self, p: glam::UVec2, uv: glam::Vec2) -> RaySample {
         // フィルタからサンプリングする。
         let fs = self.filter.sample(uv);
-        let x = x as f32 + fs.x + 0.5;
-        let y = y as f32 + fs.y + 0.5;
+        let x = p.x as f32 + fs.x + 0.5;
+        let y = p.y as f32 + fs.y + 0.5;
 
         // カメラ座標系でのレイを生成する。
         let ray = self.generate_ray(x, y);
