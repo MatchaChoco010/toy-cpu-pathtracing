@@ -46,8 +46,8 @@ fn parabolic(t: f32, coefficients: &[f32]) -> f32 {
 
 /// バイナリデータから変換されたテーブル構造体
 struct RgbToSpectrumTable {
-    z_nodes: [f32; TABLE_SIZE],
-    table: [[[[[f32; 3]; TABLE_SIZE]; TABLE_SIZE]; TABLE_SIZE]; 3],
+    z_nodes: Vec<f32>,
+    table: Vec<Vec<Vec<Vec<Vec<f32>>>>>,
 }
 
 /// バイナリデータからテーブルを読み込む
@@ -58,35 +58,45 @@ fn load_table_from_binary(data: &[u8]) -> RgbToSpectrumTable {
     let mut offset = 0;
 
     // z_nodes を読み込み
-    let mut z_nodes = [0.0f32; TABLE_SIZE];
-    for i in 0..TABLE_SIZE {
-        z_nodes[i] = f32::from_le_bytes([
+    let mut z_nodes = Vec::with_capacity(TABLE_SIZE);
+    for _ in 0..TABLE_SIZE {
+        let value = f32::from_le_bytes([
             data[offset],
             data[offset + 1],
             data[offset + 2],
             data[offset + 3],
         ]);
+        z_nodes.push(value);
         offset += 4;
     }
 
     // table を読み込み
-    let mut table = [[[[[0.0f32; 3]; TABLE_SIZE]; TABLE_SIZE]; TABLE_SIZE]; 3];
-    for max_component in 0..3 {
-        for zi in 0..TABLE_SIZE {
-            for yi in 0..TABLE_SIZE {
-                for xi in 0..TABLE_SIZE {
-                    for component in 0..3 {
-                        table[max_component][zi][yi][xi][component] = f32::from_le_bytes([
+    let mut table = Vec::with_capacity(3);
+    for _ in 0..3 {
+        let mut zi_vec = Vec::with_capacity(TABLE_SIZE);
+        for _ in 0..TABLE_SIZE {
+            let mut yi_vec = Vec::with_capacity(TABLE_SIZE);
+            for _ in 0..TABLE_SIZE {
+                let mut xi_vec = Vec::with_capacity(TABLE_SIZE);
+                for _ in 0..TABLE_SIZE {
+                    let mut component_vec = Vec::with_capacity(3);
+                    for _ in 0..3 {
+                        let value = f32::from_le_bytes([
                             data[offset],
                             data[offset + 1],
                             data[offset + 2],
                             data[offset + 3],
                         ]);
+                        component_vec.push(value);
                         offset += 4;
                     }
+                    xi_vec.push(component_vec);
                 }
+                yi_vec.push(xi_vec);
             }
+            zi_vec.push(yi_vec);
         }
+        table.push(zi_vec);
     }
 
     RgbToSpectrumTable { z_nodes, table }
