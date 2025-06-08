@@ -9,20 +9,20 @@ use spectrum::{DenselySampledSpectrum, SampledSpectrum, SampledWavelengths, Spec
 
 use crate::filter::Filter;
 use crate::renderer::{Renderer, RendererArgs};
-use crate::sampler::{Sampler, SamplerFactory};
+use crate::sampler::Sampler;
 
 /// 純粋なパストレーサーでsRGBレンダリングするためのレンダラー。
 #[derive(Clone)]
-pub struct SrgbRendererPt<'a, Id: SceneId, F: Filter, SF: SamplerFactory, T: ToneMap> {
-    args: RendererArgs<'a, Id, F, SF>,
+pub struct SrgbRendererPt<'a, Id: SceneId, F: Filter, T: ToneMap> {
+    args: RendererArgs<'a, Id, F>,
     tone_map: T,
     exposure: f32,
     max_depth: usize,
 }
-impl<'a, Id: SceneId, F: Filter, SF: SamplerFactory, T: ToneMap> SrgbRendererPt<'a, Id, F, SF, T> {
+impl<'a, Id: SceneId, F: Filter, T: ToneMap> SrgbRendererPt<'a, Id, F, T> {
     /// 新しいsRGBレンダラーを作成する。
     pub fn new(
-        args: RendererArgs<'a, Id, F, SF>,
+        args: RendererArgs<'a, Id, F>,
         tone_map: T,
         exposure: f32,
         max_depth: usize,
@@ -35,31 +35,28 @@ impl<'a, Id: SceneId, F: Filter, SF: SamplerFactory, T: ToneMap> SrgbRendererPt<
         }
     }
 }
-impl<'a, Id: SceneId, F: Filter, SF: SamplerFactory, T: ToneMap> Renderer
-    for SrgbRendererPt<'a, Id, F, SF, T>
-{
+impl<'a, Id: SceneId, F: Filter, T: ToneMap> Renderer for SrgbRendererPt<'a, Id, F, T> {
     type Color = ColorSrgb<T>;
 
-    fn render(&mut self, x: u32, y: u32) -> Self::Color {
+    fn render<S: Sampler>(&mut self, p: glam::UVec2) -> Self::Color {
         const RAY_FORWARD_EPSILON: f32 = 1e-4;
 
         let RendererArgs {
+            resolution,
             spp,
             scene,
             camera,
-            sampler_factory,
-            ..
+            seed,
         } = self.args.clone();
-
-        let mut sampler = sampler_factory.create_sampler(x, y);
+        let mut sampler = S::new(spp, resolution, seed);
 
         let mut output = DenselySampledSpectrum::zero();
 
         // spp数だけループする。
-        'dimension_loop: for dimension in 0..spp {
-            sampler.start_pixel_sample(dimension);
+        'sample_loop: for sample_index in 0..spp {
+            sampler.start_pixel_sample(p, sample_index);
 
-            // このdimensionでサンプルする波長をサンプリングする。
+            // このsample_indexでサンプルする波長をサンプリングする。
             let u = sampler.get_1d();
             let lambda = SampledWavelengths::new_uniform(u);
 
@@ -68,7 +65,7 @@ impl<'a, Id: SceneId, F: Filter, SF: SamplerFactory, T: ToneMap> Renderer
 
             // カメラ絵レイをサンプルする。
             let uv = sampler.get_2d_pixel();
-            let rs = camera.sample_ray(x, y, uv);
+            let rs = camera.sample_ray(p, uv);
             throughout *= rs.weight;
 
             // カメラレイをシーンに飛ばして交差を取得する。
@@ -76,9 +73,9 @@ impl<'a, Id: SceneId, F: Filter, SF: SamplerFactory, T: ToneMap> Renderer
             let intersect = scene.intersect(&ray, f32::MAX);
             let mut hit_info = match intersect {
                 None => {
-                    // ヒットしなかった場合は、このdimensionを終了する。
+                    // ヒットしなかった場合は、このsample_indexを終了する。
                     // TODO: 環境ライトの寄与をoutputに追加する。
-                    continue 'dimension_loop;
+                    continue 'sample_loop;
                 }
                 Some(intersect) => intersect,
             };
@@ -142,8 +139,8 @@ impl<'a, Id: SceneId, F: Filter, SF: SamplerFactory, T: ToneMap> Renderer
                             Some(next_hit_info) => next_hit_info,
                             None => {
                                 // TODO: 環境ライトの寄与をoutputに追加する。
-                                // ヒットしなかった場合はこのdimensionを終了する。
-                                continue 'dimension_loop;
+                                // ヒットしなかった場合はこのsample_indexを終了する。
+                                continue 'sample_loop;
                             }
                         };
 
@@ -186,8 +183,8 @@ impl<'a, Id: SceneId, F: Filter, SF: SamplerFactory, T: ToneMap> Renderer
                             Some(next_hit_info) => next_hit_info,
                             None => {
                                 // TODO: 環境ライトの寄与をoutputに追加する。
-                                // ヒットしなかった場合はこのdimensionを終了する。
-                                continue 'dimension_loop;
+                                // ヒットしなかった場合はこのsample_indexを終了する。
+                                continue 'sample_loop;
                             }
                         };
 

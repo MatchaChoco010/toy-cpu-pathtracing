@@ -22,7 +22,9 @@
     "rustc",
     "rustflags",
     "signum",
+    "sobol",
     "Srgb",
-    "tobj"
+    "tobj",
+    "uvec"
   ]
 }

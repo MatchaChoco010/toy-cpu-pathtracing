@@ -10,7 +10,7 @@ use scene::{Scene, SceneId};
 
 use crate::camera::Camera;
 use crate::filter::Filter;
-use crate::sampler::SamplerFactory;
+use crate::sampler::Sampler;
 
 mod mis_renderer;
 mod nee_renderer;
@@ -24,13 +24,12 @@ pub use pt_renderer::SrgbRendererPt;
 
 /// レンダラーの作成のための引数。
 #[derive(Clone)]
-pub struct RendererArgs<'a, Id: SceneId, F: Filter, SF: SamplerFactory> {
-    pub width: u32,
-    pub height: u32,
+pub struct RendererArgs<'a, Id: SceneId, F: Filter> {
+    pub resolution: glam::UVec2,
     pub spp: u32,
+    pub seed: u32,
     pub scene: &'a Scene<Id>,
     pub camera: &'a Camera<F>,
-    pub sampler_factory: &'a SF,
 }
 
 /// レンダラーのトレイト。
@@ -38,7 +37,7 @@ pub trait Renderer: Send + Sync + Clone {
     type Color: Color;
 
     /// レンダリングを行い、RGBの色を返す。
-    fn render(&mut self, x: u32, y: u32) -> Self::Color;
+    fn render<S: Sampler>(&mut self, p: glam::UVec2) -> Self::Color;
 }
 
 /// レンダラーで書き出す画像の構造体。
@@ -61,15 +60,16 @@ impl<R: Renderer> RendererImage<R> {
     }
 
     /// 画像に対してレンダリングを行う。
-    pub fn render(&mut self) {
+    pub fn render<S: Sampler>(&mut self) {
         self.pixels
             .par_iter_mut()
             .enumerate()
             .for_each(|(index, pixel)| {
                 let x = index as u32 % self.width;
                 let y = index as u32 / self.width;
+                let p = glam::uvec2(x, y);
                 let mut renderer = self.renderer.clone();
-                let rgb = renderer.render(x, y).rgb();
+                let rgb = renderer.render::<S>(p).rgb();
                 pixel[0] = rgb.x;
                 pixel[1] = rgb.y;
                 pixel[2] = rgb.z;

@@ -5,39 +5,38 @@ use scene::{SceneId, SurfaceInteraction};
 
 use crate::filter::Filter;
 use crate::renderer::{Renderer, RendererArgs};
-use crate::sampler::{Sampler, SamplerFactory};
+use crate::sampler::Sampler;
 
 /// 法線をレンダリングするためのレンダラー。
 #[derive(Clone)]
-pub struct NormalRenderer<'a, Id: SceneId, F: Filter, SF: SamplerFactory> {
-    args: RendererArgs<'a, Id, F, SF>,
+pub struct NormalRenderer<'a, Id: SceneId, F: Filter> {
+    args: RendererArgs<'a, Id, F>,
 }
-impl<'a, Id: SceneId, F: Filter, SF: SamplerFactory> NormalRenderer<'a, Id, F, SF> {
+impl<'a, Id: SceneId, F: Filter> NormalRenderer<'a, Id, F> {
     /// 新しい法線レンダラーを作成する。
-    pub fn new(args: RendererArgs<'a, Id, F, SF>) -> Self {
+    pub fn new(args: RendererArgs<'a, Id, F>) -> Self {
         Self { args }
     }
 }
-impl<'a, Id: SceneId, F: Filter, SF: SamplerFactory> Renderer for NormalRenderer<'a, Id, F, SF> {
+impl<'a, Id: SceneId, F: Filter> Renderer for NormalRenderer<'a, Id, F> {
     type Color = ColorSrgb<tone_map::NoneToneMap>;
 
-    fn render(&mut self, x: u32, y: u32) -> Self::Color {
+    fn render<S: Sampler>(&mut self, p: glam::UVec2) -> Self::Color {
         let RendererArgs {
+            resolution,
             spp,
             scene,
             camera,
-            sampler_factory,
-            ..
+            seed,
         } = self.args.clone();
-
-        let mut sampler = sampler_factory.create_sampler(x, y);
+        let mut sampler = S::new(spp, resolution, seed);
 
         let mut acc_color = glam::Vec3::ZERO;
-        for dimension in 0..spp {
-            sampler.start_pixel_sample(dimension);
+        for sample_index in 0..spp {
+            sampler.start_pixel_sample(p, sample_index);
 
             let uv = sampler.get_2d_pixel();
-            let rs = camera.sample_ray(x, y, uv);
+            let rs = camera.sample_ray(p, uv);
 
             let intersect = scene.intersect(&rs.ray, f32::MAX);
 
