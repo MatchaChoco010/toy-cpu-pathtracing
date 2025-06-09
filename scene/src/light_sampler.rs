@@ -6,6 +6,7 @@ use spectrum::SampledWavelengths;
 use crate::{PrimitiveIndex, SceneId, primitive::PrimitiveRepository};
 
 /// サンプルした光源のPrimitiveIndexとサンプル確率を持つ構造体。
+#[derive(Debug, Clone)]
 pub struct LightSample<Id: SceneId> {
     pub primitive_index: PrimitiveIndex<Id>,
     pub probability: f32,
@@ -21,19 +22,24 @@ pub struct LightSampler<'a, Id: SceneId> {
 }
 impl<'a, Id: SceneId> LightSampler<'a, Id> {
     /// 光源をサンプリングする。
-    pub fn sample_light(&self, u: f32) -> LightSample<Id> {
+    /// ライトがない場合はNoneを返す。
+    pub fn sample_light(&self, u: f32) -> Option<LightSample<Id>> {
+        if self.sample_table.is_empty() {
+            return None;
+        }
+
         for i in 0..self.sample_table.len() {
             if u < self.sample_table[i] {
-                return LightSample {
+                return Some(LightSample {
                     primitive_index: self.factory.light_list[i],
                     probability: self.sample_table[i],
-                };
+                });
             }
         }
-        LightSample {
+        Some(LightSample {
             primitive_index: self.factory.light_list[self.sample_table.len() - 1],
             probability: self.sample_table[self.sample_table.len() - 1],
-        }
+        })
     }
 
     /// 指定したPrimitiveIndexの光源をLightSamplerが返す確率を返す。
