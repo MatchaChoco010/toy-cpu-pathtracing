@@ -156,7 +156,7 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap> Renderer for SrgbRendererNee<'a, Id
                             );
 
                             // next_hitからの出射方向を計算する。
-                            let ray_tangent = &render_to_tangent * &ray;
+                            let ray_tangent = &render_to_tangent * &next_ray;
                             let wo = -ray_tangent.dir;
 
                             // next_hitのTangent座標系での情報を計算する。
@@ -175,7 +175,7 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap> Renderer for SrgbRendererNee<'a, Id
                         // ヒット情報を次に進めてループを進める。
                         hit_info = next_hit_info;
                     }
-                    // BSDFのサンプリング結果があった場合。
+                    // BSDFが完全鏡面ではない場合、ライトをサンプリングする。
                     Some(BsdfSample::Bsdf { f, pdf, wi }) => {
                         // ライトをサンプリングする。
                         let u = sampler.get_1d();
@@ -257,14 +257,8 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap> Renderer for SrgbRendererNee<'a, Id
                                     let g = radiance.g;
                                     let f = bsdf.evaluate(&lambda, &wo, &wi, &shading_point);
 
-                                    // シェーディング点に非常に近い光源点をサンプリングするなどして
-                                    // gが大きくなった場合はfireflyを抑制するために
-                                    // 再度ライトのサンプリングからやり直す。
-                                    if g > 1.0 {
-                                        continue 'depth_loop;
-                                    }
-
-                                    let sample_contribution = &throughout * &f * li * g / pdf;
+                                    let sample_contribution = &throughout * &f * li * g
+                                        / (pdf * light_sample.probability);
                                     output.add_sample(&lambda, sample_contribution);
                                 }
                             }

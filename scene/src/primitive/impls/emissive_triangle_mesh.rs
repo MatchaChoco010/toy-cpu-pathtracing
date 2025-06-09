@@ -210,8 +210,8 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveTriangleMesh<Id> {
             b0 = uv[0] / 2.0;
             b1 = uv[1] - b0;
         } else {
-            b1 = uv[0] / 2.0;
-            b0 = uv[1] - b1;
+            b1 = uv[1] / 2.0;
+            b0 = uv[0] - b1;
         }
         let b2 = 1.0 - b0 - b1;
         let barycentric = [b0, b1, b2];
@@ -231,8 +231,8 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveTriangleMesh<Id> {
 
         // サンプリングする点のRender空間での幾何法線を計算する。
         let normal = Normal::from(
-            p1.vector_to(p0)
-                .cross(p2.vector_to(p0))
+            p0.vector_to(p1)
+                .cross(p0.vector_to(p2))
                 .normalize()
                 .to_vec3(),
         );
@@ -288,8 +288,20 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveTriangleMesh<Id> {
         // Render空間からサンプルした点のTangent空間への変換Transformを計算する。
         let render_to_tangent = Transform::from_shading_normal_tangent(&shading_normal, &tangent);
 
-        // サンプリングする光の出力方向を計算する。
-        let wo = p.vector_to(shading_point.position).normalize();
+        // シェーディングポイントに対する光源の方向ベクトルを計算する。
+        let wi = shading_point.position.vector_to(p).normalize();
+
+        // サンプリングした光源上の点のSurfaceInteractionを作成する。
+        let sampled_interaction = SurfaceInteraction {
+            position: p,
+            normal,
+            shading_normal,
+            tangent,
+            uv,
+            material: self.material.clone(),
+            primitive_index,
+            geometry_info: InteractGeometryInfo::None,
+        };
 
         // マテリアルのedfから放射輝度を取得する。
         let radiance = self
@@ -299,8 +311,8 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveTriangleMesh<Id> {
             .unwrap()
             .radiance(
                 lambda,
-                &render_to_tangent * shading_point,
-                &render_to_tangent * wo,
+                &render_to_tangent * &sampled_interaction,
+                &render_to_tangent * -wi,
             )
             .unwrap_or(SampledSpectrum::zero());
 
@@ -314,10 +326,10 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveTriangleMesh<Id> {
 
         // 幾何項を計算する。
         let distance = p.distance(shading_point.position);
-        let g = shading_point.normal.dot(-wo).abs() * normal.dot(wo).abs() / (distance * distance);
+        let g = shading_point.normal.dot(wi).abs() * normal.dot(-wi).abs() / (distance * distance);
 
         // 方向要素のpdfを計算する。
-        let pdf_dir = pdf * (distance * distance) / normal.dot(wo).abs();
+        let pdf_dir = pdf * (distance * distance) / normal.dot(-wi).abs();
 
         AreaLightSampleRadiance {
             radiance,
