@@ -136,7 +136,7 @@ pub fn intersect_triangle<C: CoordinateSystem>(
     // t_hitがゼロより大きいかを保守的にチェックする。
     const fn gamma(n: usize) -> f32 {
         const EPSILON: f32 = std::f32::EPSILON * 0.5;
-        (n as f32 * EPSILON) / ((1 - n) as f32 * EPSILON)
+        (n as f32 * EPSILON) / (1.0 - n as f32 * EPSILON)
     }
     // t_hitのエラー幅のdelta_zの項を計算する。
     let max_zt = glam::vec3(p0_o.z, p1_o.z, p2_o.z).abs().max_element();
