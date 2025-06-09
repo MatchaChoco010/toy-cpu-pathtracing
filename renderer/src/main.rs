@@ -37,10 +37,10 @@ struct Args {
     #[arg(long, default_value = "normal")]
     renderer: String,
     /// Output image width
-    #[arg(short, long, default_value_t = 800)]
+    #[arg(long, default_value_t = 800)]
     width: u32,
     /// Output image height
-    #[arg(short, long, default_value_t = 600)]
+    #[arg(long, default_value_t = 600)]
     height: u32,
     /// Maximum depth for the renderer
     #[arg(short = 'd', long, default_value_t = 16)]
