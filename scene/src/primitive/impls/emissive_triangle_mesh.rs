@@ -1,13 +1,11 @@
 //! 放射面を含む三角形メッシュのプリミティブの実装のモジュール。
 
-use std::sync::Arc;
-
 use math::{Bounds, Local, Normal, Point3, Ray, Render, Transform, Vector3, World};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::{
-    AreaLightSampleRadiance, GeometryIndex, InteractGeometryInfo, Intersection, PrimitiveIndex,
-    SceneId, SurfaceInteraction, SurfaceMaterial,
+    AreaLightSampleRadiance, GeometryIndex, InteractGeometryInfo, Intersection, Material,
+    PrimitiveIndex, SceneId, SurfaceInteraction,
     geometry::{GeometryRepository, impls::TriangleMesh},
     primitive::traits::{
         Primitive, PrimitiveAreaLight, PrimitiveDeltaDirectionalLight, PrimitiveDeltaPointLight,
@@ -18,7 +16,7 @@ use crate::{
 /// 放射面を含む三角形メッシュのプリミティブの構造体。
 pub struct EmissiveTriangleMesh<Id: SceneId> {
     geometry_index: GeometryIndex<Id>,
-    material: Arc<SurfaceMaterial<Id>>,
+    material: Material,
     area_list: Vec<f32>,
     area_sum: f32,
     area_table: Vec<f32>,
@@ -30,7 +28,7 @@ impl<Id: SceneId> EmissiveTriangleMesh<Id> {
     pub fn new(
         triangle_mesh: &TriangleMesh<Id>,
         geometry_index: GeometryIndex<Id>,
-        material: Arc<SurfaceMaterial<Id>>,
+        material: Material,
         local_to_world: Transform<Local, World>,
     ) -> Self {
         // ワールド空間での面積などを計算しておく。
@@ -116,8 +114,8 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for EmissiveTriangleMesh<Id> {
         &self.local_to_render * &geometry.bounds()
     }
 
-    fn surface_material(&self) -> &SurfaceMaterial<Id> {
-        &self.material
+    fn surface_material(&self) -> Material {
+        self.material.clone()
     }
 
     fn build_geometry_bvh(&mut self, geometry_repository: &mut GeometryRepository<Id>) {
@@ -172,8 +170,7 @@ impl<Id: SceneId> PrimitiveLight<Id> for EmissiveTriangleMesh<Id> {
     fn phi(&self, lambda: &SampledWavelengths) -> SampledSpectrum {
         // 面積の総和を使って、放射面のスペクトル放射束を計算する。
         self.material
-            .edf
-            .as_ref()
+            .as_emissive_material::<Id>()
             .unwrap()
             .average_intensity(lambda)
             * self.area_sum
@@ -292,7 +289,7 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveTriangleMesh<Id> {
         let wi = shading_point.position.vector_to(p).normalize();
 
         // サンプリングした光源上の点のSurfaceInteractionを作成する。
-        let sampled_interaction = SurfaceInteraction {
+        let light_sample_point = SurfaceInteraction {
             position: p,
             normal,
             shading_normal,
@@ -306,15 +303,13 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveTriangleMesh<Id> {
         // マテリアルのedfから放射輝度を取得する。
         let radiance = self
             .material
-            .edf
-            .as_ref()
+            .as_emissive_material::<Id>()
             .unwrap()
             .radiance(
                 lambda,
-                &render_to_tangent * &sampled_interaction,
                 &render_to_tangent * -wi,
-            )
-            .unwrap_or(SampledSpectrum::zero());
+                &(render_to_tangent * light_sample_point),
+            );
 
         // pdfを計算する。
         // 三角形から一様に取得するので三角形の面積で割ったものをpdfとする。
@@ -392,15 +387,13 @@ impl<Id: SceneId> PrimitiveAreaLight<Id> for EmissiveTriangleMesh<Id> {
         // マテリアルのedfから放射輝度を取得する。
         let radiance = self
             .material
-            .edf
-            .as_ref()
+            .as_emissive_material::<Id>()
             .unwrap()
             .radiance(
                 lambda,
-                &render_to_tangent * interaction,
                 &render_to_tangent * wo,
-            )
-            .unwrap_or(SampledSpectrum::zero());
+                &(render_to_tangent * interaction),
+            );
 
         radiance
     }

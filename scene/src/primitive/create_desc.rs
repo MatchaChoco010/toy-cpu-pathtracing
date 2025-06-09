@@ -1,12 +1,11 @@
 //! プリミティブを作成するための情報を定義するモジュール。
 
 use std::path::PathBuf;
-use std::sync::Arc;
 
 use math::{Local, Normal, Point3, Transform, World};
 use spectrum::Spectrum;
 
-use crate::{GeometryIndex, SceneId, SurfaceMaterial};
+use crate::{GeometryIndex, Material, SceneId};
 
 /// プリミティブを作成するための情報。
 pub enum CreatePrimitiveDesc<Id: SceneId> {
@@ -15,7 +14,7 @@ pub enum CreatePrimitiveDesc<Id: SceneId> {
         /// ジオメトリのインデックス。
         geometry_index: GeometryIndex<Id>,
         /// 表面マテリアル。
-        surface_material: Arc<SurfaceMaterial<Id>>,
+        surface_material: Material,
         /// モデルのワールド座標系への座標変換。
         transform: Transform<Local, World>,
     },
@@ -28,7 +27,7 @@ pub enum CreatePrimitiveDesc<Id: SceneId> {
         /// 三角形のUV座標。
         uvs: [glam::Vec2; 3],
         /// 表面マテリアル。
-        surface_material: Arc<SurfaceMaterial<Id>>,
+        surface_material: Material,
         /// モデルのワールド座標系への座標変換。
         transform: Transform<Local, World>,
     },

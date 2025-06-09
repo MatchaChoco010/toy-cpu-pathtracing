@@ -22,7 +22,7 @@ fn evaluate_next_event_estimation_with_mis<Id: SceneId, S: Sampler>(
     current_hit_info: &Intersection<Id, Render>,
 ) -> NeeResult {
     let shading_point = &current_hit_info.interaction;
-    let bsdf = match &shading_point.material.bsdf {
+    let bsdf = match shading_point.material.as_bsdf_material::<Id>() {
         Some(bsdf) => bsdf,
         None => {
             return NeeResult {
@@ -37,7 +37,15 @@ fn evaluate_next_event_estimation_with_mis<Id: SceneId, S: Sampler>(
 
     // ライトをサンプリング
     let u = sampler.get_1d();
-    let light_sample = light_sampler.sample_light(u);
+    let light_sample = match light_sampler.sample_light(u) {
+        Some(sample) => sample,
+        None => {
+            return NeeResult {
+                contribution: SampledSpectrum::zero(),
+                mis_weight: 1.0,
+            };
+        }
+    };
 
     // サンプリングしたライトの強さを計算
     let s = sampler.get_1d();
@@ -56,7 +64,7 @@ fn evaluate_next_event_estimation_with_mis<Id: SceneId, S: Sampler>(
                 scene,
                 &shading_point,
                 &irradiance,
-                &bsdf,
+                bsdf,
                 &lambda,
                 &current_hit_info.wo,
                 render_to_tangent,

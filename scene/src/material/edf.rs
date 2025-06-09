@@ -1,33 +1,32 @@
-//! マテリアルのSurfaceの発光のEDFを定義するモジュール。
+//! 純粋なEDF実装（SurfaceInteractionに依存しない）を定義するモジュール。
 
-use math::{Tangent, Vector3};
-use spectrum::{SampledSpectrum, SampledWavelengths};
+use spectrum::SampledSpectrum;
 
-use crate::{SceneId, SurfaceInteraction};
+/// 一様EDF（全方向に一定の放射輝度）の純粋な計算を行う構造体。
+/// パラメータは外部から与えられ、SurfaceInteractionに依存しない。
+#[derive(Default)]
+pub struct UniformEdf;
+impl UniformEdf {
+    /// 新しいUniformEdfを作成する。
+    pub fn new() -> Self {
+        Self
+    }
 
-mod uniform;
-
-pub use uniform::Uniform;
-
-/// EDFのトレイト。
-pub trait Edf<Id: SceneId>: Send + Sync {
-    /// EDFの放射輝度の計算を行う。
+    /// 指定方向の放射輝度を計算する。
     ///
     /// # Arguments
-    /// - `lambda` - サンプリングする波長。
-    /// - `emissive_point` - 発光点上の情報。
-    /// - `wo` - 出射方向。
-    fn radiance(
-        &self,
-        lambda: &SampledWavelengths,
-        emissive_point: SurfaceInteraction<Id, Tangent>,
-        wo: Vector3<Tangent>,
-    ) -> Option<SampledSpectrum>;
+    /// - `radiance` - 基本放射輝度スペクトル
+    /// - `intensity` - 強度乗算係数
+    pub fn radiance(&self, radiance: &SampledSpectrum, intensity: f32) -> SampledSpectrum {
+        radiance.clone() * intensity
+    }
 
-    /// 指定された波長に対する平均放射発散度を取得する。
-    /// uv座標やwoに応じて放射輝度が変わるEDFの場合に、その平均の放射輝度を返す。
+    /// 平均強度を計算する。
     ///
     /// # Arguments
-    /// - `lambda` - サンプリングする波長。
-    fn average_intensity(&self, lambda: &SampledWavelengths) -> SampledSpectrum;
+    /// - `radiance` - 基本放射輝度スペクトル
+    /// - `intensity` - 強度乗算係数
+    pub fn average_intensity(&self, radiance: &SampledSpectrum, intensity: f32) -> SampledSpectrum {
+        radiance.clone() * intensity
+    }
 }

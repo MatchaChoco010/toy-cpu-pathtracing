@@ -1,10 +1,16 @@
-//! マテリアルに関連する定義を行うモジュール。
+//! 新しいマテリアルシステムを定義するモジュール。
 
-mod material;
+mod bsdf;
+mod edf;
+mod impls;
+mod traits;
 
-pub mod bsdf;
-pub mod edf;
+// BSDF/EDF実装
+pub use bsdf::NormalizedLambertBsdf;
+pub use edf::UniformEdf;
 
-pub use bsdf::{Bsdf, BsdfSample};
-pub use edf::Edf;
-pub use material::SurfaceMaterial;
+// マテリアルトレイト
+pub use traits::{BsdfSurfaceMaterial, EmissiveSurfaceMaterial, Material, SurfaceMaterial};
+
+// 具体的なマテリアル実装
+pub use impls::{EmissiveMaterial, LambertMaterial};

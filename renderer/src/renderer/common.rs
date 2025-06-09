@@ -2,8 +2,8 @@
 
 use math::{Ray, Render, Tangent, Transform};
 use scene::{
-    AreaLightSampleRadiance, DeltaDirectionalLightLightIrradiance, DeltaPointLightIrradiance,
-    SceneId, SurfaceInteraction,
+    AreaLightSampleRadiance, BsdfSurfaceMaterial, DeltaDirectionalLightLightIrradiance,
+    DeltaPointLightIrradiance, SceneId, SurfaceInteraction,
 };
 use spectrum::SampledSpectrum;
 
@@ -24,7 +24,7 @@ pub fn evaluate_delta_point_light<Id: SceneId>(
     scene: &scene::Scene<Id>,
     shading_point: &SurfaceInteraction<Id, Render>,
     irradiance: &DeltaPointLightIrradiance<Render>,
-    bsdf: &Box<dyn scene::Bsdf<Id>>,
+    bsdf: &dyn BsdfSurfaceMaterial<Id>,
     lambda: &spectrum::SampledWavelengths,
     wo: &math::Vector3<Render>,
     render_to_tangent: &Transform<Render, Tangent>,
@@ -54,7 +54,7 @@ pub fn evaluate_delta_directional_light<Id: SceneId>(
     scene: &scene::Scene<Id>,
     shading_point: &SurfaceInteraction<Id, Render>,
     irradiance: &DeltaDirectionalLightLightIrradiance<Render>,
-    bsdf: &Box<dyn scene::Bsdf<Id>>,
+    bsdf: &dyn BsdfSurfaceMaterial<Id>,
     lambda: &spectrum::SampledWavelengths,
     wo: &math::Vector3<Render>,
     render_to_tangent: &Transform<Render, Tangent>,
@@ -81,7 +81,7 @@ pub fn evaluate_area_light<Id: SceneId>(
     scene: &scene::Scene<Id>,
     shading_point: &SurfaceInteraction<Id, Render>,
     radiance: &AreaLightSampleRadiance<Id, Render>,
-    bsdf: &Box<dyn scene::Bsdf<Id>>,
+    bsdf: &dyn BsdfSurfaceMaterial<Id>,
     lambda: &spectrum::SampledWavelengths,
     wo: &math::Vector3<Render>,
     render_to_tangent: &Transform<Render, Tangent>,
@@ -115,7 +115,7 @@ pub fn evaluate_area_light_with_mis<Id: SceneId>(
     scene: &scene::Scene<Id>,
     shading_point: &SurfaceInteraction<Id, Render>,
     radiance: &AreaLightSampleRadiance<Id, Render>,
-    bsdf: &Box<dyn scene::Bsdf<Id>>,
+    bsdf: &dyn BsdfSurfaceMaterial<Id>,
     lambda: &spectrum::SampledWavelengths,
     wo: &math::Vector3<Render>,
     render_to_tangent: &Transform<Render, Tangent>,

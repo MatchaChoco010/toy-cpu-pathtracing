@@ -55,22 +55,19 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy>
         incoming_ray: &Ray<Render>,
         lambda: &SampledWavelengths,
     ) -> Option<SampledSpectrum> {
-        let edf = interaction.material.edf.as_ref()?;
+        let emissive_material = interaction.material.as_emissive_material::<Id>()?;
 
-        // Render座標系からヒットしたシェーディングポイントのTangent座標系に変換
+        // Render座標系からヒットした光源上の点のTangent座標系に変換
         let render_to_tangent = Transform::from_shading_normal_tangent(
             &interaction.shading_normal,
             &interaction.tangent,
         );
 
-        // 光源面のTangent座標系での情報を計算
-        let emissive_point = &render_to_tangent * interaction;
-
         // ヒットした光源面からの出射方向を計算
         let ray_tangent = &render_to_tangent * incoming_ray;
         let wo = -ray_tangent.dir;
 
-        edf.radiance(lambda, emissive_point, wo)
+        Some(emissive_material.radiance(lambda, wo, &(render_to_tangent * interaction)))
     }
 
     /// ロシアンルーレットによる経路終了判定を行う。
@@ -219,7 +216,7 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy> Render
             // パストレーシングのメインループ
             'depth_loop: for _ in 1..=self.max_depth {
                 // マテリアルのBSDFを取得
-                let bsdf = match &hit_info.interaction.material.bsdf {
+                let bsdf = match hit_info.interaction.material.as_bsdf_material::<Id>() {
                     Some(bsdf) => bsdf,
                     None => break 'depth_loop,
                 };

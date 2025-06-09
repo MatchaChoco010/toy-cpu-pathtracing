@@ -4,13 +4,8 @@ mod bvh;
 mod create_desc;
 mod impls;
 mod repository;
-mod samples;
 mod traits;
 
 pub use bvh::{Intersection, PrimitiveBvh};
 pub use create_desc::CreatePrimitiveDesc;
 pub use repository::{PrimitiveIndex, PrimitiveRepository};
-pub use samples::{
-    AreaLightSampleRadiance, DeltaDirectionalLightLightIrradiance, DeltaPointLightIrradiance,
-    InteractGeometryInfo, LightIntensity, SurfaceInteraction,
-};

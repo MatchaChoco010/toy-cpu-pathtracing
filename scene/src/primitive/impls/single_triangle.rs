@@ -1,12 +1,11 @@
 //! 三角形のプリミティブの実装のモジュール。
 
-use std::sync::Arc;
+use std::marker::PhantomData;
 
 use math::{Bounds, Local, Normal, Point3, Ray, Render, Transform, World, intersect_triangle};
 
 use crate::{
-    InteractGeometryInfo, Intersection, PrimitiveIndex, SceneId, SurfaceInteraction,
-    SurfaceMaterial,
+    InteractGeometryInfo, Intersection, Material, PrimitiveIndex, SceneId, SurfaceInteraction,
     geometry::GeometryRepository,
     primitive::traits::{
         Primitive, PrimitiveAreaLight, PrimitiveDeltaDirectionalLight, PrimitiveDeltaPointLight,
@@ -19,9 +18,10 @@ pub struct SingleTriangle<Id: SceneId> {
     positions: [Point3<Local>; 3],
     normals: [Normal<Local>; 3],
     uvs: [glam::Vec2; 3],
-    material: Arc<SurfaceMaterial<Id>>,
+    material: Material,
     local_to_world: Transform<Local, World>,
     local_to_render: Transform<Local, Render>,
+    _phantom: PhantomData<Id>,
 }
 impl<Id: SceneId> SingleTriangle<Id> {
     /// 新しい三角形のプリミティブを作成する。
@@ -29,7 +29,7 @@ impl<Id: SceneId> SingleTriangle<Id> {
         positions: [Point3<Local>; 3],
         normals: [Normal<Local>; 3],
         uvs: [glam::Vec2; 3],
-        material: Arc<SurfaceMaterial<Id>>,
+        material: Material,
         local_to_world: Transform<Local, World>,
     ) -> Self {
         Self {
@@ -39,6 +39,7 @@ impl<Id: SceneId> SingleTriangle<Id> {
             material,
             local_to_world,
             local_to_render: Transform::identity(),
+            _phantom: PhantomData,
         }
     }
 }
@@ -97,8 +98,8 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for SingleTriangle<Id> {
         Bounds::new(min, max)
     }
 
-    fn surface_material(&self) -> &SurfaceMaterial<Id> {
-        &self.material
+    fn surface_material(&self) -> Material {
+        self.material.clone()
     }
 
     fn intersect(

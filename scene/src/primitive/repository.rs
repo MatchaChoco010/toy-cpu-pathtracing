@@ -55,7 +55,7 @@ impl<Id: SceneId> PrimitiveRepository<Id> {
                         .downcast_ref::<geometry::impls::TriangleMesh<Id>>()
                         .unwrap();
 
-                    if surface_material.edf.is_some() {
+                    if surface_material.as_emissive_material::<Id>().is_some() {
                         Box::new(primitive::impls::EmissiveTriangleMesh::new(
                             triangle_mesh,
                             geometry_index,
@@ -81,7 +81,7 @@ impl<Id: SceneId> PrimitiveRepository<Id> {
                 surface_material,
                 transform,
             } => {
-                if surface_material.edf.is_some() {
+                if surface_material.as_emissive_material::<Id>().is_some() {
                     Box::new(primitive::impls::EmissiveSingleTriangle::new(
                         positions,
                         normals,
