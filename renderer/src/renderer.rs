@@ -6,11 +6,16 @@ use image::{ImageFormat, Rgb, RgbImage};
 use rayon::prelude::*;
 
 use color::Color;
-use scene::{Scene, SceneId};
+use math::{Render, Tangent, Transform};
+use scene::{BsdfSample, Intersection, Scene, SceneId};
+use spectrum::SampledSpectrum;
 
 use crate::camera::Camera;
 use crate::filter::Filter;
 use crate::sampler::Sampler;
+
+mod base_renderer;
+mod common;
 
 mod mis_renderer;
 mod nee_renderer;
@@ -21,6 +26,42 @@ pub use mis_renderer::SrgbRendererMis;
 pub use nee_renderer::SrgbRendererNee;
 pub use normal_renderer::NormalRenderer;
 pub use pt_renderer::SrgbRendererPt;
+
+/// NEE評価結果を表す構造体。
+#[derive(Clone, Debug)]
+pub struct NeeResult {
+    /// NEEによる寄与値
+    pub contribution: SampledSpectrum,
+    /// NEEに適用するMISウエイト
+    pub mis_weight: f32,
+}
+
+/// レンダリング戦略を定義するトレイト。
+pub trait RenderingStrategy: Clone + Send + Sync {
+    /// Next Event Estimationを評価する。
+    fn evaluate_nee<Id: SceneId, S: Sampler>(
+        &self,
+        scene: &Scene<Id>,
+        lambda: &spectrum::SampledWavelengths,
+        sampler: &mut S,
+        render_to_tangent: &Transform<Render, Tangent>,
+        current_hit_info: &Intersection<Id, Render>,
+        bsdf_sample: &BsdfSample,
+    ) -> Option<NeeResult>;
+
+    /// BSDFサンプリング結果のエミッシブ寄与を追加するかどうか。
+    fn should_add_bsdf_emissive(&self, bsdf_sample: &BsdfSample) -> bool;
+
+    /// BSDFサンプリング結果に適用するMISウエイトを計算する。
+    fn calculate_bsdf_mis_weight<Id: SceneId>(
+        &self,
+        scene: &Scene<Id>,
+        lambda: &spectrum::SampledWavelengths,
+        current_hit_info: &Intersection<Id, Render>,
+        next_hit_info: &Intersection<Id, Render>,
+        bsdf_sample: &BsdfSample,
+    ) -> f32;
+}
 
 /// レンダラーの作成のための引数。
 #[derive(Clone)]
