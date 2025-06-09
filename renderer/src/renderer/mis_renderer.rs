@@ -141,7 +141,7 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap> Renderer for SrgbRendererMis<'a, Id
 
                 // BSDFのサンプリングの結果によって処理を分岐する。
                 match bsdf_sample {
-                    // 完全鏡面反射だった場合。
+                    // 完全鏡面だった場合。
                     Some(BsdfSample::Specular { f, wi }) => {
                         // wiの方向にレイを飛ばす。
                         let wi_render = &render_to_tangent.inverse() * wi;
@@ -166,7 +166,7 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap> Renderer for SrgbRendererMis<'a, Id
                             );
 
                             // next_hitからの出射方向を計算する。
-                            let ray_tangent = &render_to_tangent * &ray;
+                            let ray_tangent = &render_to_tangent * &next_ray;
                             let wo = -ray_tangent.dir;
 
                             // next_hitのTangent座標系での情報を計算する。
@@ -185,7 +185,8 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap> Renderer for SrgbRendererMis<'a, Id
                         // ヒット情報を次に進めてループを進める。
                         hit_info = next_hit_info;
                     }
-                    // BSDFのサンプリング結果があった場合。
+                    // BSDFが完全鏡面ではない場合、BSDFサンプリングとライトサンプリングを
+                    // MISで混合する。
                     Some(BsdfSample::Bsdf { f, pdf, wi }) => {
                         // ライトをサンプリングする。
                         let u = sampler.get_1d();
@@ -273,7 +274,8 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap> Renderer for SrgbRendererMis<'a, Id
                                     let mis_weight = balance_heuristic(pdf_light_dir, pdf_bsdf_dir);
 
                                     let sample_contribution =
-                                        &throughout * &f * li * g * mis_weight / pdf;
+                                        &throughout * &f * li * g * mis_weight
+                                            / (pdf * light_sample.probability);
                                     output.add_sample(&lambda, sample_contribution);
                                 }
                             }
@@ -310,6 +312,28 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap> Renderer for SrgbRendererMis<'a, Id
 
                         // ヒット情報を次に進めてループを進める。
                         hit_info = next_hit_info;
+
+                        // 次のヒットが光源面の場合、radianceを取得してoutputに足し合わせる。
+                        if let Some(edf) = &hit_info.interaction.material.edf {
+                            // Render座標系からヒットしたシェーディングポイントのTangent座標系に
+                            // 変換するTransformを取得する。
+                            let render_to_tangent = Transform::from_shading_normal_tangent(
+                                &hit_info.interaction.shading_normal,
+                                &hit_info.interaction.tangent,
+                            );
+
+                            // 光源面のTangent座標系での情報を計算する。
+                            let emissive_point = &render_to_tangent * &hit_info.interaction;
+
+                            // ヒットした光源面からの出射方向を計算する。
+                            let ray_tangent = &render_to_tangent * &ray;
+                            let wo = -ray_tangent.dir;
+
+                            // edfからradianceを取得してoutputに足し合わせる。
+                            if let Some(radiance) = edf.radiance(&lambda, emissive_point, -wo) {
+                                output.add_sample(&lambda, &throughout * radiance);
+                            }
+                        }
                     }
                     // woについてBSDFが反射を返さない場合。
                     None => {

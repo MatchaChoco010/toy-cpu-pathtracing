@@ -153,7 +153,7 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap> Renderer for SrgbRendererPt<'a, Id,
                             );
 
                             // next_hitからの出射方向を計算する。
-                            let ray_tangent = &render_to_tangent * &ray;
+                            let ray_tangent = &render_to_tangent * &next_ray;
                             let wo = -ray_tangent.dir;
 
                             // next_hitのTangent座標系での情報を計算する。
@@ -200,7 +200,7 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap> Renderer for SrgbRendererPt<'a, Id,
                             );
 
                             // next_hitからの出射方向を計算する。
-                            let ray_tangent = &render_to_tangent * &ray;
+                            let ray_tangent = &render_to_tangent * &next_ray;
                             let wo_next = -ray_tangent.dir;
 
                             // 光源面のTangent座標系での情報を計算する。
