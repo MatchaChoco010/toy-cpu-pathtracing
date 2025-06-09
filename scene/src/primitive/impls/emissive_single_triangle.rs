@@ -1,6 +1,6 @@
 //! 放射面を含む三角形のプリミティブの実装のモジュール。
 
-use std::sync::Arc;
+use std::marker::PhantomData;
 
 use math::{
     Bounds, Local, Normal, Point3, Ray, Render, Transform, Vector3, World, intersect_triangle,
@@ -8,8 +8,8 @@ use math::{
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::{
-    AreaLightSampleRadiance, InteractGeometryInfo, Intersection, PrimitiveIndex, SceneId,
-    SurfaceInteraction, SurfaceMaterial,
+    AreaLightSampleRadiance, InteractGeometryInfo, Intersection, Material, PrimitiveIndex, SceneId,
+    SurfaceInteraction,
     geometry::GeometryRepository,
     primitive::traits::{
         Primitive, PrimitiveAreaLight, PrimitiveDeltaDirectionalLight, PrimitiveDeltaPointLight,
@@ -22,10 +22,11 @@ pub struct EmissiveSingleTriangle<Id: SceneId> {
     positions: [Point3<Local>; 3],
     normals: [Normal<Local>; 3],
     uvs: [glam::Vec2; 3],
-    material: Arc<SurfaceMaterial<Id>>,
+    material: Material,
     local_to_world: Transform<Local, World>,
     local_to_render: Transform<Local, Render>,
     area: f32,
+    _phantom: PhantomData<Id>,
 }
 impl<Id: SceneId> EmissiveSingleTriangle<Id> {
     /// 新しい放射面を含む三角形のプリミティブを作成する。
@@ -33,7 +34,7 @@ impl<Id: SceneId> EmissiveSingleTriangle<Id> {
         positions: [Point3<Local>; 3],
         normals: [Normal<Local>; 3],
         uvs: [glam::Vec2; 3],
-        material: Arc<SurfaceMaterial<Id>>,
+        material: Material,
         local_to_world: Transform<Local, World>,
     ) -> Self {
         // ワールド空間での面積を計算しておく。
@@ -52,6 +53,7 @@ impl<Id: SceneId> EmissiveSingleTriangle<Id> {
             local_to_world,
             local_to_render: Transform::identity(),
             area,
+            _phantom: PhantomData,
         }
     }
 }
@@ -110,8 +112,8 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for EmissiveSingleTriangle<Id> {
         Bounds::new(min, max)
     }
 
-    fn surface_material(&self) -> &SurfaceMaterial<Id> {
-        &self.material
+    fn surface_material(&self) -> Material {
+        self.material.clone()
     }
 
     fn intersect(
@@ -186,8 +188,7 @@ impl<Id: SceneId> PrimitiveLight<Id> for EmissiveSingleTriangle<Id> {
     fn phi(&self, lambda: &SampledWavelengths) -> SampledSpectrum {
         // マテリアルの放射発散度の平均値に三角形の面積を掛けて全体の放射束とする。
         self.material
-            .edf
-            .as_ref()
+            .as_emissive_material::<Id>()
             .unwrap()
             .average_intensity(lambda)
             * self.area
@@ -267,7 +268,7 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveSingleTriangle<Id> {
         let wi = shading_point.position.vector_to(p).normalize();
 
         // サンプリングした光源上の点のSurfaceInteractionを作成する。
-        let sampled_interaction = SurfaceInteraction {
+        let light_sample_point = SurfaceInteraction {
             position: p,
             normal,
             shading_normal,
@@ -281,15 +282,13 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveSingleTriangle<Id> {
         // マテリアルから放射輝度を取得する。
         let radiance = self
             .material
-            .edf
-            .as_ref()
+            .as_emissive_material::<Id>()
             .unwrap()
             .radiance(
                 lambda,
-                &render_to_tangent * &sampled_interaction,
                 &render_to_tangent * -wi,
-            )
-            .unwrap_or(SampledSpectrum::zero());
+                &(render_to_tangent * light_sample_point),
+            );
 
         // 面積を計算して一様サンプリングしたときのpdfを計算する。
         let pdf = 1.0 / self.area;
@@ -345,15 +344,13 @@ impl<Id: SceneId> PrimitiveAreaLight<Id> for EmissiveSingleTriangle<Id> {
 
         let radiance = self
             .material
-            .edf
-            .as_ref()
+            .as_emissive_material::<Id>()
             .unwrap()
             .radiance(
                 lambda,
-                &render_to_tangent * interaction,
                 &render_to_tangent * wo,
-            )
-            .unwrap_or(SampledSpectrum::zero());
+                &(render_to_tangent * interaction),
+            );
 
         radiance
     }

@@ -1,12 +1,10 @@
 //! 三角形メッシュのプリミティブの実装のモジュール。
 
-use std::sync::Arc;
-
 use math::{Bounds, Local, Ray, Render, Transform, World};
 
 use crate::{
-    GeometryIndex, InteractGeometryInfo, Intersection, PrimitiveIndex, SceneId, SurfaceInteraction,
-    SurfaceMaterial,
+    GeometryIndex, InteractGeometryInfo, Intersection, Material, PrimitiveIndex, SceneId,
+    SurfaceInteraction,
     geometry::GeometryRepository,
     primitive::traits::{
         Primitive, PrimitiveAreaLight, PrimitiveDeltaDirectionalLight, PrimitiveDeltaPointLight,
@@ -17,7 +15,7 @@ use crate::{
 /// 三角形メッシュのプリミティブの構造体。
 pub struct TriangleMesh<Id: SceneId> {
     geometry_index: GeometryIndex<Id>,
-    material: Arc<SurfaceMaterial<Id>>,
+    material: Material,
     local_to_world: Transform<Local, World>,
     local_to_render: Transform<Local, Render>,
 }
@@ -25,7 +23,7 @@ impl<Id: SceneId> TriangleMesh<Id> {
     /// 新しい三角形メッシュのプリミティブを作成する。
     pub fn new(
         geometry_index: GeometryIndex<Id>,
-        material: Arc<SurfaceMaterial<Id>>,
+        material: Material,
         local_to_world: Transform<Local, World>,
     ) -> Self {
         Self {
@@ -83,8 +81,8 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for TriangleMesh<Id> {
         &self.local_to_render * geometry.bounds()
     }
 
-    fn surface_material(&self) -> &SurfaceMaterial<Id> {
-        &self.material
+    fn surface_material(&self) -> Material {
+        self.material.clone()
     }
 
     fn build_geometry_bvh(&mut self, geometry_repository: &mut GeometryRepository<Id>) {

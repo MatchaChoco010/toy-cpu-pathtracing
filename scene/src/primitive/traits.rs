@@ -5,7 +5,7 @@ use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::{
     AreaLightSampleRadiance, DeltaDirectionalLightLightIrradiance, DeltaPointLightIrradiance,
-    Intersection, PrimitiveIndex, SceneId, SurfaceInteraction, SurfaceMaterial,
+    Intersection, Material, PrimitiveIndex, SceneId, SurfaceInteraction,
     geometry::GeometryRepository,
 };
 
@@ -48,7 +48,7 @@ pub trait PrimitiveGeometry<Id: SceneId>: Primitive<Id> {
     fn bounds(&self, _geometry_repository: &GeometryRepository<Id>) -> Bounds<Render>;
 
     /// 表面マテリアルを取得する。
-    fn surface_material(&self) -> &SurfaceMaterial<Id>;
+    fn surface_material(&self) -> Material;
 
     /// ジオメトリのBVHを構築する。
     fn build_geometry_bvh(&mut self, _geometry_repository: &mut GeometryRepository<Id>) {
