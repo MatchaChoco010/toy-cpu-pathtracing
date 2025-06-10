@@ -1,18 +1,20 @@
 //! 拡散反射（Lambert）マテリアル実装。
 
 use math::{Tangent, Vector3};
-use spectrum::{SampledSpectrum, SampledWavelengths, Spectrum};
+use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::{
-    BsdfSample, BsdfSurfaceMaterial, Material, NormalizedLambertBsdf, SceneId, SurfaceInteraction,
+    BsdfSample, BsdfSurfaceMaterial, Material, NormalParameter, NormalizedLambertBsdf, SceneId, SpectrumParameter, SurfaceInteraction,
     SurfaceMaterial,
 };
 
 /// 拡散反射のみを行うLambertマテリアル。
-/// 単一のRGBパラメータから反射率を設定する。
+/// テクスチャ対応の反射率とノーマルマップパラメータを持つ。
 pub struct LambertMaterial {
-    /// 反射率スペクトル
-    albedo: Spectrum,
+    /// 反射率パラメータ
+    albedo: SpectrumParameter,
+    /// ノーマルマップパラメータ
+    normal: NormalParameter,
     /// 内部でBSDF計算を行う構造体
     bsdf: NormalizedLambertBsdf,
 }
@@ -20,12 +22,22 @@ impl LambertMaterial {
     /// 新しいLambertMaterialを作成する。
     ///
     /// # Arguments
-    /// - `albedo` - 反射率スペクトル
-    pub fn new(albedo: Spectrum) -> Material {
+    /// - `albedo` - 反射率パラメータ
+    /// - `normal` - ノーマルマップパラメータ
+    pub fn new(albedo: SpectrumParameter, normal: NormalParameter) -> Material {
         std::sync::Arc::new(Self {
             albedo,
+            normal,
             bsdf: NormalizedLambertBsdf::new(),
         })
+    }
+
+    /// ノーマルマップなしのLambertMaterialを作成する。
+    ///
+    /// # Arguments
+    /// - `albedo` - 反射率パラメータ
+    pub fn new_simple(albedo: SpectrumParameter) -> Material {
+        Self::new(albedo, NormalParameter::none())
     }
 }
 impl SurfaceMaterial for LambertMaterial {
@@ -39,10 +51,14 @@ impl<Id: SceneId> BsdfSurfaceMaterial<Id> for LambertMaterial {
         uv: glam::Vec2,
         lambda: &SampledWavelengths,
         wo: &Vector3<Tangent>,
-        _shading_point: &SurfaceInteraction<Id, Tangent>,
+        shading_point: &SurfaceInteraction<Id, Tangent>,
     ) -> Option<BsdfSample> {
-        // テクスチャ座標uvは将来のテクスチャ実装のため保持
-        let albedo = self.albedo.sample(lambda);
+        let albedo = self.albedo.sample(shading_point.uv).sample(lambda);
+        
+        // TODO: ノーマルマップがある場合の処理を追加
+        // 現在はLambertBSDFはノーマル変更に対応していないため、
+        // 将来的に接空間の変換を実装する必要がある
+        
         self.bsdf.sample(&albedo, wo, uv)
     }
 
@@ -51,9 +67,9 @@ impl<Id: SceneId> BsdfSurfaceMaterial<Id> for LambertMaterial {
         lambda: &SampledWavelengths,
         wo: &Vector3<Tangent>,
         wi: &Vector3<Tangent>,
-        _shading_point: &SurfaceInteraction<Id, Tangent>,
+        shading_point: &SurfaceInteraction<Id, Tangent>,
     ) -> SampledSpectrum {
-        let albedo = self.albedo.sample(lambda);
+        let albedo = self.albedo.sample(shading_point.uv).sample(lambda);
         self.bsdf.evaluate(&albedo, wo, wi)
     }
 

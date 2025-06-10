@@ -1,19 +1,19 @@
 //! 発光（Emissive）マテリアル実装。
 
 use math::{Tangent, Vector3};
-use spectrum::{SampledSpectrum, SampledWavelengths, Spectrum};
+use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::{
-    EmissiveSurfaceMaterial, Material, SceneId, SurfaceInteraction, SurfaceMaterial, UniformEdf,
+    EmissiveSurfaceMaterial, FloatParameter, Material, SceneId, SpectrumParameter, SurfaceInteraction, SurfaceMaterial, UniformEdf,
 };
 
 /// 発光のみを行うEmissiveマテリアル。
-/// 単一のRGBパラメータから放射輝度を設定する。
+/// テクスチャ対応の放射輝度と強度パラメータを持つ。
 pub struct EmissiveMaterial {
-    /// 放射輝度スペクトル
-    radiance: Spectrum,
-    /// 強度乗算係数
-    intensity: f32,
+    /// 放射輝度パラメータ
+    radiance: SpectrumParameter,
+    /// 強度乗算係数パラメータ
+    intensity: FloatParameter,
     /// 内部でEDF計算を行う構造体
     edf: UniformEdf,
 }
@@ -22,9 +22,9 @@ impl EmissiveMaterial {
     /// 新しいEmissiveMaterialを作成する。
     ///
     /// # Arguments
-    /// - `radiance` - 放射輝度スペクトル
-    /// - `intensity` - 強度乗算係数
-    pub fn new(radiance: Spectrum, intensity: f32) -> Material {
+    /// - `radiance` - 放射輝度パラメータ
+    /// - `intensity` - 強度乗算係数パラメータ
+    pub fn new(radiance: SpectrumParameter, intensity: FloatParameter) -> Material {
         std::sync::Arc::new(Self {
             radiance,
             intensity,
@@ -42,16 +42,29 @@ impl<Id: SceneId> EmissiveSurfaceMaterial<Id> for EmissiveMaterial {
         &self,
         lambda: &SampledWavelengths,
         _wo: Vector3<Tangent>,
-        _light_sample_point: &SurfaceInteraction<Id, Tangent>,
+        light_sample_point: &SurfaceInteraction<Id, Tangent>,
     ) -> SampledSpectrum {
-        // テクスチャ座標uvと出射方向woは将来の実装のため保持
-        let radiance_spectrum = self.radiance.sample(lambda);
-        self.edf.radiance(&radiance_spectrum, self.intensity)
+        let radiance_spectrum = self.radiance.sample(light_sample_point.uv).sample(lambda);
+        let intensity_value = self.intensity.sample(light_sample_point.uv);
+        self.edf.radiance(&radiance_spectrum, intensity_value)
     }
 
     fn average_intensity(&self, lambda: &SampledWavelengths) -> SampledSpectrum {
-        let radiance_spectrum = self.radiance.sample(lambda);
-        self.edf
-            .average_intensity(&radiance_spectrum, self.intensity)
+        // 平均強度は定数値として計算（テクスチャの場合は近似）
+        let radiance_spectrum = match &self.radiance {
+            SpectrumParameter::Constant(spectrum) => spectrum.sample(lambda),
+            SpectrumParameter::Texture { .. } => {
+                // テクスチャの場合は中央値で近似
+                self.radiance.sample(glam::Vec2::new(0.5, 0.5)).sample(lambda)
+            }
+        };
+        let intensity_value = match &self.intensity {
+            FloatParameter::Constant(value) => *value,
+            FloatParameter::Texture(_) => {
+                // テクスチャの場合は中央値で近似
+                self.intensity.sample(glam::Vec2::new(0.5, 0.5))
+            }
+        };
+        self.edf.average_intensity(&radiance_spectrum, intensity_value)
     }
 }

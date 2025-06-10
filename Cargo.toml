@@ -18,12 +18,12 @@ edition = "2024"
 anyhow = "1.0.98"
 image = "0.25.6"
 glam = "0.30.3"
-clap = { version = "4.5.38", features = ["derive"] }
+clap = { version = "4.5.40", features = ["derive"] }
 proc-macro2 = "1.0.95"
 quote = "1.0.40"
 rand = "0.9.1"
 rayon = "1.10.0"
-syn = { version = "2.0.101", features = ["full", "extra-traits"] }
+syn = { version = "2.0.102", features = ["full", "extra-traits"] }
 tobj = "4.0.3"
 
 color = { path = "color" }

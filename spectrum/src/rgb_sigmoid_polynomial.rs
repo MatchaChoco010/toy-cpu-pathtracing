@@ -112,6 +112,9 @@ impl RgbToSpectrumTable {
         // RGBの最大値が1.0を超えている場合はエラーとする。
         let rgb = color.rgb().max(glam::Vec3::splat(0.0));
         if rgb.max_element() > 1.0 {
+            // Debug print before panic to understand which values are causing the issue
+            eprintln!("RGB validation error: RGB({:.6}, {:.6}, {:.6}) has max element {:.6} > 1.0",
+                rgb.x, rgb.y, rgb.z, rgb.max_element());
             panic!("RGB elements must be in the range [0, 1]");
         }
 
