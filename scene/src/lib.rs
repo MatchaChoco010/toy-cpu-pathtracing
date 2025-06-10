@@ -5,13 +5,15 @@ mod material;
 mod primitive;
 mod samples;
 mod scene;
+pub mod texture;
 
 pub use geometry::{Geometry, GeometryIndex};
 pub use light_sampler::{LightSample, LightSampler};
 pub use material::{
-    BsdfSurfaceMaterial, EmissiveMaterial, EmissiveSurfaceMaterial, LambertMaterial, Material,
-    NormalizedLambertBsdf, SurfaceMaterial, UniformEdf,
+    BsdfSurfaceMaterial, EmissiveMaterial, EmissiveSurfaceMaterial, FloatParameter, LambertMaterial, 
+    Material, NormalParameter, NormalizedLambertBsdf, SpectrumParameter, SurfaceMaterial, UniformEdf,
 };
+pub use texture::{RgbTexture, TextureConfig, SpectrumType};
 pub use primitive::{CreatePrimitiveDesc, Intersection, PrimitiveBvh, PrimitiveIndex};
 pub use samples::{
     AreaLightSampleRadiance, BsdfSample, DeltaDirectionalLightLightIrradiance,
