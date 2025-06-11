@@ -4,7 +4,8 @@ use math::{Tangent, Vector3};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::{
-    EmissiveSurfaceMaterial, FloatParameter, Material, SceneId, SpectrumParameter, SurfaceInteraction, SurfaceMaterial, UniformEdf,
+    EmissiveSurfaceMaterial, FloatParameter, Material, SceneId, SpectrumParameter,
+    SurfaceInteraction, SurfaceMaterial, UniformEdf,
 };
 
 /// 発光のみを行うEmissiveマテリアル。
@@ -55,7 +56,9 @@ impl<Id: SceneId> EmissiveSurfaceMaterial<Id> for EmissiveMaterial {
             SpectrumParameter::Constant(spectrum) => spectrum.sample(lambda),
             SpectrumParameter::Texture { .. } => {
                 // テクスチャの場合は中央値で近似
-                self.radiance.sample(glam::Vec2::new(0.5, 0.5)).sample(lambda)
+                self.radiance
+                    .sample(glam::Vec2::new(0.5, 0.5))
+                    .sample(lambda)
             }
         };
         let intensity_value = match &self.intensity {
@@ -65,6 +68,7 @@ impl<Id: SceneId> EmissiveSurfaceMaterial<Id> for EmissiveMaterial {
                 self.intensity.sample(glam::Vec2::new(0.5, 0.5))
             }
         };
-        self.edf.average_intensity(&radiance_spectrum, intensity_value)
+        self.edf
+            .average_intensity(&radiance_spectrum, intensity_value)
     }
 }

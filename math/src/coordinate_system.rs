@@ -26,7 +26,7 @@ impl CoordinateSystem for Render {}
 /// タンジェント座標系を表す構造体。
 ///
 /// シェーディング計算時に行うシェーディング点のタンジェント空間の座標系。
-/// Y軸がシェーディング法線に揃うような座標系。
+/// Z軸がシェーディング法線に揃うような座標系。
 #[derive(Debug, Clone, Copy)]
 pub struct Tangent;
 impl CoordinateSystem for Tangent {}

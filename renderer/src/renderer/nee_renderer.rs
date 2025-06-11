@@ -48,23 +48,21 @@ fn evaluate_next_event_estimation<Id: SceneId, S: Sampler>(
         s,
         uv,
     ) {
-        LightIntensity::IrradianceDeltaPointLight(irradiance) => {
-            common::evaluate_delta_point_light(
-                scene,
-                &shading_point,
-                &irradiance,
-                bsdf,
-                &lambda,
-                &current_hit_info.wo,
-                render_to_tangent,
-                light_sample.probability,
-            )
-        }
-        LightIntensity::IrradianceDeltaDirectionalLight(irradiance) => {
+        LightIntensity::IntensityDeltaPointLight(intensity) => common::evaluate_delta_point_light(
+            scene,
+            &shading_point,
+            &intensity,
+            bsdf,
+            &lambda,
+            &current_hit_info.wo,
+            render_to_tangent,
+            light_sample.probability,
+        ),
+        LightIntensity::IntensityDeltaDirectionalLight(intensity) => {
             common::evaluate_delta_directional_light(
                 scene,
                 &shading_point,
-                &irradiance,
+                &intensity,
                 bsdf,
                 &lambda,
                 &current_hit_info.wo,

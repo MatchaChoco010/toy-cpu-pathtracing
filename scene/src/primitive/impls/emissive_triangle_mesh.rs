@@ -319,17 +319,14 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveTriangleMesh<Id> {
         // let pdf = pdf * probability;
         let pdf = 1.0 / self.area_sum;
 
-        // 幾何項を計算する。
-        let distance = p.distance(shading_point.position);
-        let g = shading_point.normal.dot(wi).abs() * normal.dot(-wi).abs() / (distance * distance);
-
         // 方向要素のpdfを計算する。
+        let distance = p.distance(shading_point.position);
         let pdf_dir = pdf * (distance * distance) / normal.dot(-wi).abs();
 
         AreaLightSampleRadiance {
             radiance,
             pdf,
-            g,
+            light_normal: normal,
             pdf_dir,
             interaction: SurfaceInteraction {
                 position: p,

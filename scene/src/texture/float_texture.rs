@@ -1,9 +1,9 @@
 //! Float テクスチャ実装。
 
 use super::{
-    sampler::{bilinear_sample_gray, bilinear_sample_gray_f32, TextureSample},
     config::TextureConfig,
-    loader::{load_grayscale_image, ImageData},
+    loader::{ImageData, load_grayscale_image},
+    sampler::{TextureSample, bilinear_sample_gray, bilinear_sample_gray_f32},
 };
 use color::eotf::{Eotf, GammaSrgb};
 use glam::Vec2;
@@ -38,7 +38,7 @@ impl TextureSample<f32> for FloatTexture {
             }
             _ => 0.0, // 不正なデータタイプの場合は0を返す
         };
-        
+
         // ガンマ補正を除去
         if self.gamma_corrected {
             let vec = glam::Vec3::new(value, value, value);

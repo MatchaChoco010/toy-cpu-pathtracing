@@ -1,9 +1,9 @@
 //! Normal マップテクスチャ実装。
 
 use super::{
-    sampler::{bilinear_sample_rgb, bilinear_sample_rgb_f32, TextureSample},
     config::TextureConfig,
-    loader::{load_rgb_image, ImageData},
+    loader::{ImageData, load_rgb_image},
+    sampler::{TextureSample, bilinear_sample_rgb, bilinear_sample_rgb_f32},
 };
 use glam::Vec2;
 use math::{Normal, Tangent};
@@ -26,24 +26,24 @@ impl NormalTexture {
     /// UV座標でノーマルマップをサンプリングし、接空間ノーマルを取得する。
     pub fn sample_normal(&self, uv: Vec2) -> Normal<Tangent> {
         let rgb = self.sample(uv);
-        
+
         // RGB [0,1] を [-1,1] の範囲に変換
         let mut x = rgb[0] * 2.0 - 1.0;
         let mut y = rgb[1] * 2.0 - 1.0;
         let z = rgb[2] * 2.0 - 1.0;
-        
+
         // Y軸反転（DirectX vs OpenGL）
         if self.flip_y {
             y = -y;
         }
-        
+
         // ノーマライズ
         let length = (x * x + y * y + z * z).sqrt();
         if length > 0.0 {
             x /= length;
             y /= length;
             let z = z / length;
-            
+
             // 接空間ノーマルとして返す
             Normal::new(x, y, z)
         } else {
@@ -56,9 +56,7 @@ impl NormalTexture {
 impl TextureSample<[f32; 3]> for NormalTexture {
     fn sample(&self, uv: Vec2) -> [f32; 3] {
         match &self.data {
-            ImageData::Rgb8(data, width, height) => {
-                bilinear_sample_rgb(data, *width, *height, uv)
-            }
+            ImageData::Rgb8(data, width, height) => bilinear_sample_rgb(data, *width, *height, uv),
             ImageData::RgbF32(data, width, height) => {
                 bilinear_sample_rgb_f32(data, *width, *height, uv)
             }

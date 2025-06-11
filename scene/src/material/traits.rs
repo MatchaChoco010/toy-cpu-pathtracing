@@ -4,7 +4,7 @@ use math::{Tangent, Vector3};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 use std::sync::Arc;
 
-use crate::{BsdfSample, SceneId, SurfaceInteraction};
+use crate::{BsdfSample, MaterialEvaluationResult, SceneId, SurfaceInteraction};
 
 /// 基底マテリアルtrait - 全マテリアルが実装する。
 /// 複数のシーンで使い回せるよう、トレイト自体にはIdジェネリクスを持たない。
@@ -61,7 +61,7 @@ pub trait BsdfSurfaceMaterial<Id: SceneId>: SurfaceMaterial {
         wo: &Vector3<Tangent>,
         wi: &Vector3<Tangent>,
         shading_point: &SurfaceInteraction<Id, Tangent>,
-    ) -> SampledSpectrum;
+    ) -> MaterialEvaluationResult;
 
     /// BSDF PDFを計算する。
     ///

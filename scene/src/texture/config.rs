@@ -42,7 +42,7 @@ impl TextureConfig {
     pub fn new(path: impl Into<PathBuf>) -> Self {
         Self {
             path: path.into(),
-            gamma_corrected: true, // デフォルトはsRGB
+            gamma_corrected: true,       // デフォルトはsRGB
             gamut: SupportedGamut::SRgb, // デフォルトはsRGB色域
         }
     }

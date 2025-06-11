@@ -6,7 +6,7 @@ use math::{Bounds, Local, Render, Transform, Vector3, World};
 use spectrum::{SampledSpectrum, SampledWavelengths, Spectrum};
 
 use crate::{
-    DeltaDirectionalLightLightIrradiance, SceneId, SurfaceInteraction,
+    DeltaDirectionalLightIntensity, SceneId, SurfaceInteraction,
     primitive::traits::{
         Primitive, PrimitiveAreaLight, PrimitiveDeltaDirectionalLight, PrimitiveDeltaPointLight,
         PrimitiveGeometry, PrimitiveInfiniteLight, PrimitiveLight, PrimitiveNonDeltaLight,
@@ -97,20 +97,16 @@ impl<Id: SceneId> PrimitiveLight<Id> for DirectionalLight {
     }
 }
 impl<Id: SceneId> PrimitiveDeltaDirectionalLight<Id> for DirectionalLight {
-    fn calculate_irradiance(
+    fn calculate_intensity(
         &self,
-        shading_point: &SurfaceInteraction<Id, Render>,
+        _shading_point: &SurfaceInteraction<Id, Render>,
         lambda: &SampledWavelengths,
-    ) -> DeltaDirectionalLightLightIrradiance<Render> {
-        // Render空間でのライトの方向とcos成分を計算する。
-        let wi = (&self.local_to_render * Vector3::new(0.0, 0.0, 1.0)).normalize();
-        let cos_theta = wi.dot(shading_point.shading_normal);
-
-        // 放射照度を計算する。
-        let irradiance = self.intensity * self.spectrum.sample(lambda) * cos_theta;
-        DeltaDirectionalLightLightIrradiance {
-            irradiance,
-            direction: wi,
+    ) -> DeltaDirectionalLightIntensity<Render> {
+        let direction = (&self.local_to_render * Vector3::new(0.0, 0.0, 1.0)).normalize();
+        let intensity = self.intensity * self.spectrum.sample(lambda);
+        DeltaDirectionalLightIntensity {
+            intensity,
+            direction,
         }
     }
 }

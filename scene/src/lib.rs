@@ -10,13 +10,14 @@ pub mod texture;
 pub use geometry::{Geometry, GeometryIndex};
 pub use light_sampler::{LightSample, LightSampler};
 pub use material::{
-    BsdfSurfaceMaterial, EmissiveMaterial, EmissiveSurfaceMaterial, FloatParameter, LambertMaterial, 
-    Material, NormalParameter, NormalizedLambertBsdf, SpectrumParameter, SurfaceMaterial, UniformEdf,
+    BsdfSurfaceMaterial, EmissiveMaterial, EmissiveSurfaceMaterial, FloatParameter,
+    LambertMaterial, Material, NormalParameter, NormalizedLambertBsdf, SpectrumParameter,
+    SurfaceMaterial, UniformEdf,
 };
-pub use texture::{RgbTexture, TextureConfig, SpectrumType};
 pub use primitive::{CreatePrimitiveDesc, Intersection, PrimitiveBvh, PrimitiveIndex};
 pub use samples::{
-    AreaLightSampleRadiance, BsdfSample, DeltaDirectionalLightLightIrradiance,
-    DeltaPointLightIrradiance, InteractGeometryInfo, LightIntensity, SurfaceInteraction,
+    AreaLightSampleRadiance, BsdfSample, DeltaDirectionalLightIntensity, DeltaPointLightIntensity,
+    InteractGeometryInfo, LightIntensity, MaterialEvaluationResult, SurfaceInteraction,
 };
 pub use scene::{Scene, SceneId, WorldToRender, internal};
+pub use texture::{NormalTexture, RgbTexture, SpectrumType, TextureConfig};
