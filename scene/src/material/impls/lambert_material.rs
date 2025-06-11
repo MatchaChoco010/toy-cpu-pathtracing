@@ -31,19 +31,6 @@ impl LambertMaterial {
             bsdf: NormalizedLambertBsdf::new(),
         })
     }
-
-    /// ノーマルマップなしのLambertMaterialを作成する。
-    ///
-    /// # Arguments
-    /// - `albedo` - 反射率パラメータ
-    pub fn new_simple(albedo: SpectrumParameter) -> Material {
-        Self::new(albedo, NormalParameter::none())
-    }
-
-    /// ノーマルパラメータへの参照を取得する。
-    pub fn normal_parameter(&self) -> &NormalParameter {
-        &self.normal
-    }
 }
 impl SurfaceMaterial for LambertMaterial {
     fn as_any(&self) -> &dyn std::any::Any {

@@ -15,7 +15,7 @@ pub const LAMBDA_MAX: f64 = 830.0;
 /// テーブルをバイナリファイルに書き出す。
 fn write_binary_table(
     file_name: &str,
-    z_nodes: &Vec<f32>,
+    z_nodes: &[f32],
     table: &Vec<Vec<Vec<Vec<[f32; 3]>>>>,
     out_dir: &str,
 ) -> anyhow::Result<()> {

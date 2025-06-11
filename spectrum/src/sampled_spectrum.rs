@@ -120,6 +120,12 @@ fn div_assign(lhs: &mut SampledSpectrum, rhs: &SampledSpectrum) {
         }
     }
 }
+impl Default for SampledSpectrum {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SampledSpectrum {
     /// ゼロのスペクトルを作成する。
     pub fn zero() -> Self {

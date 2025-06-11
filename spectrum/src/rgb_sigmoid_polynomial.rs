@@ -143,7 +143,7 @@ impl RgbToSpectrumTable {
             .unwrap_or(TABLE_SIZE - 2);
         let dx = x - xi as f32;
         let dy = y - yi as f32;
-        let dz = (z as f32 - self.z_nodes[zi]) / (self.z_nodes[zi + 1] - self.z_nodes[zi]);
+        let dz = (z - self.z_nodes[zi]) / (self.z_nodes[zi + 1] - self.z_nodes[zi]);
 
         // シグモイド二次式の係数を補間して計算する。
         let mut cs = [0.0; 3];
@@ -203,7 +203,7 @@ impl<C: Color> RgbSigmoidPolynomial<C> {
         let mut result = self.value(LAMBDA_MIN).max(self.value(LAMBDA_MAX));
         let lambda = -self.c1 / (2.0 * self.c0);
         let lambda = lambda * (LAMBDA_MAX - LAMBDA_MIN) + LAMBDA_MIN;
-        if lambda >= LAMBDA_MIN && lambda <= LAMBDA_MAX {
+        if (LAMBDA_MIN..=LAMBDA_MAX).contains(&lambda) {
             result = result.max(self.value(lambda));
         }
         result

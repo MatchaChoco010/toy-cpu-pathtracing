@@ -10,7 +10,7 @@ fn black_body(lambda: f32, temperature: f32) -> f32 {
         return 0.0;
     }
     const C: f32 = 299892458.0; // 光速 (m/s)
-    const H: f32 = 6.62606957e-34; // プランク定数 (J·s)
+    const H: f32 = 6.626_069_7e-34; // プランク定数 (J·s)
     const KB: f32 = 1.3806488e-23; // ボルツマン定数 (J/K)
 
     let l = lambda * 1e-9; // 波長をメートルに変換

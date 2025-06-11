@@ -52,8 +52,8 @@ impl<Id: SceneId> EmissiveTriangleMesh<Id> {
             area_sum += area;
             area_table.push(area_sum);
         }
-        for i in 0..area_table.len() {
-            area_table[i] /= area_sum;
+        for item in &mut area_table {
+            *item /= area_sum;
         }
 
         Self {
@@ -382,16 +382,14 @@ impl<Id: SceneId> PrimitiveAreaLight<Id> for EmissiveTriangleMesh<Id> {
             .normalize();
 
         // マテリアルのedfから放射輝度を取得する。
-        let radiance = self
-            .material
+
+        self.material
             .as_emissive_material::<Id>()
             .unwrap()
             .radiance(
                 lambda,
                 &render_to_tangent * wo,
                 &(render_to_tangent * interaction),
-            );
-
-        radiance
+            )
     }
 }

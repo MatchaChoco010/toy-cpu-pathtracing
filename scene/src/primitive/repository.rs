@@ -25,6 +25,12 @@ impl<Id: SceneId> PrimitiveIndex<Id> {
 pub struct PrimitiveRepository<Id: SceneId> {
     primitives: Vec<Box<dyn Primitive<Id>>>,
 }
+impl<Id: SceneId> Default for PrimitiveRepository<Id> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<Id: SceneId> PrimitiveRepository<Id> {
     /// 新しいプリミティブリポジトリを作成する。
     pub fn new() -> Self {

@@ -65,8 +65,8 @@ pub fn impl_binary_ops(attr: TokenStream, item: TokenStream) -> TokenStream {
     };
 
     // &TからTを抽出する
-    let extract_inner_type = |ty: &Box<syn::Type>| -> Box<syn::Type> {
-        if let syn::Type::Reference(syn::TypeReference { elem, .. }) = &**ty {
+    let extract_inner_type = |ty: &syn::Type| -> Box<syn::Type> {
+        if let &syn::Type::Reference(syn::TypeReference { ref elem, .. }) = ty {
             elem.to_owned()
         } else {
             panic!("lhs must be &T");
@@ -170,12 +170,12 @@ pub fn impl_assign_ops(attr: TokenStream, item: TokenStream) -> TokenStream {
     };
 
     // &mut T の型から T を抽出
-    let extract_inner_mut_type = |ty: &Box<syn::Type>| -> Box<syn::Type> {
-        if let syn::Type::Reference(syn::TypeReference {
+    let extract_inner_mut_type = |ty: &syn::Type| -> Box<syn::Type> {
+        if let &syn::Type::Reference(syn::TypeReference {
             mutability: Some(_),
-            elem,
+            ref elem,
             ..
-        }) = &**ty
+        }) = ty
         {
             elem.to_owned()
         } else {
@@ -184,8 +184,8 @@ pub fn impl_assign_ops(attr: TokenStream, item: TokenStream) -> TokenStream {
     };
     let lhs_ty = extract_inner_mut_type(lhs_ty);
 
-    let extract_inner_ref_type = |ty: &Box<syn::Type>| -> Box<syn::Type> {
-        if let syn::Type::Reference(syn::TypeReference { elem, .. }) = &**ty {
+    let extract_inner_ref_type = |ty: &syn::Type| -> Box<syn::Type> {
+        if let &syn::Type::Reference(syn::TypeReference { ref elem, .. }) = ty {
             elem.to_owned()
         } else {
             panic!("rhs must be &T");

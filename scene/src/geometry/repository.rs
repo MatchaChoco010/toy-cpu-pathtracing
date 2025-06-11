@@ -22,6 +22,12 @@ impl<Id: SceneId> GeometryIndex<Id> {
 pub struct GeometryRepository<Id: SceneId> {
     geometries: Vec<Box<dyn Geometry<Id>>>,
 }
+impl<Id: SceneId> Default for GeometryRepository<Id> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<Id: SceneId> GeometryRepository<Id> {
     /// 新しいGeometryRepositoryを作成する。
     pub fn new() -> Self {

@@ -41,11 +41,10 @@ impl<'a, Id: SceneId, F: Filter> Renderer for NormalRenderer<'a, Id, F> {
             let intersect = scene.intersect(&rs.ray, f32::MAX);
 
             let color = match intersect {
-                Some(intersect) => match intersect.interaction {
-                    SurfaceInteraction { shading_normal, .. } => {
-                        shading_normal.to_vec3() * 0.5 + glam::Vec3::splat(0.5)
-                    }
-                },
+                Some(intersect) => {
+                    let SurfaceInteraction { shading_normal, .. } = intersect.interaction;
+                    shading_normal.to_vec3() * 0.5 + glam::Vec3::splat(0.5)
+                }
                 None => glam::Vec3::ZERO,
             };
 
