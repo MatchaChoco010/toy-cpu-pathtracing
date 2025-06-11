@@ -13,8 +13,8 @@ impl<C: CoordinateSystem> Ray<C> {
     /// Rayを作成する。
     #[inline(always)]
     pub fn new(origin: impl AsRef<Point3<C>>, dir: impl AsRef<Vector3<C>>) -> Self {
-        let origin = origin.as_ref().clone();
-        let dir = dir.as_ref().clone();
+        let origin = *origin.as_ref();
+        let dir = *dir.as_ref();
         Self { origin, dir }
     }
 
@@ -28,7 +28,7 @@ impl<C: CoordinateSystem> Ray<C> {
 impl<C: CoordinateSystem> AsRef<Ray<C>> for Ray<C> {
     #[inline(always)]
     fn as_ref(&self) -> &Ray<C> {
-        &self
+        self
     }
 }
 
@@ -48,8 +48,8 @@ pub fn intersect_triangle<C: CoordinateSystem>(
 ) -> Option<TriangleIntersection<C>> {
     // degenerateしていたらhitしない。
     if ps[0]
-        .vector_to(&ps[1])
-        .cross(&ps[0].vector_to(&ps[2]))
+        .vector_to(ps[1])
+        .cross(ps[0].vector_to(ps[2]))
         .length_squared()
         == 0.0
     {
@@ -167,8 +167,8 @@ pub fn intersect_triangle<C: CoordinateSystem>(
     // 幾何法線を求める。
     let normal = Normal::from(
         ps[0]
-            .vector_to(&ps[1])
-            .cross(ps[0].vector_to(&ps[2]))
+            .vector_to(ps[1])
+            .cross(ps[0].vector_to(ps[2]))
             .normalize()
             .to_vec3(),
     );
