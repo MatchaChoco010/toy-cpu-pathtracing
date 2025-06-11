@@ -205,7 +205,7 @@ pub fn init_table<G: ColorGamut>(z_nodes: &mut Vec<f32>, table: &mut Vec<Vec<Vec
         smoothstep(smoothstep(zi as f32 / (TABLE_SIZE - 1) as f32))
     }
     for i in 0..TABLE_SIZE {
-        z_nodes[i] = z_mapping(i) as f32;
+        z_nodes[i] = z_mapping(i);
     }
 
     // CIE Yの360nmから830nmまで積分した値を求める。
@@ -214,7 +214,7 @@ pub fn init_table<G: ColorGamut>(z_nodes: &mut Vec<f32>, table: &mut Vec<Vec<Vec
         .into_par_iter()
         .map(|i| {
             // CIE Yの値を取得する。
-            let lambda = LAMBDA_MIN as f32 + H * i as f32;
+            let lambda = LAMBDA_MIN + H * i as f32;
             let y = cie_interpret(&CIE_Y, lambda);
 
             // シンプソンの3/8公式で重みを計算する。
@@ -236,7 +236,7 @@ pub fn init_table<G: ColorGamut>(z_nodes: &mut Vec<f32>, table: &mut Vec<Vec<Vec
         .into_par_iter()
         .map(|i| {
             // lambda_tableとxyz_tableを計算する。
-            let lambda = LAMBDA_MIN as f32 + H * i as f32;
+            let lambda = LAMBDA_MIN + H * i as f32;
             let x = cie_interpret(&CIE_X, lambda);
             let y = cie_interpret(&CIE_Y, lambda);
             let z = cie_interpret(&CIE_Z, lambda);
@@ -272,7 +272,7 @@ pub fn init_table<G: ColorGamut>(z_nodes: &mut Vec<f32>, table: &mut Vec<Vec<Vec
             let xi = i % TABLE_SIZE;
 
             // RGBの成分を計算する。
-            let z = z_nodes[zi] as f32;
+            let z = z_nodes[zi];
             let y = yi as f32 / (TABLE_SIZE - 1) as f32 * z;
             let x = xi as f32 / (TABLE_SIZE - 1) as f32 * z;
             let rgb = match max_component {
