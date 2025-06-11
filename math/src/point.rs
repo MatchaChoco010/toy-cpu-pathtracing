@@ -60,7 +60,7 @@ impl<C: CoordinateSystem> From<glam::Vec3> for Point3<C> {
 impl<C: CoordinateSystem> AsRef<Point3<C>> for Point3<C> {
     #[inline(always)]
     fn as_ref(&self) -> &Point3<C> {
-        &self
+        self
     }
 }
 #[impl_binary_ops(Add)]

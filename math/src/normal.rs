@@ -53,7 +53,7 @@ impl<C: CoordinateSystem> From<Vector3<C>> for Normal<C> {
 impl<C: CoordinateSystem> AsRef<Normal<C>> for Normal<C> {
     #[inline(always)]
     fn as_ref(&self) -> &Normal<C> {
-        &self
+        self
     }
 }
 impl<C: CoordinateSystem> AsRef<Vector3<C>> for Normal<C> {

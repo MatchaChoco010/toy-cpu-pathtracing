@@ -91,7 +91,7 @@ impl<C: CoordinateSystem> From<glam::Vec3> for Vector3<C> {
 impl<C: CoordinateSystem> AsRef<Vector3<C>> for Vector3<C> {
     #[inline(always)]
     fn as_ref(&self) -> &Vector3<C> {
-        &self
+        self
     }
 }
 impl<C: CoordinateSystem> Neg for Vector3<C> {

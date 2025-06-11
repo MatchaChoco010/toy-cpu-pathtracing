@@ -18,8 +18,8 @@ impl<C: CoordinateSystem> Bounds<C> {
     /// Boundsを作成する。
     #[inline(always)]
     pub fn new(min: impl AsRef<Point3<C>>, max: impl AsRef<Point3<C>>) -> Self {
-        let min = min.as_ref().clone();
-        let max = max.as_ref().clone();
+        let min = *min.as_ref();
+        let max = *max.as_ref();
         Self { min, max }
     }
 
@@ -72,7 +72,7 @@ impl<C: CoordinateSystem> Bounds<C> {
     #[inline(always)]
     pub fn bounding_sphere(&self) -> (Point3<C>, f32) {
         let center = self.center();
-        let radius = center.distance(&self.max);
+        let radius = center.distance(self.max);
         (center, radius)
     }
 
@@ -105,6 +105,6 @@ impl<C: CoordinateSystem> Bounds<C> {
 impl<C: CoordinateSystem> AsRef<Bounds<C>> for Bounds<C> {
     #[inline(always)]
     fn as_ref(&self) -> &Bounds<C> {
-        &self
+        self
     }
 }
