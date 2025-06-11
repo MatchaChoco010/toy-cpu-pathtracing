@@ -165,7 +165,7 @@ impl ZSobolSampler {
         v = randomizer(v);
 
         const FLOAT_ONE_MINUS_EPSILON: f32 = f32::from_bits(0x3f7fffff); // 0x1.fffffep-1
-        (v as f32 * f32::from_bits(0x2f800000)).min(FLOAT_ONE_MINUS_EPSILON)// 0x1p-32
+        (v as f32 * f32::from_bits(0x2f800000)).min(FLOAT_ONE_MINUS_EPSILON) // 0x1p-32
     }
 }
 impl Sampler for ZSobolSampler {

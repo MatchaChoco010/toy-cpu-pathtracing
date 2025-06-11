@@ -104,7 +104,6 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy>
         // ToneMapを適用する。
         let rgb = rgb.apply_tone_map(tone_map);
         // ガンマ補正のEOTFを適用する。
-        
 
         rgb.apply_eotf::<eotf::GammaSrgb>()
     }
@@ -139,20 +138,16 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy>
                     throughput_modifier: f.clone(),
                 }
             }
-            BsdfSample::Bsdf {
-                f,
-                pdf,
-                wi,
-                normal: _,
-            } => {
+            BsdfSample::Bsdf { f, pdf, wi, normal } => {
                 // wiの方向にレイを飛ばす
                 let wi_render = &render_to_tangent.inverse() * wi;
                 let next_ray = Ray::new(shading_point.position, wi_render)
                     .move_forward(Self::RAY_FORWARD_EPSILON);
                 let intersect = scene.intersect(&next_ray, f32::MAX);
 
-                // cos_thetaを計算
-                let cos_theta = wi.y().abs();
+                // cos_thetaを計算（法線マップを考慮）
+                let normal_vec = normal.to_vec3().normalize();
+                let cos_theta = wi.to_vec3().dot(normal_vec).abs();
 
                 let next_emissive_contribution = if let Some(ref next_hit_info) = intersect {
                     Self::evaluate_emissive_surface(&next_hit_info.interaction, &next_ray, lambda)
@@ -187,7 +182,6 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy> Render
         let mut sampler = S::new(spp, resolution, seed);
 
         let mut output = DenselySampledSpectrum::zero();
-        let mut effective_spp = 0u32;
 
         // spp数だけループする
         'sample_loop: for sample_index in 0..spp {
@@ -195,7 +189,6 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy> Render
 
             let mut hit_info;
             let mut throughout = SampledSpectrum::one();
-            let mut sample_contribution = SampledSpectrum::zero();
 
             // このsample_indexでサンプルする波長をサンプリングする
             let u = sampler.get_1d();
@@ -213,11 +206,11 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy> Render
                 None => continue 'sample_loop, // ヒットしなかった場合は次のサンプルへ
             };
 
-            // 光源面にヒットした場合、radianceを一時変数に蓄積
+            // 光源面にヒットした場合、radianceを取得してoutputに足し合わせる
             if let Some(radiance) =
                 Self::evaluate_emissive_surface(&hit_info.interaction, &ray, &lambda)
             {
-                sample_contribution += &throughout * radiance;
+                output.add_sample(&lambda, &throughout * radiance);
             }
 
             // パストレーシングのメインループ
@@ -238,45 +231,11 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy> Render
                 // Tangent座標系でのシェーディング点の情報を計算
                 let shading_point = &render_to_tangent * &hit_info.interaction;
 
-                // BSDFのサンプリングを行う（geometric normal rejection sampling付き）
-                const MAX_BSDF_ATTEMPTS: usize = 20;
-                let mut bsdf_sample = None;
-
-                for _ in 0..MAX_BSDF_ATTEMPTS {
-                    let uv = sampler.get_2d();
-                    if let Some(sample) = bsdf.sample(uv, &lambda, &wo, &shading_point) {
-                        // 全てのバリアントでgeometric normalチェック
-                        let wi = match &sample {
-                            scene::BsdfSample::Bsdf { wi, .. } => wi,
-                            scene::BsdfSample::Specular { wi, .. } => wi,
-                        };
-
-                        // Geometric normalとの一貫性チェック
-                        let geometric_normal = shading_point.normal.to_vec3().normalize();
-                        let wi_cos_geometric = wi.to_vec3().dot(geometric_normal);
-                        if wi_cos_geometric > 1e-6 {
-                            // 数値誤差を考慮した閾値
-                            bsdf_sample = Some(sample);
-                            break;
-                        }
-
-                        // めり込む場合の処理
-                        match &sample {
-                            scene::BsdfSample::Bsdf { .. } => {
-                                // Bsdfバリアントの場合は次の試行へ（乱数が変われば結果も変わる）
-                            }
-                            scene::BsdfSample::Specular { .. } => {
-                                // Specular反射の場合は決定論的なので、リトライしても無駄
-                                // パス全体をやり直すために即座にループを抜ける
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                let bsdf_sample = match bsdf_sample {
+                // BSDFのサンプリングを行う
+                let uv = sampler.get_2d();
+                let bsdf_sample = match bsdf.sample(uv, &lambda, &wo, &shading_point) {
                     Some(sample) => sample,
-                    None => continue 'sample_loop, // パス全体をやり直し
+                    None => break 'depth_loop,
                 };
 
                 // 戦略に基づいてNEE寄与を評価
@@ -288,9 +247,11 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy> Render
                     &hit_info,
                     &bsdf_sample,
                 ) {
-                    // NEE寄与を一時変数に蓄積（throughout、MISウエイト適用）
-                    sample_contribution +=
-                        &throughout * &nee_result.contribution * nee_result.mis_weight;
+                    // NEE寄与をoutputに追加（throughout、MISウエイト適用）
+                    output.add_sample(
+                        &lambda,
+                        &throughout * &nee_result.contribution * nee_result.mis_weight,
+                    );
                 }
 
                 // BSDFサンプルの処理と次のレイのトレース
@@ -317,10 +278,12 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy> Render
                     &bsdf_sample,
                 );
 
-                // 戦略に応じてBSDFサンプリング結果のエミッシブ寄与を一時変数に蓄積
+                // 戦略に応じてBSDFサンプリング結果のエミッシブ寄与を追加
                 if self.strategy.should_add_bsdf_emissive(&bsdf_sample) {
-                    sample_contribution +=
-                        &throughout * bsdf_result.next_emissive_contribution * mis_weight;
+                    output.add_sample(
+                        &lambda,
+                        &throughout * bsdf_result.next_emissive_contribution * mis_weight,
+                    );
                 }
 
                 // throughoutを更新（MISウエイト適用）
@@ -334,17 +297,8 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy> Render
                     break 'depth_loop;
                 }
             }
-
-            // depth_loopが正常に完了した場合のみ、蓄積した寄与をoutputに追加
-            output.add_sample(&lambda, sample_contribution);
-            effective_spp += 1;
         }
 
-        Self::finalize_spectrum_to_color(
-            output,
-            effective_spp,
-            self.tone_map.clone(),
-            self.exposure,
-        )
+        Self::finalize_spectrum_to_color(output, spp, self.tone_map.clone(), self.exposure)
     }
 }
