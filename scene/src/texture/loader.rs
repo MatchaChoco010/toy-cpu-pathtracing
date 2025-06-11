@@ -41,7 +41,7 @@ impl ImageData {
 /// 画像ファイルをRGB形式で読み込む。
 pub fn load_rgb_image(path: impl AsRef<Path>) -> ImageResult<ImageData> {
     let img = image::open(path)?;
-    
+
     match img {
         DynamicImage::ImageRgb8(rgb_img) => {
             let (width, height) = rgb_img.dimensions();
@@ -63,7 +63,7 @@ pub fn load_rgb_image(path: impl AsRef<Path>) -> ImageResult<ImageData> {
 /// 画像ファイルをグレースケール形式で読み込む。
 pub fn load_grayscale_image(path: impl AsRef<Path>) -> ImageResult<ImageData> {
     let img = image::open(path)?;
-    
+
     match img {
         DynamicImage::ImageLuma8(gray_img) => {
             let (width, height) = gray_img.dimensions();

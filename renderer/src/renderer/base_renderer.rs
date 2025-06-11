@@ -118,7 +118,7 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy>
         shading_point: &SurfaceInteraction<Id, Render>,
     ) -> BsdfSamplingResult<Id> {
         match bsdf_sample {
-            BsdfSample::Specular { f, wi } => {
+            BsdfSample::Specular { f, wi, normal: _ } => {
                 // wiの方向にレイを飛ばす
                 let wi_render = &render_to_tangent.inverse() * wi;
                 let next_ray = Ray::new(shading_point.position, wi_render)
@@ -139,7 +139,12 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy>
                     throughput_modifier: f.clone(),
                 }
             }
-            BsdfSample::Bsdf { f, pdf, wi } => {
+            BsdfSample::Bsdf {
+                f,
+                pdf,
+                wi,
+                normal: _,
+            } => {
                 // wiの方向にレイを飛ばす
                 let wi_render = &render_to_tangent.inverse() * wi;
                 let next_ray = Ray::new(shading_point.position, wi_render)

@@ -4,7 +4,7 @@ use math::{Bounds, Ray, Render, Transform, World};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::{
-    AreaLightSampleRadiance, DeltaDirectionalLightLightIrradiance, DeltaPointLightIrradiance,
+    AreaLightSampleRadiance, DeltaDirectionalLightIntensity, DeltaPointLightIntensity,
     Intersection, Material, PrimitiveIndex, SceneId, SurfaceInteraction,
     geometry::GeometryRepository,
 };
@@ -104,22 +104,22 @@ pub trait PrimitiveNonDeltaLight<Id: SceneId>: PrimitiveLight<Id> {
 
 /// Deltaな点光源のPrimitiveを表すトレイト。
 pub trait PrimitiveDeltaPointLight<Id: SceneId>: PrimitiveLight<Id> {
-    /// 与えた波長でのスペクトル放射照度の計算を行う。
-    fn calculate_irradiance(
+    /// 与えた波長でのスペクトル放射強度の計算を行う。
+    fn calculate_intensity(
         &self,
         _shading_point: &SurfaceInteraction<Id, Render>,
         _lambda: &SampledWavelengths,
-    ) -> DeltaPointLightIrradiance<Render>;
+    ) -> DeltaPointLightIntensity<Render>;
 }
 
 /// Deltaな指向性光源のPrimitiveを表すトレイト。
 pub trait PrimitiveDeltaDirectionalLight<Id: SceneId>: PrimitiveLight<Id> {
-    /// 与えた波長でのスペクトル放射照度の計算を行う。
-    fn calculate_irradiance(
+    /// 与えた波長でのスペクトル放射強度の計算を行う。
+    fn calculate_intensity(
         &self,
         _shading_point: &SurfaceInteraction<Id, Render>,
         _lambda: &SampledWavelengths,
-    ) -> DeltaDirectionalLightLightIrradiance<Render>;
+    ) -> DeltaDirectionalLightIntensity<Render>;
 }
 
 /// 面積光源のPrimitiveを表すトレイト。

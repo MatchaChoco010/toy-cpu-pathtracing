@@ -1,11 +1,22 @@
 //! シーン上の点やBSDFをサンプルした結果を持つ構造体を定義するモジュール。
 
-use math::{CoordinateSystem, Normal, Point3, Transform, Vector3};
+use math::{CoordinateSystem, Normal, Point3, Tangent, Transform, Vector3};
 use spectrum::SampledSpectrum;
 use util_macros::impl_binary_ops;
 
 use crate::material::Material;
 use crate::{SceneId, primitive::PrimitiveIndex};
+
+/// マテリアル評価結果を表す構造体。
+#[derive(Debug, Clone)]
+pub struct MaterialEvaluationResult {
+    /// BSDF値
+    pub f: SampledSpectrum,
+    /// レイヤー選択PDF（レイヤーマテリアルでの確率的BSDF選択用）
+    pub pdf: f32,
+    /// 選択されたレイヤーの法線マップ（接空間）
+    pub normal: Normal<Tangent>,
+}
 
 // Bsdfのサンプリング結果を表す列挙型。
 #[derive(Debug, Clone)]
@@ -14,10 +25,12 @@ pub enum BsdfSample {
         f: spectrum::SampledSpectrum,
         pdf: f32,
         wi: math::Vector3<math::Tangent>,
+        normal: Normal<Tangent>,
     },
     Specular {
         f: spectrum::SampledSpectrum,
         wi: math::Vector3<math::Tangent>,
+        normal: Normal<Tangent>,
     },
 }
 
@@ -75,26 +88,26 @@ pub struct AreaLightSampleRadiance<Id: SceneId, C: CoordinateSystem> {
     pub radiance: SampledSpectrum,
     /// サンプルのpdf。
     pub pdf: f32,
-    /// 幾何項。
-    pub g: f32,
+    /// ライト表面の法線（幾何項計算を遅延実行するため）。
+    pub light_normal: Normal<C>,
     /// サンプルの方向要素のpdf。
     pub pdf_dir: f32,
     /// シーンをサンプルした結果の情報。
     pub interaction: SurfaceInteraction<Id, C>,
 }
 
-/// ライトからの放射照度情報を持つ構造体。
-pub struct DeltaPointLightIrradiance<C: CoordinateSystem> {
-    /// 計算した放射照度。
-    pub irradiance: SampledSpectrum,
+/// ライトからの放射強度情報を持つ構造体。
+pub struct DeltaPointLightIntensity<C: CoordinateSystem> {
+    /// 計算した放射強度。
+    pub intensity: SampledSpectrum,
     /// 光源の位置。
     pub position: Point3<C>,
 }
 
-/// ライトからの放射照度情報を持つ構造体。
-pub struct DeltaDirectionalLightLightIrradiance<C: CoordinateSystem> {
-    /// 計算した放射照度。
-    pub irradiance: SampledSpectrum,
+/// ライトからの放射強度情報を持つ構造体。
+pub struct DeltaDirectionalLightIntensity<C: CoordinateSystem> {
+    /// 計算した放射強度。
+    pub intensity: SampledSpectrum,
     /// 光源の方向。
     pub direction: Vector3<C>,
 }
@@ -103,8 +116,8 @@ pub struct DeltaDirectionalLightLightIrradiance<C: CoordinateSystem> {
 pub enum LightIntensity<Id: SceneId, C: CoordinateSystem> {
     /// 面積光源 からサンプルした放射輝度情報。
     RadianceAreaLight(AreaLightSampleRadiance<Id, C>),
-    /// デルタ点光源の放射照度情報。
-    IrradianceDeltaPointLight(DeltaPointLightIrradiance<C>),
-    /// デルタ方向光源の放射照度情報。
-    IrradianceDeltaDirectionalLight(DeltaDirectionalLightLightIrradiance<C>),
+    /// デルタ点光源の放射強度情報。
+    IntensityDeltaPointLight(DeltaPointLightIntensity<C>),
+    /// デルタ方向光源の放射強度情報。
+    IntensityDeltaDirectionalLight(DeltaDirectionalLightIntensity<C>),
 }

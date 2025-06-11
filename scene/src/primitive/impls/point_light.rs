@@ -6,7 +6,7 @@ use math::{Local, Point3, Render, Transform, World};
 use spectrum::{SampledSpectrum, SampledWavelengths, Spectrum};
 
 use crate::{
-    DeltaPointLightIrradiance, SceneId, SurfaceInteraction,
+    DeltaPointLightIntensity, SceneId, SurfaceInteraction,
     primitive::traits::{
         Primitive, PrimitiveAreaLight, PrimitiveDeltaDirectionalLight, PrimitiveDeltaPointLight,
         PrimitiveGeometry, PrimitiveInfiniteLight, PrimitiveLight, PrimitiveNonDeltaLight,
@@ -83,23 +83,15 @@ impl<Id: SceneId> PrimitiveLight<Id> for PointLight {
     }
 }
 impl<Id: SceneId> PrimitiveDeltaPointLight<Id> for PointLight {
-    fn calculate_irradiance(
+    fn calculate_intensity(
         &self,
-        shading_point: &SurfaceInteraction<Id, Render>,
+        _shading_point: &SurfaceInteraction<Id, Render>,
         lambda: &SampledWavelengths,
-    ) -> DeltaPointLightIrradiance<Render> {
-        // Render空間でのライトの方向と距離の二乗とcos成分を計算する。
+    ) -> DeltaPointLightIntensity<Render> {
         let position = &self.local_to_render * Point3::ZERO;
-        let distance_vec = shading_point.position.vector_to(position);
-        let wi = distance_vec.normalize();
-        let distance_squared = distance_vec.length_squared();
-        let cos_theta = wi.dot(shading_point.normal);
-
-        // 放射照度を計算する。
-        let irradiance =
-            self.intensity * self.spectrum.sample(lambda) * cos_theta / distance_squared;
-        DeltaPointLightIrradiance {
-            irradiance,
+        let intensity = self.intensity * self.spectrum.sample(lambda);
+        DeltaPointLightIntensity {
+            intensity,
             position,
         }
     }

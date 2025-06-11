@@ -148,7 +148,7 @@ impl<From: CoordinateSystem, To: CoordinateSystem> Transform<From, To> {
 }
 impl Transform<Render, Tangent> {
     /// Render座標系からTangent座標系への変換Transformを作成する。
-    /// shading_normalがY軸になり、tangentの方向にX軸が向くような座尿系に変換するTransform。
+    /// shading_normalがZ軸になり、tangentの方向にX軸が向くような座標系に変換するTransform。
     pub fn from_shading_normal_tangent(
         shading_normal: &Normal<Render>,
         tangent: &Vector3<Render>,
@@ -162,10 +162,54 @@ impl Transform<Render, Tangent> {
         let shading_tangent = shading_bitangent.cross(shading_normal);
         let matrix = glam::Mat4::from_cols(
             shading_tangent.extend(0.0),
-            shading_normal.extend(0.0),
             shading_bitangent.extend(0.0),
+            shading_normal.extend(0.0),
             glam::vec4(0.0, 0.0, 0.0, 1.0),
         );
+        Transform::from_matrix(matrix.inverse())
+    }
+}
+impl Transform<Tangent, Tangent> {
+    /// ノーマルマップの法線からTangent空間での基底変換Transformを作成する。
+    ///
+    /// 標準的なタンジェント空間（Z+が法線）から、法線マップで摂動されたタンジェント空間への変換。
+    /// グラム・シュミット法を使って安全に正規直交基底を構築する。
+    ///
+    /// # Arguments
+    /// - `normal_map_normal` - ノーマルマップから取得したタンジェント空間での法線
+    ///
+    /// # Returns
+    /// 標準タンジェント空間から摂動タンジェント空間への変換Transform
+    pub fn from_normal_map(normal_map_normal: &Normal<Tangent>) -> Transform<Tangent, Tangent> {
+        let perturbed_normal = normal_map_normal.to_vec3().normalize();
+
+        // 摂動された法線がZ軸とほぼ同じ場合は変換不要
+        if (perturbed_normal - glam::Vec3::Z).length() < 1e-6 {
+            return Transform::identity();
+        }
+
+        // 新しい基底を構築：perturbed_normalをZ軸とする
+        let new_z = perturbed_normal;
+
+        // X軸の候補を選択（Z軸と平行でない方向）
+        let candidate_x = if new_z.dot(glam::Vec3::X).abs() < 0.9 {
+            glam::Vec3::X
+        } else {
+            glam::Vec3::Y
+        };
+
+        // グラム・シュミット法で正規直交基底を構築
+        let new_x = (candidate_x - new_z.dot(candidate_x) * new_z).normalize();
+        let new_y = new_z.cross(new_x).normalize();
+
+        // 新しい基底行列を構築（列ベクトルとして配置）
+        let matrix = glam::Mat4::from_cols(
+            new_x.extend(0.0),
+            new_y.extend(0.0),
+            new_z.extend(0.0),
+            glam::vec4(0.0, 0.0, 0.0, 1.0),
+        );
+
         Transform::from_matrix(matrix.inverse())
     }
 }

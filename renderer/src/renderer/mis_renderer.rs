@@ -58,12 +58,12 @@ fn evaluate_next_event_estimation_with_mis<Id: SceneId, S: Sampler>(
         s,
         uv,
     ) {
-        LightIntensity::IrradianceDeltaPointLight(irradiance) => {
+        LightIntensity::IntensityDeltaPointLight(intensity) => {
             // デルタライトの場合はMISを適用しない
             let contribution = common::evaluate_delta_point_light(
                 scene,
                 &shading_point,
-                &irradiance,
+                &intensity,
                 bsdf,
                 &lambda,
                 &current_hit_info.wo,
@@ -75,12 +75,12 @@ fn evaluate_next_event_estimation_with_mis<Id: SceneId, S: Sampler>(
                 mis_weight: 1.0,
             }
         }
-        LightIntensity::IrradianceDeltaDirectionalLight(irradiance) => {
+        LightIntensity::IntensityDeltaDirectionalLight(intensity) => {
             // デルタライトの場合はMISを適用しない
             let contribution = common::evaluate_delta_directional_light(
                 scene,
                 &shading_point,
-                &irradiance,
+                &intensity,
                 bsdf,
                 &lambda,
                 &current_hit_info.wo,

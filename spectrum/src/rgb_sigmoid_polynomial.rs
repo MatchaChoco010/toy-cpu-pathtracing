@@ -6,10 +6,7 @@ use std::sync::OnceLock;
 
 use color::{
     Color, ColorAces2065_1, ColorAcesCg, ColorAdobeRGB, ColorDisplayP3, ColorImpl, ColorP3D65,
-    ColorRec709, ColorRec2020, ColorSrgb,
-    eotf::Eotf,
-    gamut::ColorGamut,
-    tone_map::NoneToneMap,
+    ColorRec709, ColorRec2020, ColorSrgb, eotf::Eotf, gamut::ColorGamut, tone_map::NoneToneMap,
 };
 
 use crate::spectrum::{LAMBDA_MAX, LAMBDA_MIN};
@@ -113,8 +110,13 @@ impl RgbToSpectrumTable {
         let rgb = color.rgb().max(glam::Vec3::splat(0.0));
         if rgb.max_element() > 1.0 {
             // Debug print before panic to understand which values are causing the issue
-            eprintln!("RGB validation error: RGB({:.6}, {:.6}, {:.6}) has max element {:.6} > 1.0",
-                rgb.x, rgb.y, rgb.z, rgb.max_element());
+            eprintln!(
+                "RGB validation error: RGB({:.6}, {:.6}, {:.6}) has max element {:.6} > 1.0",
+                rgb.x,
+                rgb.y,
+                rgb.z,
+                rgb.max_element()
+            );
             panic!("RGB elements must be in the range [0, 1]");
         }
 

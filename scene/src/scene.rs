@@ -115,7 +115,7 @@ impl<Id: SceneId> Scene<Id> {
     }
 
     /// 光源の強さを計算する。
-    /// 光源がデルタライトの場合はLightIntensity::Irradianceを返す。
+    /// 光源がデルタライトの場合はLightIntensity::Intensityを返す。
     /// 面積光源の場合はLightIntensity::Radianceを返す。
     ///
     /// # Arguments
@@ -134,11 +134,11 @@ impl<Id: SceneId> Scene<Id> {
     ) -> LightIntensity<Id, Render> {
         let primitive = self.primitive_repository.get(primitive_index);
         if let Some(delta_light) = primitive.as_delta_point_light() {
-            let irradiance = delta_light.calculate_irradiance(shading_point, lambda);
-            LightIntensity::IrradianceDeltaPointLight(irradiance)
+            let intensity = delta_light.calculate_intensity(shading_point, lambda);
+            LightIntensity::IntensityDeltaPointLight(intensity)
         } else if let Some(delta_light) = primitive.as_delta_directional_light() {
-            let irradiance = delta_light.calculate_irradiance(shading_point, lambda);
-            LightIntensity::IrradianceDeltaDirectionalLight(irradiance)
+            let intensity = delta_light.calculate_intensity(shading_point, lambda);
+            LightIntensity::IntensityDeltaDirectionalLight(intensity)
         } else if let Some(_inf_light) = primitive.as_infinite_light() {
             todo!()
         } else if let Some(area_light) = primitive.as_area_light() {
