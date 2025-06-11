@@ -104,9 +104,9 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy>
         // ToneMapを適用する。
         let rgb = rgb.apply_tone_map(tone_map);
         // ガンマ補正のEOTFを適用する。
-        let color = rgb.apply_eotf::<eotf::GammaSrgb>();
+        
 
-        color
+        rgb.apply_eotf::<eotf::GammaSrgb>()
     }
 
     /// BSDFサンプリングと次のレイのトレースを行う。
@@ -126,7 +126,7 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy>
                 let intersect = scene.intersect(&next_ray, f32::MAX);
 
                 let next_emissive_contribution = if let Some(ref next_hit_info) = intersect {
-                    Self::evaluate_emissive_surface(&next_hit_info.interaction, &next_ray, &lambda)
+                    Self::evaluate_emissive_surface(&next_hit_info.interaction, &next_ray, lambda)
                         .map(|radiance| f * radiance)
                         .unwrap_or_else(SampledSpectrum::zero)
                 } else {
@@ -155,7 +155,7 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy>
                 let cos_theta = wi.y().abs();
 
                 let next_emissive_contribution = if let Some(ref next_hit_info) = intersect {
-                    Self::evaluate_emissive_surface(&next_hit_info.interaction, &next_ray, &lambda)
+                    Self::evaluate_emissive_surface(&next_hit_info.interaction, &next_ray, lambda)
                         .map(|radiance| f * &radiance * cos_theta / pdf)
                         .unwrap_or_else(SampledSpectrum::zero)
                 } else {

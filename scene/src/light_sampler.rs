@@ -51,8 +51,8 @@ impl<'a, Id: SceneId> LightSampler<'a, Id> {
             .position(|id| id == primitive_index)
         {
             let weight = self.sample_weight_list[index];
-            let probability = weight / self.sample_weight_sum;
-            probability
+            
+            weight / self.sample_weight_sum
         } else {
             0.0
         }

@@ -6,7 +6,7 @@ edition.workspace = true
 [dependencies]
 color.workspace = true
 glam.workspace = true
-image = "0.24"
+image.workspace = true
 math.workspace = true
 spectrum.workspace = true
 tobj.workspace = true

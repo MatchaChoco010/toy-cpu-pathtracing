@@ -5,6 +5,12 @@ use crate::sampler::Sampler;
 pub struct RandomSampler {
     rng: ThreadRng,
 }
+impl Default for RandomSampler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RandomSampler {
     pub fn new() -> Self {
         Self { rng: rand::rng() }

@@ -9,7 +9,7 @@ impl FastOwenScrambler {
     }
 
     fn reverse_bits_32(mut n: u32) -> u32 {
-        n = (n << 16) | (n >> 16);
+        n = n.rotate_right(16);
         n = ((n & 0x00ff00ff) << 8) | ((n & 0xff00ff00) >> 8);
         n = ((n & 0x0f0f0f0f) << 4) | ((n & 0xf0f0f0f0) >> 4);
         n = ((n & 0x33333333) << 2) | ((n & 0xcccccccc) >> 2);
@@ -81,7 +81,7 @@ impl ZSobolSampler {
         buf[..4].copy_from_slice(&dimension.to_le_bytes());
         buf[4..].copy_from_slice(&seed.to_le_bytes());
 
-        let mut h: u64 = 8_u64.wrapping_mul(M) ^ 0;
+        let mut h: u64 = 8_u64.wrapping_mul(M);
 
         let mut k = u64::from_le_bytes(buf);
         k = k.wrapping_mul(M);
@@ -140,7 +140,7 @@ impl ZSobolSampler {
                 (Self::mix_bits(higher_digits ^ (0x55555555 * self.dimension as u64)) >> 24) % 24;
 
             let digit = PERMUTATIONS[p as usize][digit as usize] as u64;
-            sample_index |= (digit as u64) << digit_shift;
+            sample_index |= digit << digit_shift;
             i -= 1;
         }
 
@@ -165,14 +165,14 @@ impl ZSobolSampler {
         v = randomizer(v);
 
         const FLOAT_ONE_MINUS_EPSILON: f32 = f32::from_bits(0x3f7fffff); // 0x1.fffffep-1
-        return (v as f32 * f32::from_bits(0x2f800000)).min(FLOAT_ONE_MINUS_EPSILON); // 0x1p-32
+        (v as f32 * f32::from_bits(0x2f800000)).min(FLOAT_ONE_MINUS_EPSILON)// 0x1p-32
     }
 }
 impl Sampler for ZSobolSampler {
     fn new(spp: u32, resolution: glam::UVec2, seed: u32) -> Self {
         let log2_spp = Self::log2_int(spp);
         let res = Self::round_up_pow2(resolution.x.max(resolution.y));
-        let log4_spp = (log2_spp + 1) / 2;
+        let log4_spp = log2_spp.div_ceil(2);
         let n_base4_digits = Self::log2_int(res) + log4_spp;
 
         Self {

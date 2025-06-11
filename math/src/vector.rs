@@ -119,7 +119,7 @@ fn sub<C: CoordinateSystem>(lhs: &Vector3<C>, rhs: &Vector3<C>) -> Vector3<C> {
 }
 #[impl_binary_ops(Mul)]
 fn mul<C: CoordinateSystem>(lhs: &Vector3<C>, rhs: &Vector3<C>) -> Vector3<C> {
-    Vector3::from(lhs.vec / rhs.vec)
+    Vector3::from(lhs.vec * rhs.vec)
 }
 #[impl_binary_ops(Div)]
 fn div<C: CoordinateSystem>(lhs: &Vector3<C>, rhs: &f32) -> Vector3<C> {

@@ -51,8 +51,8 @@ fn mul<From: CoordinateSystem, To: CoordinateSystem>(
     lhs: &Transform<From, To>,
     rhs: &Ray<From>,
 ) -> Ray<To> {
-    let origin = lhs * &rhs.origin;
-    let dir = lhs * &rhs.dir;
+    let origin = lhs * rhs.origin;
+    let dir = lhs * rhs.dir;
     Ray::new(origin, dir)
 }
 #[impl_binary_ops(Mul)]
@@ -63,7 +63,7 @@ fn mul<From: CoordinateSystem, To: CoordinateSystem>(
     let mut min = glam::Vec3::splat(f32::INFINITY);
     let mut max = glam::Vec3::splat(f32::NEG_INFINITY);
     for vertex in rhs.vertices() {
-        let transformed_vertex = lhs * &vertex;
+        let transformed_vertex = lhs * vertex;
         min = min.min(transformed_vertex.to_vec3());
         max = max.max(transformed_vertex.to_vec3());
     }

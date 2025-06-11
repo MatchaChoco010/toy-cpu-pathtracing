@@ -33,7 +33,7 @@ fn evaluate_next_event_estimation_with_mis<Id: SceneId, S: Sampler>(
     };
 
     // ライトサンプラーを取得
-    let light_sampler = scene.light_sampler(&lambda);
+    let light_sampler = scene.light_sampler(lambda);
 
     // ライトをサンプリング
     let u = sampler.get_1d();
@@ -54,7 +54,7 @@ fn evaluate_next_event_estimation_with_mis<Id: SceneId, S: Sampler>(
     match scene.calculate_light(
         light_sample.primitive_index,
         &current_hit_info.interaction,
-        &lambda,
+        lambda,
         s,
         uv,
     ) {
@@ -62,10 +62,10 @@ fn evaluate_next_event_estimation_with_mis<Id: SceneId, S: Sampler>(
             // デルタライトの場合はMISを適用しない
             let contribution = common::evaluate_delta_point_light(
                 scene,
-                &shading_point,
+                shading_point,
                 &intensity,
                 bsdf,
-                &lambda,
+                lambda,
                 &current_hit_info.wo,
                 render_to_tangent,
                 light_sample.probability,
@@ -79,10 +79,10 @@ fn evaluate_next_event_estimation_with_mis<Id: SceneId, S: Sampler>(
             // デルタライトの場合はMISを適用しない
             let contribution = common::evaluate_delta_directional_light(
                 scene,
-                &shading_point,
+                shading_point,
                 &intensity,
                 bsdf,
-                &lambda,
+                lambda,
                 &current_hit_info.wo,
                 render_to_tangent,
                 light_sample.probability,
@@ -94,10 +94,10 @@ fn evaluate_next_event_estimation_with_mis<Id: SceneId, S: Sampler>(
         }
         LightIntensity::RadianceAreaLight(radiance) => common::evaluate_area_light_with_mis(
             scene,
-            &shading_point,
+            shading_point,
             &radiance,
             bsdf,
-            &lambda,
+            lambda,
             &current_hit_info.wo,
             render_to_tangent,
             light_sample.probability,

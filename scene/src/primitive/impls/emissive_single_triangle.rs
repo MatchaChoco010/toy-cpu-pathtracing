@@ -125,10 +125,7 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for EmissiveSingleTriangle<Id> {
     ) -> Option<Intersection<Id, Render>> {
         let wo = -ray.dir;
         let ray = &self.local_to_render.inverse() * ray;
-        let hit = match intersect_triangle(&ray, t_max, self.positions) {
-            Some(hit) => hit,
-            None => return None,
-        };
+        let hit = intersect_triangle(&ray, t_max, self.positions)?;
 
         let shading_normal = Normal::<Local>::from(
             self.normals[0].to_vec3() * hit.barycentric[0]
@@ -178,10 +175,7 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for EmissiveSingleTriangle<Id> {
         t_max: f32,
     ) -> bool {
         let ray = &self.local_to_render.inverse() * ray;
-        match intersect_triangle(&ray, t_max, self.positions) {
-            Some(_) => true,
-            None => false,
-        }
+        intersect_triangle(&ray, t_max, self.positions).is_some()
     }
 }
 impl<Id: SceneId> PrimitiveLight<Id> for EmissiveSingleTriangle<Id> {
@@ -339,7 +333,9 @@ impl<Id: SceneId> PrimitiveAreaLight<Id> for EmissiveSingleTriangle<Id> {
             .vector_to(shading_point.position)
             .normalize();
 
-        let radiance = self
+        
+
+        self
             .material
             .as_emissive_material::<Id>()
             .unwrap()
@@ -347,8 +343,6 @@ impl<Id: SceneId> PrimitiveAreaLight<Id> for EmissiveSingleTriangle<Id> {
                 lambda,
                 &render_to_tangent * wo,
                 &(render_to_tangent * interaction),
-            );
-
-        radiance
+            )
     }
 }

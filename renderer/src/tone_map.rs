@@ -5,6 +5,12 @@ use color::{Color, ColorImpl, eotf::Linear, gamut::ColorGamut, tone_map::NoneTon
 /// Reinhardトーンマッピングの構造体。
 #[derive(Clone)]
 pub struct ReinhardToneMap;
+impl Default for ReinhardToneMap {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ReinhardToneMap {
     /// Reinhardトーンマッピングを生成する。
     pub fn new() -> Self {

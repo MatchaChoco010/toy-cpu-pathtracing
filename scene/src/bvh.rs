@@ -216,13 +216,13 @@ impl<C: CoordinateSystem, Item: BvhItem<C>> BvhBuilder<C, Item> {
                 if let Some((first, second)) = min_split {
                     let first = first.build(data);
                     let second = second.build(data);
-                    return BvhBuilder::Node {
+                    BvhBuilder::Node {
                         bounds,
                         first: Box::new(first),
                         second: Box::new(second),
-                    };
+                    }
                 } else {
-                    return BvhBuilder::Leaf { bounds, item_list };
+                    BvhBuilder::Leaf { bounds, item_list }
                 }
             }
             _ => panic!("Already built"),
@@ -233,7 +233,7 @@ impl<C: CoordinateSystem, Item: BvhItem<C>> BvhBuilder<C, Item> {
     /// buildを呼び出した後に呼び出すことを想定している。
     fn flatten(self) -> Bvh<C, Item> {
         // 順次ノードをたどりながら、ノードをフラットな配列に格納していく。
-        fn traverse<'a, C: CoordinateSystem, Item: BvhItem<C>>(
+        fn traverse<C: CoordinateSystem, Item: BvhItem<C>>(
             builder: BvhBuilder<C, Item>,
             nodes: &mut Vec<BvhNode<C, Item>>,
             index: &mut usize,
@@ -364,9 +364,7 @@ impl<C: CoordinateSystem, Item: BvhItem<C>> Bvh<C, Item> {
                     second_offset,
                 } => {
                     // ノードのバウンディングボックスとレイの交差判定を行い、交差していなければスキップ。
-                    if bounds.intersect(ray, t_max, inv_dir).is_none() {
-                        return None;
-                    }
+                    bounds.intersect(ray, t_max, inv_dir)?;
 
                     // firstとsecondのノードのそれぞれの交差判定を行う。
                     let first = traverse(data, nodes, index + 1, ray, t_max, inv_dir);
@@ -384,9 +382,9 @@ impl<C: CoordinateSystem, Item: BvhItem<C>> Bvh<C, Item> {
                         let first = first.unwrap();
                         let second = second.unwrap();
                         if first.t_hit < second.t_hit {
-                            return Some(first);
+                            Some(first)
                         } else {
-                            return Some(second);
+                            Some(second)
                         }
                     } else if first.is_some() {
                         return first;
@@ -398,9 +396,7 @@ impl<C: CoordinateSystem, Item: BvhItem<C>> Bvh<C, Item> {
                 }
                 BvhNode::Leaf { bounds, item_count } => {
                     // ノードのバウンディングボックスとレイの交差判定を行い、交差していなければスキップ。
-                    if bounds.intersect(ray, t_max, inv_dir).is_none() {
-                        return None;
-                    }
+                    bounds.intersect(ray, t_max, inv_dir)?;
 
                     // 交差のうち最も近いものを保持する。
                     let mut min_intersection: Option<HitInfo<Item::Intersection>> = None;

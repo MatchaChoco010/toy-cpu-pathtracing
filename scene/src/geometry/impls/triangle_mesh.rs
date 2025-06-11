@@ -79,10 +79,7 @@ impl<Id: SceneId> BvhItem<Local> for Triangle<Id> {
         };
 
         // 三角形の交差判定を行う
-        let hit = match intersect_triangle(ray, t_max, positions) {
-            Some(hit) => hit,
-            None => return None,
-        };
+        let hit = intersect_triangle(ray, t_max, positions)?;
 
         // 交差していれば、交差点の情報を計算する
 
@@ -141,10 +138,7 @@ impl<Id: SceneId> BvhItem<Local> for Triangle<Id> {
         ];
 
         // 三角形の交差判定を行う
-        match intersect_triangle(ray, t_max, positions) {
-            Some(_) => true,
-            None => false,
-        }
+        intersect_triangle(ray, t_max, positions).is_some()
     }
 }
 
@@ -199,7 +193,7 @@ impl<Id: SceneId> TriangleMesh<Id> {
                     .map(|uv| glam::Vec2::new(uv[0], uv[1])),
             );
 
-            indices.extend(mesh.indices.iter().map(|i| *i as u32));
+            indices.extend(mesh.indices.iter().copied());
 
             if !uvs.is_empty() {
                 for i in indices.chunks(3) {

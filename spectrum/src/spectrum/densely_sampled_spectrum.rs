@@ -67,7 +67,7 @@ impl DenselySampledSpectrum {
 }
 impl SpectrumTrait for DenselySampledSpectrum {
     fn value(&self, lambda: f32) -> f32 {
-        if lambda < LAMBDA_MIN || lambda > LAMBDA_MAX {
+        if !(LAMBDA_MIN..=LAMBDA_MAX).contains(&lambda) {
             return 0.0;
         }
         let index = (lambda - LAMBDA_MIN).floor() as usize;

@@ -16,9 +16,9 @@ edition = "2024"
 
 [workspace.dependencies]
 anyhow = "1.0.98"
-image = "0.25.6"
-glam = "0.30.3"
 clap = { version = "4.5.40", features = ["derive"] }
+glam = "0.30.3"
+image = "0.25.6"
 proc-macro2 = "1.0.95"
 quote = "1.0.40"
 rand = "0.9.1"

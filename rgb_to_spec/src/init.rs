@@ -196,7 +196,7 @@ fn calculate_coefficients<G: ColorGamut>(
 
 /// delta Eを計算する関数を与えて、
 /// RgbからSigmoidPolynomialの二次式の係数を引くための事前計算テーブルをコンパイル時に生成する。
-pub fn init_table<G: ColorGamut>(z_nodes: &mut Vec<f32>, table: &mut Vec<Vec<Vec<Vec<[f32; 3]>>>>) {
+pub fn init_table<G: ColorGamut>(z_nodes: &mut [f32], table: &mut Vec<Vec<Vec<Vec<[f32; 3]>>>>) {
     // 精度を0と1の付近に割り振るために、zの非線形なマッピングを計算する。
     const fn z_mapping(zi: usize) -> f32 {
         const fn smoothstep(x: f32) -> f32 {
@@ -204,8 +204,8 @@ pub fn init_table<G: ColorGamut>(z_nodes: &mut Vec<f32>, table: &mut Vec<Vec<Vec
         }
         smoothstep(smoothstep(zi as f32 / (TABLE_SIZE - 1) as f32))
     }
-    for i in 0..TABLE_SIZE {
-        z_nodes[i] = z_mapping(i);
+    for (i, z_node) in z_nodes.iter_mut().enumerate() {
+        *z_node = z_mapping(i);
     }
 
     // CIE Yの360nmから830nmまで積分した値を求める。

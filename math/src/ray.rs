@@ -135,7 +135,7 @@ pub fn intersect_triangle<C: CoordinateSystem>(
 
     // t_hitがゼロより大きいかを保守的にチェックする。
     const fn gamma(n: usize) -> f32 {
-        const EPSILON: f32 = std::f32::EPSILON * 0.5;
+        const EPSILON: f32 = f32::EPSILON * 0.5;
         (n as f32 * EPSILON) / (1.0 - n as f32 * EPSILON)
     }
     // t_hitのエラー幅のdelta_zの項を計算する。
