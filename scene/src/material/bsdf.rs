@@ -2,7 +2,7 @@
 
 use std::f32::consts::PI;
 
-use math::{Normal, Tangent, Vector3};
+use math::{Normal, Tangent, Transform, Vector3};
 use spectrum::SampledSpectrum;
 
 use crate::BsdfSample;
@@ -38,34 +38,38 @@ impl NormalizedLambertBsdf {
         uv: glam::Vec2,
         normal_map: &Normal<Tangent>,
     ) -> Option<BsdfSample> {
-        // 標準的なBSDFサンプリングを実行
-        if wo.z() == 0.0 {
+        let normal_vec = normal_map.to_vec3().normalize();
+
+        let wo_cos_n = wo.to_vec3().dot(normal_vec);
+        if wo_cos_n == 0.0 {
             return None;
         }
 
-        let wi = sample_cosine_hemisphere(uv);
-        let wi = if wo.z() < 0.0 {
-            Vector3::new(wi.x(), wi.y(), -wi.z())
+        // 法線に対応した座標系でサンプリング
+        let transform = Transform::from_normal_map(normal_map);
+        let transform_inv = transform.inverse();
+
+        // 法線座標系でのコサイン半球サンプリング
+        let wi_local = sample_cosine_hemisphere(uv);
+        let wi_local = if wo_cos_n < 0.0 {
+            Vector3::new(wi_local.x(), wi_local.y(), -wi_local.z())
         } else {
-            wi
+            wi_local
         };
 
-        if wi.z() == 0.0 {
+        // 元の接空間に変換
+        let wi = transform_inv * wi_local;
+
+        let wi_cos_n = wi.to_vec3().dot(normal_vec);
+        if wi_cos_n == 0.0 {
             return None;
         }
 
         // BSDFの値を計算
         let f = albedo.clone() / PI;
 
-        // 法線マップが適用されている場合、PDFを調整
-        let normal_vec = normal_map.to_vec3().normalize();
-        let pdf = if (normal_vec - glam::Vec3::Z).length() < 1e-6 {
-            // デフォルト法線の場合は標準PDF
-            wi.z().abs() / PI
-        } else {
-            // 法線マップ適用時は新しい法線でPDFを計算
-            wi.to_vec3().dot(normal_vec).abs() / PI
-        };
+        // PDFを計算（法線に対するコサイン項）
+        let pdf = wi_cos_n.abs() / PI;
 
         Some(BsdfSample::Bsdf {
             f,
@@ -89,12 +93,18 @@ impl NormalizedLambertBsdf {
         wi: &Vector3<Tangent>,
         normal_map: &Normal<Tangent>,
     ) -> SampledSpectrum {
-        // 標準的なバリデーション
-        if wo.z() == 0.0 || wi.z() == 0.0 {
+        let normal_vec = normal_map.to_vec3().normalize();
+
+        // 法線に対するバリデーション
+        let wo_cos_n = wo.to_vec3().dot(normal_vec);
+        let wi_cos_n = wi.to_vec3().dot(normal_vec);
+
+        if wo_cos_n == 0.0 || wi_cos_n == 0.0 {
             return SampledSpectrum::zero();
         }
 
-        if wo.z().signum() != wi.z().signum() {
+        // 同じ半球内でない場合は反射しない
+        if wo_cos_n.signum() != wi_cos_n.signum() {
             return SampledSpectrum::zero();
         }
 
@@ -114,23 +124,22 @@ impl NormalizedLambertBsdf {
         wi: &Vector3<Tangent>,
         normal_map: &Normal<Tangent>,
     ) -> f32 {
-        // 標準的なバリデーション
-        if wo.z() == 0.0 || wi.z() == 0.0 {
-            return 0.0;
-        }
-
-        if wo.z().signum() != wi.z().signum() {
-            return 0.0;
-        }
-
-        // 法線マップが適用されている場合、PDFを調整
         let normal_vec = normal_map.to_vec3().normalize();
-        if (normal_vec - glam::Vec3::Z).length() < 1e-6 {
-            // デフォルト法線の場合は標準PDF
-            wi.z().abs() / PI
-        } else {
-            // 法線マップ適用時は新しい法線でPDFを計算
-            wi.to_vec3().dot(normal_vec).abs() / PI
+
+        // 法線に対するバリデーション
+        let wo_cos_n = wo.to_vec3().dot(normal_vec);
+        let wi_cos_n = wi.to_vec3().dot(normal_vec);
+
+        if wo_cos_n == 0.0 || wi_cos_n == 0.0 {
+            return 0.0;
         }
+
+        // 同じ半球内でない場合はPDF = 0
+        if wo_cos_n.signum() != wi_cos_n.signum() {
+            return 0.0;
+        }
+
+        // 法線に対するコサイン項でPDFを計算
+        wi_cos_n.abs() / PI
     }
 }
