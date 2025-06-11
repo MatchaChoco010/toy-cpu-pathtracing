@@ -55,7 +55,7 @@ impl<Id: SceneId> EmissiveSurfaceMaterial<Id> for EmissiveMaterial {
         let radiance_spectrum = match &self.radiance {
             SpectrumParameter::Constant(spectrum) => spectrum.sample(lambda),
             SpectrumParameter::Texture { .. } => {
-                // テクスチャの場合は中央値で近似
+                // テクスチャの場合は中央の値で近似
                 self.radiance
                     .sample(glam::Vec2::new(0.5, 0.5))
                     .sample(lambda)
@@ -64,7 +64,7 @@ impl<Id: SceneId> EmissiveSurfaceMaterial<Id> for EmissiveMaterial {
         let intensity_value = match &self.intensity {
             FloatParameter::Constant(value) => *value,
             FloatParameter::Texture(_) => {
-                // テクスチャの場合は中央値で近似
+                // テクスチャの場合は中央の値で近似
                 self.intensity.sample(glam::Vec2::new(0.5, 0.5))
             }
         };
