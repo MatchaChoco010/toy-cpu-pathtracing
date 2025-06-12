@@ -500,7 +500,6 @@ pub fn load_scene_5<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let normal_texture =
         NormalTexture::load(normal_config, false).expect("Failed to load normal texture");
     let normal_param = NormalParameter::texture(normal_texture);
-    let normal_param = NormalParameter::none();
 
     let spectrum_param = SpectrumParameter::constant(
         RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.8, 0.8, 0.8)),
