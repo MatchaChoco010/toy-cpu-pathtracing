@@ -3,7 +3,7 @@
 use image::ImageReader;
 use std::process::Command;
 
-const TOLERANCE: f64 = 0.01; // 1.0%の許容誤差
+const TOLERANCE: f64 = 0.008; // 0.8%の許容誤差
 const SPP: &str = "2048"; // さらに高いsppでモンテカルロ誤差を減らす
 const WIDTH: &str = "200"; // 画像サイズを半分に
 const HEIGHT: &str = "150";
