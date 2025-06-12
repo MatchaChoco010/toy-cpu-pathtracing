@@ -333,10 +333,7 @@ impl<Id: SceneId> PrimitiveAreaLight<Id> for EmissiveSingleTriangle<Id> {
             .vector_to(shading_point.position)
             .normalize();
 
-        
-
-        self
-            .material
+        self.material
             .as_emissive_material::<Id>()
             .unwrap()
             .radiance(
