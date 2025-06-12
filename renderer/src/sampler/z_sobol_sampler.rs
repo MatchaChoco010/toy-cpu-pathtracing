@@ -144,6 +144,14 @@ impl ZSobolSampler {
             i -= 1;
         }
 
+        if pow2_samples {
+            let digit = self.morton_index as u64 & i as u64;
+            sample_index |= digit
+                ^ (Self::mix_bits(
+                    (self.morton_index as u64 >> 1) ^ (0x55555555 * self.dimension as u64),
+                )) & 1;
+        }
+
         sample_index
     }
 
@@ -170,6 +178,9 @@ impl ZSobolSampler {
 }
 impl Sampler for ZSobolSampler {
     fn new(spp: u32, resolution: glam::UVec2, seed: u32) -> Self {
+        if !spp.is_power_of_two() {
+            println!("Warning: ZSobolSampler with non power-of-two samples count are suboptimal.");
+        }
         let log2_spp = Self::log2_int(spp);
         let res = Self::round_up_pow2(resolution.x.max(resolution.y));
         let log4_spp = log2_spp.div_ceil(2);

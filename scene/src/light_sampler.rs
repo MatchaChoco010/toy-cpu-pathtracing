@@ -32,13 +32,14 @@ impl<'a, Id: SceneId> LightSampler<'a, Id> {
             if u < self.sample_table[i] {
                 return Some(LightSample {
                     primitive_index: self.factory.light_list[i],
-                    probability: self.sample_table[i],
+                    probability: self.sample_weight_list[i] / self.sample_weight_sum,
                 });
             }
         }
         Some(LightSample {
             primitive_index: self.factory.light_list[self.sample_table.len() - 1],
-            probability: self.sample_table[self.sample_table.len() - 1],
+            probability: self.sample_weight_list[self.sample_table.len() - 1]
+                / self.sample_weight_sum,
         })
     }
 
@@ -51,7 +52,6 @@ impl<'a, Id: SceneId> LightSampler<'a, Id> {
             .position(|id| id == primitive_index)
         {
             let weight = self.sample_weight_list[index];
-            
             weight / self.sample_weight_sum
         } else {
             0.0

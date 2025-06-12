@@ -65,6 +65,10 @@ impl NormalizedLambertBsdf {
             return None;
         }
 
+        if wi_cos_n.signum() != wo_cos_n.signum() {
+            return None; // 同じ半球内でない場合は無効
+        }
+
         // BSDFの値を計算
         let f = albedo.clone() / PI;
 
@@ -93,11 +97,13 @@ impl NormalizedLambertBsdf {
         wi: &Vector3<Tangent>,
         normal_map: &Normal<Tangent>,
     ) -> SampledSpectrum {
-        let normal_vec = normal_map.to_vec3().normalize();
+        let transform = Transform::from_normal_map(normal_map);
+        let wo_local = &transform * wo;
+        let wi_local = &transform * wi;
 
-        // 法線に対するバリデーション
-        let wo_cos_n = wo.to_vec3().dot(normal_vec);
-        let wi_cos_n = wi.to_vec3().dot(normal_vec);
+        // 正規化座標系でのバリデーション（Z+が法線）
+        let wo_cos_n = wo_local.z();
+        let wi_cos_n = wi_local.z();
 
         if wo_cos_n == 0.0 || wi_cos_n == 0.0 {
             return SampledSpectrum::zero();
@@ -124,11 +130,13 @@ impl NormalizedLambertBsdf {
         wi: &Vector3<Tangent>,
         normal_map: &Normal<Tangent>,
     ) -> f32 {
-        let normal_vec = normal_map.to_vec3().normalize();
+        let transform = Transform::from_normal_map(normal_map);
+        let wo_local = &transform * wo;
+        let wi_local = &transform * wi;
 
-        // 法線に対するバリデーション
-        let wo_cos_n = wo.to_vec3().dot(normal_vec);
-        let wi_cos_n = wi.to_vec3().dot(normal_vec);
+        // 正規化座標系でのバリデーション（Z+が法線）
+        let wo_cos_n = wo_local.z();
+        let wi_cos_n = wi_local.z();
 
         if wo_cos_n == 0.0 || wi_cos_n == 0.0 {
             return 0.0;

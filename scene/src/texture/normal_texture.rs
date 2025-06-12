@@ -30,7 +30,7 @@ impl NormalTexture {
         // RGB [0,1] を [-1,1] の範囲に変換
         let mut x = rgb[0] * 2.0 - 1.0;
         let mut y = rgb[1] * 2.0 - 1.0;
-        let z = rgb[2] * 2.0 - 1.0;
+        let mut z = rgb[2] * 2.0 - 1.0;
 
         // Y軸反転（DirectX vs OpenGL）
         if self.flip_y {
@@ -42,7 +42,7 @@ impl NormalTexture {
         if length > 0.0 {
             x /= length;
             y /= length;
-            let z = z / length;
+            z /= length;
 
             // 接空間ノーマルとして返す
             Normal::new(x, y, z)
