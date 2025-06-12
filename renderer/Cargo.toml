@@ -14,3 +14,6 @@ rayon.workspace = true
 scene.workspace = true
 spectrum.workspace = true
 util_macros.workspace = true
+
+[dev-dependencies]
+imageproc.workspace = true

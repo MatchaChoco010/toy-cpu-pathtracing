@@ -288,8 +288,6 @@ pub fn load_scene_3<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
         NormalTexture::load(normal_config, false).expect("Failed to load normal texture");
     let normal_param = NormalParameter::texture(normal_texture);
 
-    // let normal_param = NormalParameter::none();
-
     let spectrum_param = SpectrumParameter::constant(
         RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.8, 0.8, 0.8)),
     );
@@ -489,17 +487,12 @@ pub fn load_scene_4<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
 }
 
 pub fn load_scene_5<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut Camera<F>) {
-    // テクスチャ付きのbunny（法線マップも追加）
     let geom = scene.load_obj("./renderer/assets/bunny.obj");
-    let config = TextureConfig::new("./renderer/assets/bunny-material-0/BaseColor.png");
-    let texture = RgbTexture::load(config).expect("Failed to load texture");
-    let _spectrum_param = SpectrumParameter::texture(texture, SpectrumType::Albedo);
-
-    // Normal mapを有効にしてテスト
     let normal_config = TextureConfig::new("./renderer/assets/bunny-material-0/Normal.png");
     let normal_texture =
         NormalTexture::load(normal_config, false).expect("Failed to load normal texture");
     let normal_param = NormalParameter::texture(normal_texture);
+    // let normal_param = NormalParameter::none();
 
     let spectrum_param = SpectrumParameter::constant(
         RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.8, 0.8, 0.8)),
@@ -590,7 +583,7 @@ pub fn load_scene_5<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
 
     // カメラをうさぎに近づける（より大きく映るように）
     camera.set_look_to(
-        Point3::new(0.0, 2.0, 3.5),                // より近い位置
+        Point3::new(0.3, 1.6, 2.8),                // より近い位置
         Vector3::new(0.0, -0.5, -2.0).normalize(), // 少し上から見下ろす
         Vector3::new(0.0, 1.0, 0.0),
     );
