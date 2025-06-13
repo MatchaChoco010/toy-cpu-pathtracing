@@ -281,16 +281,12 @@ pub fn load_scene_3<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let geom = scene.load_obj("./renderer/assets/bunny.obj");
     let config = TextureConfig::new("./renderer/assets/bunny-material-0/BaseColor.png");
     let texture = RgbTexture::load(config).expect("Failed to load texture");
-    let _spectrum_param = SpectrumParameter::texture(texture, SpectrumType::Albedo);
+    let spectrum_param = SpectrumParameter::texture(texture, SpectrumType::Albedo);
 
     let normal_config = TextureConfig::new("./renderer/assets/bunny-material-0/Normal.png");
     let normal_texture =
         NormalTexture::load(normal_config, false).expect("Failed to load normal texture");
     let normal_param = NormalParameter::texture(normal_texture);
-
-    let spectrum_param = SpectrumParameter::constant(
-        RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.8, 0.8, 0.8)),
-    );
 
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
