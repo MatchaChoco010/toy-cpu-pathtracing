@@ -2,8 +2,8 @@
 
 use color::ColorSrgb;
 use color::tone_map::ToneMap;
-use math::{Render, Tangent, Transform};
-use scene::{BsdfSample, Intersection, LightIntensity, SceneId};
+use math::{Render, ShadingTangent, Transform};
+use scene::{Intersection, LightIntensity, MaterialDirectionSample, SceneId};
 use spectrum::SampledSpectrum;
 
 use crate::filter::Filter;
@@ -18,7 +18,7 @@ fn evaluate_next_event_estimation<Id: SceneId, S: Sampler>(
     scene: &scene::Scene<Id>,
     lambda: &spectrum::SampledWavelengths,
     sampler: &mut S,
-    render_to_tangent: &Transform<Render, Tangent>,
+    render_to_tangent: &Transform<Render, ShadingTangent>,
     current_hit_info: &Intersection<Id, Render>,
 ) -> SampledSpectrum {
     let shading_point = &current_hit_info.interaction;
@@ -92,17 +92,17 @@ impl RenderingStrategy for NeeStrategy {
         scene: &scene::Scene<Id>,
         lambda: &spectrum::SampledWavelengths,
         sampler: &mut S,
-        render_to_tangent: &Transform<Render, Tangent>,
+        render_to_tangent: &Transform<Render, ShadingTangent>,
         current_hit_info: &Intersection<Id, Render>,
-        bsdf_sample: &BsdfSample,
+        bsdf_sample: &MaterialDirectionSample,
     ) -> Option<NeeResult> {
         // 完全鏡面の場合はNEEを行わない
-        if matches!(bsdf_sample, BsdfSample::Specular { .. }) {
+        if matches!(bsdf_sample, MaterialDirectionSample::Specular { .. }) {
             return None;
         }
 
         // 非鏡面の場合のみNEEを実行
-        if let BsdfSample::Bsdf { .. } = bsdf_sample {
+        if let MaterialDirectionSample::Bsdf { .. } = bsdf_sample {
             let contribution = evaluate_next_event_estimation(
                 scene,
                 lambda,
@@ -119,10 +119,10 @@ impl RenderingStrategy for NeeStrategy {
         }
     }
 
-    fn should_add_bsdf_emissive(&self, bsdf_sample: &BsdfSample) -> bool {
+    fn should_add_bsdf_emissive(&self, bsdf_sample: &MaterialDirectionSample) -> bool {
         // 完全鏡面の場合のみBSDFサンプル結果のエミッシブ寄与を追加
         // （非鏡面の場合はNEEで代替されるのでダブルカウント防止）
-        matches!(bsdf_sample, BsdfSample::Specular { .. })
+        matches!(bsdf_sample, MaterialDirectionSample::Specular { .. })
     }
 
     fn calculate_bsdf_mis_weight<Id: SceneId>(
@@ -131,7 +131,7 @@ impl RenderingStrategy for NeeStrategy {
         _lambda: &spectrum::SampledWavelengths,
         _current_hit_info: &Intersection<Id, Render>,
         _next_hit_info: &Intersection<Id, Render>,
-        _bsdf_sample: &BsdfSample,
+        _bsdf_sample: &MaterialDirectionSample,
     ) -> f32 {
         // NEEはMISウエイトなし
         1.0

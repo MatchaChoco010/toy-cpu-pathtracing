@@ -1,6 +1,6 @@
 //! 発光（Emissive）マテリアル実装。
 
-use math::{Tangent, Vector3};
+use math::{ShadingTangent, Vector3};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::{
@@ -42,8 +42,8 @@ impl<Id: SceneId> EmissiveSurfaceMaterial<Id> for EmissiveMaterial {
     fn radiance(
         &self,
         lambda: &SampledWavelengths,
-        _wo: Vector3<Tangent>,
-        light_sample_point: &SurfaceInteraction<Id, Tangent>,
+        _wo: Vector3<ShadingTangent>,
+        light_sample_point: &SurfaceInteraction<Id, ShadingTangent>,
     ) -> SampledSpectrum {
         let radiance_spectrum = self.radiance.sample(light_sample_point.uv).sample(lambda);
         let intensity_value = self.intensity.sample(light_sample_point.uv);

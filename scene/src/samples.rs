@@ -1,6 +1,6 @@
-//! シーン上の点やBSDFをサンプルした結果を持つ構造体を定義するモジュール。
+//! シーン上の点やマテリアルをサンプルした結果を持つ構造体を定義するモジュール。
 
-use math::{CoordinateSystem, Normal, Point3, Tangent, Transform, Vector3};
+use math::{CoordinateSystem, GeometryTangent, Normal, Point3, ShadingTangent, Transform, Vector3};
 use spectrum::SampledSpectrum;
 use util_macros::impl_binary_ops;
 
@@ -14,23 +14,23 @@ pub struct MaterialEvaluationResult {
     pub f: SampledSpectrum,
     /// レイヤー選択PDF（レイヤーマテリアルでの確率的BSDF選択用）
     pub pdf: f32,
-    /// 選択されたレイヤーの法線マップ（接空間）
-    pub normal: Normal<Tangent>,
+    /// 選択されたレイヤーの法線マップ（シェーディング接空間）
+    pub normal: Normal<ShadingTangent>,
 }
 
-// Bsdfのサンプリング結果を表す列挙型。
+// マテリアルの方向サンプリング結果を表す列挙型。
 #[derive(Debug, Clone)]
-pub enum BsdfSample {
+pub enum MaterialDirectionSample {
     Bsdf {
         f: spectrum::SampledSpectrum,
         pdf: f32,
-        wi: math::Vector3<math::Tangent>,
-        normal: Normal<Tangent>,
+        wi: math::Vector3<ShadingTangent>,
+        normal: Normal<ShadingTangent>,
     },
     Specular {
         f: spectrum::SampledSpectrum,
-        wi: math::Vector3<math::Tangent>,
-        normal: Normal<Tangent>,
+        wi: math::Vector3<ShadingTangent>,
+        normal: Normal<ShadingTangent>,
     },
 }
 
@@ -79,6 +79,17 @@ fn mul<Id: SceneId, From: CoordinateSystem, To: CoordinateSystem>(
         material: rhs.material.clone(),
         primitive_index: rhs.primitive_index,
         geometry_info: rhs.geometry_info,
+    }
+}
+impl<Id: SceneId, C: CoordinateSystem> SurfaceInteraction<Id, C> {
+    /// ShadingTangent座標系に変換するTransformを取得する。
+    pub fn shading_transform(&self) -> Transform<C, ShadingTangent> {
+        Transform::from_shading_normal_tangent(&self.shading_normal, &self.tangent)
+    }
+
+    /// GeometryTangent座標系に変換するTransformを取得する。
+    pub fn geometry_transform(&self) -> Transform<C, GeometryTangent> {
+        Transform::from_geometry_normal_tangent(&self.normal, &self.tangent)
     }
 }
 

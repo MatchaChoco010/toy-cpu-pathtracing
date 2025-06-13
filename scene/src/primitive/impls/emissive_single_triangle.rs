@@ -322,10 +322,7 @@ impl<Id: SceneId> PrimitiveAreaLight<Id> for EmissiveSingleTriangle<Id> {
         lambda: &SampledWavelengths,
     ) -> SampledSpectrum {
         // 交差した光源上の点のTangent空間への変換Transformを計算する。
-        let render_to_tangent = Transform::from_shading_normal_tangent(
-            &interaction.shading_normal,
-            &interaction.tangent,
-        );
+        let render_to_tangent = interaction.shading_transform();
 
         // サンプリングした点のTangent空間での方向を計算する。
         let wo = interaction

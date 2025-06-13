@@ -2,8 +2,8 @@
 
 use color::ColorSrgb;
 use color::tone_map::ToneMap;
-use math::{Render, Tangent, Transform};
-use scene::{BsdfSample, Intersection, LightIntensity, SceneId};
+use math::{Render, ShadingTangent, Transform};
+use scene::{Intersection, LightIntensity, MaterialDirectionSample, SceneId};
 use spectrum::SampledSpectrum;
 
 use crate::filter::Filter;
@@ -18,7 +18,7 @@ fn evaluate_next_event_estimation_with_mis<Id: SceneId, S: Sampler>(
     scene: &scene::Scene<Id>,
     lambda: &spectrum::SampledWavelengths,
     sampler: &mut S,
-    render_to_tangent: &Transform<Render, Tangent>,
+    render_to_tangent: &Transform<Render, ShadingTangent>,
     current_hit_info: &Intersection<Id, Render>,
 ) -> NeeResult {
     let shading_point = &current_hit_info.interaction;
@@ -114,17 +114,17 @@ impl RenderingStrategy for MisStrategy {
         scene: &scene::Scene<Id>,
         lambda: &spectrum::SampledWavelengths,
         sampler: &mut S,
-        render_to_tangent: &Transform<Render, Tangent>,
+        render_to_tangent: &Transform<Render, ShadingTangent>,
         current_hit_info: &Intersection<Id, Render>,
-        bsdf_sample: &BsdfSample,
+        bsdf_sample: &MaterialDirectionSample,
     ) -> Option<NeeResult> {
         // 完全鏡面の場合はMISを行わない
-        if matches!(bsdf_sample, BsdfSample::Specular { .. }) {
+        if matches!(bsdf_sample, MaterialDirectionSample::Specular { .. }) {
             return None;
         }
 
         // 非鏡面の場合のみMIS付きNEEを実行
-        if let BsdfSample::Bsdf { .. } = bsdf_sample {
+        if let MaterialDirectionSample::Bsdf { .. } = bsdf_sample {
             let nee_result = evaluate_next_event_estimation_with_mis(
                 scene,
                 lambda,
@@ -138,7 +138,7 @@ impl RenderingStrategy for MisStrategy {
         }
     }
 
-    fn should_add_bsdf_emissive(&self, _bsdf_sample: &BsdfSample) -> bool {
+    fn should_add_bsdf_emissive(&self, _bsdf_sample: &MaterialDirectionSample) -> bool {
         // MISは鏡面・非鏡面に関わらずBSDFサンプル結果のエミッシブ寄与を追加
         // （非鏡面の場合はMISウエイト適用）
         true
@@ -150,14 +150,14 @@ impl RenderingStrategy for MisStrategy {
         lambda: &spectrum::SampledWavelengths,
         current_hit_info: &Intersection<Id, Render>,
         next_hit_info: &Intersection<Id, Render>,
-        bsdf_sample: &BsdfSample,
+        bsdf_sample: &MaterialDirectionSample,
     ) -> f32 {
         match bsdf_sample {
-            BsdfSample::Specular { .. } => {
+            MaterialDirectionSample::Specular { .. } => {
                 // 完全鏡面の場合はMISウエイトなし
                 1.0
             }
-            BsdfSample::Bsdf { pdf, .. } => {
+            MaterialDirectionSample::Bsdf { pdf, .. } => {
                 // 非鏡面の場合はMISウエイトを計算
                 let light_sampler = scene.light_sampler(lambda);
                 let pdf_bsdf_dir = *pdf;

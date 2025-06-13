@@ -4,7 +4,10 @@ use std::marker::PhantomData;
 
 use util_macros::impl_binary_ops;
 
-use crate::{Bounds, CoordinateSystem, Normal, Point3, Ray, Render, Tangent, Vector3};
+use crate::{
+    Bounds, CoordinateSystem, GeometryTangent, Normal, NormalMapTangent, Point3, Ray,
+    ShadingTangent, Vector3,
+};
 
 /// 座標系の変換を行う行列の構造体。
 #[derive(Debug, Clone)]
@@ -146,40 +149,58 @@ impl<From: CoordinateSystem, To: CoordinateSystem> Transform<From, To> {
         Transform::from_matrix(inverse_matrix)
     }
 }
-impl Transform<Render, Tangent> {
-    /// Render座標系からTangent座標系への変換Transformを作成する。
-    /// shading_normalがZ軸になり、tangentの方向にX軸が向くような座標系に変換するTransform。
-    pub fn from_shading_normal_tangent(
-        shading_normal: &Normal<Render>,
-        tangent: &Vector3<Render>,
-    ) -> Transform<Render, Tangent> {
-        // let shading_tangent = (tangent.to_vec3()
-        //     - shading_normal.to_vec3().dot(tangent.to_vec3()) * shading_normal.to_vec3())
-        // .normalize();
-        // let shading_bitangent = shading_tangent.cross(shading_normal.to_vec3()).normalize();
-        let shading_normal = shading_normal.to_vec3().normalize();
-        let shading_bitangent = tangent.to_vec3().cross(shading_normal).normalize();
-        let shading_tangent = shading_bitangent.cross(shading_normal);
+impl<C: CoordinateSystem> Transform<C, GeometryTangent> {
+    /// 任意の座標系CからGeometryTangent座標系への変換Transformを作成する。
+    /// 幾何法線がZ軸になり、tangentの方向にX軸が向くような座標系に変換するTransform。
+    pub fn from_geometry_normal_tangent(
+        normal: &Normal<C>,
+        tangent: &Vector3<C>,
+    ) -> Transform<C, GeometryTangent> {
+        let normal = normal.to_vec3().normalize();
+        let bitangent = tangent.to_vec3().cross(normal).normalize();
+        let tangent = bitangent.cross(normal);
         let matrix = glam::Mat4::from_cols(
-            shading_tangent.extend(0.0),
-            shading_bitangent.extend(0.0),
+            tangent.extend(0.0),
+            bitangent.extend(0.0),
+            normal.extend(0.0),
+            glam::vec4(0.0, 0.0, 0.0, 1.0),
+        );
+        Transform::from_matrix(matrix.inverse())
+    }
+}
+
+impl<C: CoordinateSystem> Transform<C, ShadingTangent> {
+    /// 任意の座標系CからShadingTangent座標系への変換Transformを作成する。
+    /// シェーディング法線がZ軸になり、tangentの方向にX軸が向くような座標系に変換するTransform。
+    pub fn from_shading_normal_tangent(
+        shading_normal: &Normal<C>,
+        tangent: &Vector3<C>,
+    ) -> Transform<C, ShadingTangent> {
+        let shading_normal = shading_normal.to_vec3().normalize();
+        let bitangent = tangent.to_vec3().cross(shading_normal).normalize();
+        let tangent = bitangent.cross(shading_normal);
+        let matrix = glam::Mat4::from_cols(
+            tangent.extend(0.0),
+            bitangent.extend(0.0),
             shading_normal.extend(0.0),
             glam::vec4(0.0, 0.0, 0.0, 1.0),
         );
         Transform::from_matrix(matrix.inverse())
     }
 }
-impl Transform<Tangent, Tangent> {
-    /// ノーマルマップの法線からTangent空間での基底変換Transformを作成する。
+impl Transform<ShadingTangent, NormalMapTangent> {
+    /// ノーマルマップの法線からShadingTangent空間からNormalMapTangent空間への基底変換Transformを作成する。
     ///
-    /// 標準的なタンジェント空間（Z+が法線）から、法線マップで摂動されたタンジェント空間への変換。
+    /// 標準的なシェーディングタンジェント空間（Z+が法線）から、法線マップで変更されたタンジェント空間への変換。
     ///
     /// # Arguments
-    /// - `normal_map_normal` - ノーマルマップから取得したタンジェント空間での法線
+    /// - `normal_map_normal` - ノーマルマップから取得したシェーディングタンジェント空間での法線
     ///
     /// # Returns
-    /// 標準タンジェント空間から摂動タンジェント空間への変換Transform
-    pub fn from_normal_map(normal_map_normal: &Normal<Tangent>) -> Transform<Tangent, Tangent> {
+    /// シェーディングタンジェント空間からノーマルマップタンジェント空間への変換Transform
+    pub fn from_normal_map(
+        normal_map_normal: &Normal<ShadingTangent>,
+    ) -> Transform<ShadingTangent, NormalMapTangent> {
         let perturbed_normal = normal_map_normal.to_vec3().normalize();
 
         // 摂動された法線がZ軸とほぼ同じ場合は変換不要

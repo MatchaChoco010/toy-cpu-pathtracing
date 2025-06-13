@@ -6,8 +6,8 @@ use image::{ImageFormat, Rgb, RgbImage};
 use rayon::prelude::*;
 
 use color::Color;
-use math::{Render, Tangent, Transform};
-use scene::{BsdfSample, Intersection, Scene, SceneId};
+use math::{Render, ShadingTangent, Transform};
+use scene::{Intersection, MaterialDirectionSample, Scene, SceneId};
 use spectrum::SampledSpectrum;
 
 use crate::camera::Camera;
@@ -44,13 +44,13 @@ pub trait RenderingStrategy: Clone + Send + Sync {
         scene: &Scene<Id>,
         lambda: &spectrum::SampledWavelengths,
         sampler: &mut S,
-        render_to_tangent: &Transform<Render, Tangent>,
+        render_to_tangent: &Transform<Render, ShadingTangent>,
         current_hit_info: &Intersection<Id, Render>,
-        bsdf_sample: &BsdfSample,
+        bsdf_sample: &MaterialDirectionSample,
     ) -> Option<NeeResult>;
 
     /// BSDFサンプリング結果のエミッシブ寄与を追加するかどうか。
-    fn should_add_bsdf_emissive(&self, bsdf_sample: &BsdfSample) -> bool;
+    fn should_add_bsdf_emissive(&self, bsdf_sample: &MaterialDirectionSample) -> bool;
 
     /// BSDFサンプリング結果に適用するMISウエイトを計算する。
     fn calculate_bsdf_mis_weight<Id: SceneId>(
@@ -59,7 +59,7 @@ pub trait RenderingStrategy: Clone + Send + Sync {
         lambda: &spectrum::SampledWavelengths,
         current_hit_info: &Intersection<Id, Render>,
         next_hit_info: &Intersection<Id, Render>,
-        bsdf_sample: &BsdfSample,
+        bsdf_sample: &MaterialDirectionSample,
     ) -> f32;
 }
 
