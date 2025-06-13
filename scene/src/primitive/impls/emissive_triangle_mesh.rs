@@ -1,6 +1,6 @@
 //! 放射面を含む三角形メッシュのプリミティブの実装のモジュール。
 
-use math::{Bounds, Local, Normal, Point3, Ray, Render, Transform, Vector3, World};
+use math::{Bounds, Local, Normal, Point3, Ray, Render, Transform, World};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::{
@@ -220,19 +220,14 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveTriangleMesh<Id> {
             * triangle_mesh.positions[triangle_mesh.indices[index * 3 + 1] as usize];
         let p2 = &self.local_to_render
             * triangle_mesh.positions[triangle_mesh.indices[index * 3 + 2] as usize];
-        let p = Point3::from(
-            p0.to_vec3() * barycentric[0]
-                + p1.to_vec3() * barycentric[1]
-                + p2.to_vec3() * barycentric[2],
-        );
+        let p = Point3::interpolate_barycentric(&p0, &p1, &p2, barycentric);
 
         // サンプリングする点のRender空間での幾何法線を計算する。
-        let normal = Normal::from(
-            p0.vector_to(p1)
-                .cross(p0.vector_to(p2))
-                .normalize()
-                .to_vec3(),
-        );
+        let normal = p0
+            .vector_to(p1)
+            .cross(p0.vector_to(p2))
+            .normalize()
+            .to_normal();
 
         // サンプリングする点のRender空間でのShading法線を計算する。
         let n0 = &self.local_to_render
@@ -241,11 +236,7 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveTriangleMesh<Id> {
             * triangle_mesh.normals[triangle_mesh.indices[index * 3 + 1] as usize];
         let n2 = &self.local_to_render
             * triangle_mesh.normals[triangle_mesh.indices[index * 3 + 2] as usize];
-        let shading_normal = Normal::from(
-            n0.to_vec3() * barycentric[0]
-                + n1.to_vec3() * barycentric[1]
-                + n2.to_vec3() * barycentric[2],
-        );
+        let shading_normal = Normal::interpolate_barycentric(&n0, &n1, &n2, barycentric);
 
         // サンプリングする点のUV座標を計算する。
         let uvs = if triangle_mesh.uvs.is_empty() {
@@ -262,25 +253,13 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveTriangleMesh<Id> {
 
         // サンプリングする点のRender空間でのTangentを計算する。
         let tangent = if triangle_mesh.tangents.is_empty() {
-            // 適当な方向をtangentとして使用する。
-            if shading_normal.to_vec3().x.abs() > 0.999 {
-                // X軸方向が法線に近い場合はY軸方向を使用する。
-                Vector3::from(glam::Vec3::Y)
-            } else {
-                // X軸方向を使用する。
-                Vector3::from(glam::Vec3::X)
-            }
+            shading_normal.generate_tangent()
         } else {
-            // Tangentが指定されている場合は、Tangentをそのまま使用する。
-            &self.local_to_render * triangle_mesh.tangents[triangle_mesh.indices[index] as usize]
+            // Tangentが指定されている場合は、正規直交化する
+            let raw_tangent = &self.local_to_render
+                * triangle_mesh.tangents[triangle_mesh.indices[index] as usize];
+            shading_normal.orthogonalize_vector(&raw_tangent)
         };
-
-        // tangentを再度正規直行化する。
-        let tangent = Vector3::from(
-            tangent.to_vec3()
-                - shading_normal.to_vec3().dot(tangent.to_vec3()) * shading_normal.to_vec3(),
-        )
-        .normalize();
 
         // Render空間からサンプルした点のTangent空間への変換Transformを計算する。
         let render_to_tangent = Transform::from_shading_normal_tangent(&shading_normal, &tangent);

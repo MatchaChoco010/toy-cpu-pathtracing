@@ -100,8 +100,8 @@ impl<C: CoordinateSystem, Item: BvhItem<C>> BvhItemList<C, Item> {
 
         // アイテムリストを軸に沿ってソートする。
         items.sort_by(|a, b| {
-            let a = a.bounds(data).center().to_vec3()[axis];
-            let b = b.bounds(data).center().to_vec3()[axis];
+            let a = a.bounds(data).center().axis(axis);
+            let b = b.bounds(data).center().axis(axis);
             a.partial_cmp(&b).unwrap()
         });
 
@@ -430,7 +430,7 @@ impl<C: CoordinateSystem, Item: BvhItem<C>> Bvh<C, Item> {
         }
 
         // レイのヒット計算で利用する、レイの方向ベクトルの要素ごとの逆数を計算する。
-        let inv_dir = 1.0 / ray.dir.to_vec3();
+        let inv_dir = 1.0 / ray.dir;
 
         // レイのヒット計算を行う。
         let hit_info = traverse(data, &self.nodes, 0, ray, t_max, inv_dir);
@@ -513,7 +513,7 @@ impl<C: CoordinateSystem, Item: BvhItem<C>> Bvh<C, Item> {
         }
 
         // レイのヒット計算で利用する、レイの方向ベクトルの要素ごとの逆数を計算する。
-        let inv_dir = 1.0 / ray.dir.to_vec3();
+        let inv_dir = 1.0 / ray.dir;
 
         // レイのヒット計算を行う。
         traverse(data, &self.nodes, 0, ray, t_max, inv_dir)

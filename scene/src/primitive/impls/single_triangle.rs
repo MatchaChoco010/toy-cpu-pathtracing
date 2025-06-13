@@ -86,15 +86,12 @@ impl<Id: SceneId> Primitive<Id> for SingleTriangle<Id> {
 }
 impl<Id: SceneId> PrimitiveGeometry<Id> for SingleTriangle<Id> {
     fn bounds(&self, _geometry_repository: &GeometryRepository<Id>) -> Bounds<Render> {
-        let mut min = glam::Vec3::splat(f32::INFINITY);
-        let mut max = glam::Vec3::splat(f32::NEG_INFINITY);
-        for position in &self.positions {
-            let point = &self.local_to_render * position;
-            min = min.min(point.to_vec3());
-            max = max.max(point.to_vec3());
-        }
-        let min = Point3::from(min);
-        let max = Point3::from(max);
+        let transformed_positions: Vec<_> = self
+            .positions
+            .iter()
+            .map(|pos| &self.local_to_render * pos)
+            .collect();
+        let (min, max) = Point3::min_max_from_points(&transformed_positions);
         Bounds::new(min, max)
     }
 
@@ -113,10 +110,11 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for SingleTriangle<Id> {
         let ray = &self.local_to_render.inverse() * ray;
         let hit = intersect_triangle(&ray, t_max, self.positions)?;
 
-        let shading_normal = Normal::<Local>::from(
-            self.normals[0].to_vec3() * hit.barycentric[0]
-                + self.normals[1].to_vec3() * hit.barycentric[1]
-                + self.normals[2].to_vec3() * hit.barycentric[2],
+        let shading_normal = Normal::interpolate_barycentric(
+            &self.normals[0],
+            &self.normals[1],
+            &self.normals[2],
+            hit.barycentric,
         );
         let uv = glam::Vec2::new(
             self.uvs[0].x * hit.barycentric[0]

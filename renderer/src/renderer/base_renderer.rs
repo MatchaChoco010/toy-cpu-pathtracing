@@ -143,7 +143,7 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy>
                 let intersect = scene.intersect(&next_ray, f32::MAX);
 
                 // cos_thetaを計算（Normal mappingされた表面法線）
-                let cos_theta = normal.to_vec3().dot(wi.to_vec3()).abs();
+                let cos_theta = normal.dot(&wi).abs();
 
                 let next_emissive_contribution = if let Some(ref next_hit_info) = intersect {
                     Self::evaluate_emissive_surface(&next_hit_info.interaction, &next_ray, lambda)
@@ -245,9 +245,8 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy> Render
                         };
 
                         // woとwiがGeometric normalに対して同じ側にあるかをチェック
-                        let geometric_normal = shading_point.normal.to_vec3();
-                        let wi_cos_geometric = wi.to_vec3().dot(geometric_normal);
-                        let wo_cos_geometric = wo.to_vec3().dot(geometric_normal);
+                        let wi_cos_geometric = wi.dot(&shading_point.normal);
+                        let wo_cos_geometric = wo.dot(&shading_point.normal);
                         if wi_cos_geometric.signum() == wo_cos_geometric.signum() {
                             bsdf_sample = Some(sample);
                             break;

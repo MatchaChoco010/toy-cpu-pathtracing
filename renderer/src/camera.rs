@@ -1,6 +1,6 @@
 //! カメラを定義するモジュール。
 
-use math::{Point3, Ray, Render, Transform, Vector3, World};
+use math::{Mat3Extensions, Point3, Ray, Render, Transform, Vector3, World};
 use scene::WorldToRender;
 
 use crate::filter::Filter;
@@ -58,7 +58,7 @@ impl<F: Filter> Camera<F> {
         let ray_direction = glam::Vec3::new(dir_x, dir_y, -1.0).normalize();
 
         // カメラ座標系からレンダリング座標系に変換する。
-        let mat = glam::Mat3::look_to_rh(self.direction.to_vec3(), self.up.to_vec3()).transpose();
+        let mat = glam::Mat3::look_to_rh_from_vectors(&self.direction, &self.up).transpose();
         let ray_direction = Vector3::from(mat * ray_direction).normalize();
 
         Ray::new(Point3::from(glam::Vec3::ZERO), ray_direction)
@@ -82,7 +82,7 @@ impl<F: Filter> Camera<F> {
 
     /// ワールド座標系からレンダリング座標系への変換を取得する。
     pub fn world_to_render(&self) -> Transform<World, Render> {
-        Transform::from_translate(-self.position.to_vec3())
+        Transform::translate_from(&self.position)
     }
 }
 impl<F: Filter> WorldToRender for Camera<F> {

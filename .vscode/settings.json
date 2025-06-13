@@ -15,6 +15,7 @@
     "nixos",
     "nixpkgs",
     "numtide",
+    "orthogonalize",
     "pathtracing",
     "pbrt",
     "pkgs",

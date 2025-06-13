@@ -35,15 +35,8 @@ impl<Id: SceneId> BvhItem<Local> for Triangle<Id> {
             &data.positions[data.indices[self.triangle_index as usize * 3 + 1] as usize],
             &data.positions[data.indices[self.triangle_index as usize * 3 + 2] as usize],
         ];
-        let mut min = glam::Vec3::splat(f32::INFINITY);
-        let mut max = glam::Vec3::splat(f32::NEG_INFINITY);
-        for position in &positions {
-            let point = position.to_vec3();
-            min = min.min(point);
-            max = max.max(point);
-        }
-        let min = Point3::from(min);
-        let max = Point3::from(max);
+        let positions_vec: Vec<Point3<Local>> = positions.iter().map(|&p| *p).collect();
+        let (min, max) = Point3::min_max_from_points(&positions_vec);
         Bounds::new(min, max)
     }
 
@@ -84,10 +77,11 @@ impl<Id: SceneId> BvhItem<Local> for Triangle<Id> {
         // 交差していれば、交差点の情報を計算する
 
         // shading_normalを頂点法線のbarycentric補間で計算する
-        let shading_normal = Normal::from(
-            shading_normals[0].to_vec3() * hit.barycentric[0]
-                + shading_normals[1].to_vec3() * hit.barycentric[1]
-                + shading_normals[2].to_vec3() * hit.barycentric[2],
+        let shading_normal = Normal::interpolate_barycentric(
+            &shading_normals[0],
+            &shading_normals[1],
+            &shading_normals[2],
+            hit.barycentric,
         );
 
         // uvを頂点uvのbarycentric補間で計算する
@@ -96,21 +90,11 @@ impl<Id: SceneId> BvhItem<Local> for Triangle<Id> {
 
         // Tangentを計算する。
         let tangent = if data.tangents.is_empty() {
-            if shading_normal.to_vec3().x.abs() > 0.999 {
-                Vector3::from(glam::Vec3::Y)
-            } else {
-                Vector3::from(glam::Vec3::X)
-            }
+            shading_normal.generate_tangent()
         } else {
-            data.tangents[self.triangle_index as usize]
+            // 既存のtangentを正規直交化する
+            shading_normal.orthogonalize_vector(&data.tangents[self.triangle_index as usize])
         };
-
-        // tangentを再度正規直行化する。
-        let tangent = Vector3::from(
-            tangent.to_vec3()
-                - shading_normal.to_vec3().dot(tangent.to_vec3()) * shading_normal.to_vec3(),
-        )
-        .normalize();
 
         Some(HitInfo {
             t_hit: hit.t_hit,
@@ -218,14 +202,7 @@ impl<Id: SceneId> TriangleMesh<Id> {
         }
 
         // バウンディングボックスを計算する。
-        let mut min = glam::Vec3::splat(f32::INFINITY);
-        let mut max = glam::Vec3::splat(f32::NEG_INFINITY);
-        for position in &positions {
-            min = min.min(position.to_vec3());
-            max = max.max(position.to_vec3());
-        }
-        let min = Point3::from(min);
-        let max = Point3::from(max);
+        let (min, max) = Point3::min_max_from_points(&positions);
         let bounds = Bounds::new(min, max);
 
         Self {

@@ -2,9 +2,7 @@
 
 use std::marker::PhantomData;
 
-use math::{
-    Bounds, Local, Normal, Point3, Ray, Render, Transform, Vector3, World, intersect_triangle,
-};
+use math::{Bounds, Local, Normal, Point3, Ray, Render, Transform, World, intersect_triangle};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::{
@@ -100,15 +98,12 @@ impl<Id: SceneId> Primitive<Id> for EmissiveSingleTriangle<Id> {
 }
 impl<Id: SceneId> PrimitiveGeometry<Id> for EmissiveSingleTriangle<Id> {
     fn bounds(&self, _geometry_repository: &GeometryRepository<Id>) -> Bounds<Render> {
-        let mut min = glam::Vec3::splat(f32::INFINITY);
-        let mut max = glam::Vec3::splat(f32::NEG_INFINITY);
-        for position in &self.positions {
-            let point = &self.local_to_render * position;
-            min = min.min(point.to_vec3());
-            max = max.max(point.to_vec3());
-        }
-        let min = Point3::from(min);
-        let max = Point3::from(max);
+        let transformed_positions: Vec<_> = self
+            .positions
+            .iter()
+            .map(|pos| &self.local_to_render * pos)
+            .collect();
+        let (min, max) = Point3::min_max_from_points(&transformed_positions);
         Bounds::new(min, max)
     }
 
@@ -127,10 +122,11 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for EmissiveSingleTriangle<Id> {
         let ray = &self.local_to_render.inverse() * ray;
         let hit = intersect_triangle(&ray, t_max, self.positions)?;
 
-        let shading_normal = Normal::<Local>::from(
-            self.normals[0].to_vec3() * hit.barycentric[0]
-                + self.normals[1].to_vec3() * hit.barycentric[1]
-                + self.normals[2].to_vec3() * hit.barycentric[2],
+        let shading_normal = Normal::interpolate_barycentric(
+            &self.normals[0],
+            &self.normals[1],
+            &self.normals[2],
+            hit.barycentric,
         );
         let uv = glam::Vec2::new(
             self.uvs[0].x * hit.barycentric[0]
@@ -215,29 +211,20 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveSingleTriangle<Id> {
         let p0 = &self.local_to_render * self.positions[0];
         let p1 = &self.local_to_render * self.positions[1];
         let p2 = &self.local_to_render * self.positions[2];
-        let p = Point3::from(
-            p0.to_vec3() * barycentric[0]
-                + p1.to_vec3() * barycentric[1]
-                + p2.to_vec3() * barycentric[2],
-        );
+        let p = Point3::interpolate_barycentric(&p0, &p1, &p2, barycentric);
 
         // サンプリングする点のRender空間での幾何法線を計算する。
-        let normal = Normal::from(
-            p0.vector_to(p1)
-                .cross(p0.vector_to(p2))
-                .normalize()
-                .to_vec3(),
-        );
+        let normal = p0
+            .vector_to(p1)
+            .cross(p0.vector_to(p2))
+            .normalize()
+            .to_normal();
 
         // サンプリングする点のRender空間でのShading法線を計算する。
         let n0 = &self.local_to_render * self.normals[0];
         let n1 = &self.local_to_render * self.normals[1];
         let n2 = &self.local_to_render * self.normals[2];
-        let shading_normal = Normal::from(
-            n0.to_vec3() * barycentric[0]
-                + n1.to_vec3() * barycentric[1]
-                + n2.to_vec3() * barycentric[2],
-        );
+        let shading_normal = Normal::interpolate_barycentric(&n0, &n1, &n2, barycentric);
 
         // サンプリングする点のRender空間でのTangentを計算する。
         let edge1 = p0.vector_to(p1);
@@ -248,12 +235,8 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveSingleTriangle<Id> {
         let tangent = r * (edge1 * delta_uv2.y - edge2 * delta_uv1.y);
         let tangent = tangent.normalize();
 
-        // tangentを再度正規直行化する。
-        let tangent = Vector3::from(
-            tangent.to_vec3()
-                - shading_normal.to_vec3().dot(tangent.to_vec3()) * shading_normal.to_vec3(),
-        )
-        .normalize();
+        // tangentを再度正規直交化する。
+        let tangent = shading_normal.orthogonalize_vector(&tangent);
 
         // Render空間からサンプルした点のTangent空間への変換Transformを計算する。
         let render_to_tangent = Transform::from_shading_normal_tangent(&shading_normal, &tangent);
