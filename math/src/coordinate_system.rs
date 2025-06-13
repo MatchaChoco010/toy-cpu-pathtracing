@@ -23,10 +23,26 @@ impl CoordinateSystem for Local {}
 pub struct Render;
 impl CoordinateSystem for Render {}
 
-/// タンジェント座標系を表す構造体。
+/// 幾何タンジェント座標系を表す構造体。
 ///
-/// シェーディング計算時に行うシェーディング点のタンジェント空間の座標系。
+/// 幾何的な法線とタンジェントベクトルによるタンジェント空間の座標系。
+/// Z軸が幾何法線に揃うような座標系。
+#[derive(Debug, Clone, Copy)]
+pub struct GeometryTangent;
+impl CoordinateSystem for GeometryTangent {}
+
+/// シェーディングタンジェント座標系を表す構造体。
+///
+/// シェーディング計算時に行うシェーディング点の基本タンジェント空間の座標系。
 /// Z軸がシェーディング法線に揃うような座標系。
 #[derive(Debug, Clone, Copy)]
-pub struct Tangent;
-impl CoordinateSystem for Tangent {}
+pub struct ShadingTangent;
+impl CoordinateSystem for ShadingTangent {}
+
+/// ノーマルマップタンジェント座標系を表す構造体。
+///
+/// ノーマルマップによってシェーディング法線が変更された後のタンジェント空間の座標系。
+/// Z軸がノーマルマップで変更された法線に揃うような座標系。
+#[derive(Debug, Clone, Copy)]
+pub struct NormalMapTangent;
+impl CoordinateSystem for NormalMapTangent {}

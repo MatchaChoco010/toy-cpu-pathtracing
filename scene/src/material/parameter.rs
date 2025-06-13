@@ -2,7 +2,7 @@
 
 use crate::texture::{FloatTexture, NormalTexture, RgbTexture, SpectrumType, TextureSample};
 use glam::Vec2;
-use math::{Normal, Tangent};
+use math::{Normal, ShadingTangent};
 use spectrum::Spectrum;
 use std::sync::Arc;
 
@@ -85,7 +85,7 @@ pub enum NormalParameter {
 impl NormalParameter {
     /// UV座標でノーマルをサンプリングする。
     /// ジオメトリノーマルとの合成は呼び出し側で行う。
-    pub fn sample(&self, uv: Vec2) -> Option<Normal<Tangent>> {
+    pub fn sample(&self, uv: Vec2) -> Option<Normal<ShadingTangent>> {
         match self {
             NormalParameter::None => None,
             NormalParameter::Texture { texture } => Some(texture.sample_normal(uv)),

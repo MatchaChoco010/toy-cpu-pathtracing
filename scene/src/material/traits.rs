@@ -1,10 +1,10 @@
 //! マテリアルトレイト階層を定義するモジュール。
 
-use math::{Tangent, Vector3};
+use math::{ShadingTangent, Vector3};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 use std::sync::Arc;
 
-use crate::{BsdfSample, MaterialEvaluationResult, SceneId, SurfaceInteraction};
+use crate::{MaterialDirectionSample, MaterialEvaluationResult, SceneId, SurfaceInteraction};
 
 /// 基底マテリアルtrait - 全マテリアルが実装する。
 /// 複数のシーンで使い回せるよう、トレイト自体にはIdジェネリクスを持たない。
@@ -38,44 +38,44 @@ pub trait BsdfSurfaceMaterial<Id: SceneId>: SurfaceMaterial {
     /// # Arguments
     /// - `uv` - 2次元乱数サンプル
     /// - `lambda` - サンプルされた波長
-    /// - `wo` - 出射方向（接空間）
+    /// - `wo` - 出射方向（シェーディング接空間）
     /// - `shading_point` - シェーディング点情報
     fn sample(
         &self,
         uv: glam::Vec2,
         lambda: &SampledWavelengths,
-        wo: &Vector3<Tangent>,
-        shading_point: &SurfaceInteraction<Id, Tangent>,
-    ) -> Option<BsdfSample>;
+        wo: &Vector3<ShadingTangent>,
+        shading_point: &SurfaceInteraction<Id, ShadingTangent>,
+    ) -> Option<MaterialDirectionSample>;
 
     /// BSDF値を評価する。
     ///
     /// # Arguments
     /// - `lambda` - サンプルされた波長
-    /// - `wo` - 出射方向（接空間）
-    /// - `wi` - 入射方向（接空間）
+    /// - `wo` - 出射方向（シェーディング接空間）
+    /// - `wi` - 入射方向（シェーディング接空間）
     /// - `shading_point` - シェーディング点情報
     fn evaluate(
         &self,
         lambda: &SampledWavelengths,
-        wo: &Vector3<Tangent>,
-        wi: &Vector3<Tangent>,
-        shading_point: &SurfaceInteraction<Id, Tangent>,
+        wo: &Vector3<ShadingTangent>,
+        wi: &Vector3<ShadingTangent>,
+        shading_point: &SurfaceInteraction<Id, ShadingTangent>,
     ) -> MaterialEvaluationResult;
 
     /// BSDF PDFを計算する。
     ///
     /// # Arguments
     /// - `lambda` - サンプルされた波長
-    /// - `wo` - 出射方向（接空間）
-    /// - `wi` - 入射方向（接空間）
+    /// - `wo` - 出射方向（シェーディング接空間）
+    /// - `wi` - 入射方向（シェーディング接空間）
     /// - `shading_point` - シェーディング点情報
     fn pdf(
         &self,
         lambda: &SampledWavelengths,
-        wo: &Vector3<Tangent>,
-        wi: &Vector3<Tangent>,
-        shading_point: &SurfaceInteraction<Id, Tangent>,
+        wo: &Vector3<ShadingTangent>,
+        wi: &Vector3<ShadingTangent>,
+        shading_point: &SurfaceInteraction<Id, ShadingTangent>,
     ) -> f32;
 }
 
@@ -86,13 +86,13 @@ pub trait EmissiveSurfaceMaterial<Id: SceneId>: SurfaceMaterial {
     ///
     /// # Arguments
     /// - `lambda` - サンプルされた波長
-    /// - `wo` - 出射方向（接空間）
+    /// - `wo` - 出射方向（シェーディング接空間）
     /// - `light_sample_point` - ライトサンプル点情報
     fn radiance(
         &self,
         lambda: &SampledWavelengths,
-        wo: Vector3<Tangent>,
-        light_sample_point: &SurfaceInteraction<Id, Tangent>,
+        wo: Vector3<ShadingTangent>,
+        light_sample_point: &SurfaceInteraction<Id, ShadingTangent>,
     ) -> SampledSpectrum;
 
     /// 平均強度を計算する。

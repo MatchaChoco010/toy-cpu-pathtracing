@@ -2,8 +2,8 @@
 
 use color::ColorSrgb;
 use color::tone_map::ToneMap;
-use math::{Render, Tangent, Transform};
-use scene::{BsdfSample, Intersection, SceneId};
+use math::{Render, ShadingTangent, Transform};
+use scene::{Intersection, MaterialDirectionSample, SceneId};
 
 use crate::filter::Filter;
 use crate::renderer::{NeeResult, Renderer, RendererArgs, RenderingStrategy};
@@ -20,15 +20,15 @@ impl RenderingStrategy for PtStrategy {
         _scene: &scene::Scene<Id>,
         _lambda: &spectrum::SampledWavelengths,
         _sampler: &mut S,
-        _render_to_tangent: &Transform<Render, Tangent>,
+        _render_to_tangent: &Transform<Render, ShadingTangent>,
         _current_hit_info: &Intersection<Id, Render>,
-        _bsdf_sample: &BsdfSample,
+        _bsdf_sample: &MaterialDirectionSample,
     ) -> Option<NeeResult> {
         // PTはNEEを実行しない
         None
     }
 
-    fn should_add_bsdf_emissive(&self, _bsdf_sample: &BsdfSample) -> bool {
+    fn should_add_bsdf_emissive(&self, _bsdf_sample: &MaterialDirectionSample) -> bool {
         // PTは全てのBSDFサンプル結果のエミッシブ寄与を追加
         true
     }
@@ -39,7 +39,7 @@ impl RenderingStrategy for PtStrategy {
         _lambda: &spectrum::SampledWavelengths,
         _current_hit_info: &Intersection<Id, Render>,
         _next_hit_info: &Intersection<Id, Render>,
-        _bsdf_sample: &BsdfSample,
+        _bsdf_sample: &MaterialDirectionSample,
     ) -> f32 {
         // PTはMISウエイトなし
         1.0

@@ -2,13 +2,25 @@
 
 use std::f32::consts::PI;
 
-use math::{Normal, Tangent, Transform, Vector3};
+use math::{NormalMapTangent, Vector3};
 use spectrum::SampledSpectrum;
 
-use crate::BsdfSample;
+// Bsdfのサンプリング結果を表す列挙型。
+#[derive(Debug, Clone)]
+pub enum BsdfSample {
+    Bsdf {
+        f: spectrum::SampledSpectrum,
+        pdf: f32,
+        wi: math::Vector3<NormalMapTangent>,
+    },
+    Specular {
+        f: spectrum::SampledSpectrum,
+        wi: math::Vector3<NormalMapTangent>,
+    },
+}
 
 /// Z軸方向を法線方向として、半球状のコサイン充填サンプリングを行う。
-fn sample_cosine_hemisphere(uv: glam::Vec2) -> Vector3<Tangent> {
+fn sample_cosine_hemisphere(uv: glam::Vec2) -> Vector3<NormalMapTangent> {
     let r = uv.x.sqrt();
     let theta = 2.0 * PI * uv.y;
     Vector3::new(r * theta.cos(), r * theta.sin(), (1.0 - uv.x).sqrt())
@@ -28,82 +40,60 @@ impl NormalizedLambertBsdf {
     ///
     /// # Arguments
     /// - `albedo` - 反射率スペクトル
-    /// - `wo` - 出射方向（接空間）
+    /// - `wo` - 出射方向（ノーマルマップ接空間）
     /// - `uv` - ランダムサンプル
-    /// - `normal_map` - 表面法線（接空間）
     pub fn sample(
         &self,
         albedo: &SampledSpectrum,
-        wo: &Vector3<Tangent>,
+        wo: &Vector3<NormalMapTangent>,
         uv: glam::Vec2,
-        normal_map: &Normal<Tangent>,
     ) -> Option<BsdfSample> {
-        let normal_vec = normal_map.to_vec3().normalize();
-
-        let wo_cos_n = wo.to_vec3().dot(normal_vec);
+        let wo_cos_n = wo.to_vec3().z;
         if wo_cos_n == 0.0 {
             return None;
         }
 
-        // 法線に対応した座標系でサンプリング
-        let transform = Transform::from_normal_map(normal_map);
-        let transform_inv = transform.inverse();
-
-        // 法線座標系でのコサイン半球サンプリング
-        let wi_local = sample_cosine_hemisphere(uv);
-        let wi_local = if wo_cos_n < 0.0 {
-            Vector3::new(wi_local.x(), wi_local.y(), -wi_local.z())
+        // ノーマルマップ接空間でのコサイン半球サンプリング
+        let wi = sample_cosine_hemisphere(uv);
+        let wi = if wo_cos_n < 0.0 {
+            Vector3::new(wi.x(), wi.y(), -wi.z())
         } else {
-            wi_local
+            wi
         };
 
-        // 元の接空間に変換
-        let wi = transform_inv * wi_local;
-
-        let wi_cos_n = wi.to_vec3().dot(normal_vec);
+        // ノーマルマップ接空間でのコサイン項チェック
+        let wi_cos_n = wi.to_vec3().z;
         if wi_cos_n == 0.0 {
             return None;
         }
 
-        if wi_cos_n.signum() != wo_cos_n.signum() {
+        if wo_cos_n.signum() != wi_cos_n.signum() {
             return None; // 同じ半球内でない場合は無効
         }
 
         // BSDFの値を計算
         let f = albedo.clone() / PI;
 
-        // PDFを計算（法線に対するコサイン項）
+        // PDFを計算
         let pdf = wi_cos_n.abs() / PI;
 
-        Some(BsdfSample::Bsdf {
-            f,
-            pdf,
-            wi,
-            normal: *normal_map,
-        })
+        Some(BsdfSample::Bsdf { f, pdf, wi })
     }
 
     /// BSDF値を評価する。
     ///
     /// # Arguments
     /// - `albedo` - 反射率スペクトル
-    /// - `wo` - 出射方向（接空間）
-    /// - `wi` - 入射方向（接空間）
-    /// - `normal_map` - 表面法線（接空間）
+    /// - `wo` - 出射方向（ノーマルマップ接空間）
+    /// - `wi` - 入射方向（ノーマルマップ接空間）
     pub fn evaluate(
         &self,
         albedo: &SampledSpectrum,
-        wo: &Vector3<Tangent>,
-        wi: &Vector3<Tangent>,
-        normal_map: &Normal<Tangent>,
+        wo: &Vector3<NormalMapTangent>,
+        wi: &Vector3<NormalMapTangent>,
     ) -> SampledSpectrum {
-        let transform = Transform::from_normal_map(normal_map);
-        let wo_local = &transform * wo;
-        let wi_local = &transform * wi;
-
-        // 正規化座標系でのバリデーション（Z+が法線）
-        let wo_cos_n = wo_local.z();
-        let wi_cos_n = wi_local.z();
+        let wo_cos_n = wo.to_vec3().z;
+        let wi_cos_n = wi.to_vec3().z;
 
         if wo_cos_n == 0.0 || wi_cos_n == 0.0 {
             return SampledSpectrum::zero();
@@ -121,22 +111,11 @@ impl NormalizedLambertBsdf {
     /// BSDF PDFを計算する。
     ///
     /// # Arguments
-    /// - `wo` - 出射方向（接空間）
-    /// - `wi` - 入射方向（接空間）
-    /// - `normal_map` - 表面法線（接空間）
-    pub fn pdf(
-        &self,
-        wo: &Vector3<Tangent>,
-        wi: &Vector3<Tangent>,
-        normal_map: &Normal<Tangent>,
-    ) -> f32 {
-        let transform = Transform::from_normal_map(normal_map);
-        let wo_local = &transform * wo;
-        let wi_local = &transform * wi;
-
-        // 正規化座標系でのバリデーション（Z+が法線）
-        let wo_cos_n = wo_local.z();
-        let wi_cos_n = wi_local.z();
+    /// - `wo` - 出射方向（ノーマルマップ接空間）
+    /// - `wi` - 入射方向（ノーマルマップ接空間）
+    pub fn pdf(&self, wo: &Vector3<NormalMapTangent>, wi: &Vector3<NormalMapTangent>) -> f32 {
+        let wo_cos_n = wo.to_vec3().z;
+        let wi_cos_n = wi.to_vec3().z;
 
         if wo_cos_n == 0.0 || wi_cos_n == 0.0 {
             return 0.0;
@@ -147,7 +126,6 @@ impl NormalizedLambertBsdf {
             return 0.0;
         }
 
-        // 法線に対するコサイン項でPDFを計算
         wi_cos_n.abs() / PI
     }
 }

@@ -6,7 +6,7 @@ use super::{
     sampler::{TextureSample, bilinear_sample_rgb, bilinear_sample_rgb_f32},
 };
 use glam::Vec2;
-use math::{Normal, Tangent};
+use math::{Normal, ShadingTangent};
 use std::sync::Arc;
 
 /// Normal マップテクスチャ。
@@ -24,7 +24,7 @@ impl NormalTexture {
     }
 
     /// UV座標でノーマルマップをサンプリングし、接空間ノーマルを取得する。
-    pub fn sample_normal(&self, uv: Vec2) -> Normal<Tangent> {
+    pub fn sample_normal(&self, uv: Vec2) -> Normal<ShadingTangent> {
         let rgb = self.sample(uv);
 
         // RGB [0,1] を [-1,1] の範囲に変換

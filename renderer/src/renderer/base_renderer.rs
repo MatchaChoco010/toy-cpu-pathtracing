@@ -3,8 +3,8 @@
 use color::ColorSrgb;
 use color::eotf;
 use color::tone_map::ToneMap;
-use math::{Ray, Render, Tangent, Transform};
-use scene::{BsdfSample, Intersection, SceneId, SurfaceInteraction};
+use math::{Ray, Render, ShadingTangent, Transform};
+use scene::{Intersection, MaterialDirectionSample, SceneId, SurfaceInteraction};
 use spectrum::{DenselySampledSpectrum, SampledSpectrum, SampledWavelengths, SpectrumTrait};
 
 use crate::filter::Filter;
@@ -57,11 +57,8 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy>
     ) -> Option<SampledSpectrum> {
         let emissive_material = interaction.material.as_emissive_material::<Id>()?;
 
-        // Render座標系からヒットした光源上の点のTangent座標系に変換
-        let render_to_tangent = Transform::from_shading_normal_tangent(
-            &interaction.shading_normal,
-            &interaction.tangent,
-        );
+        // Render座標系からヒットした光源上の点のShadingTangent座標系に変換
+        let render_to_tangent = interaction.shading_transform();
 
         // ヒットした光源面からの出射方向を計算
         let ray_tangent = &render_to_tangent * incoming_ray;
@@ -112,12 +109,12 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy>
     fn process_bsdf_sampling(
         scene: &scene::Scene<Id>,
         lambda: &SampledWavelengths,
-        bsdf_sample: &BsdfSample,
-        render_to_tangent: &Transform<Render, Tangent>,
+        bsdf_sample: &MaterialDirectionSample,
+        render_to_tangent: &Transform<Render, ShadingTangent>,
         shading_point: &SurfaceInteraction<Id, Render>,
     ) -> BsdfSamplingResult<Id> {
         match bsdf_sample {
-            BsdfSample::Specular { f, wi, normal: _ } => {
+            MaterialDirectionSample::Specular { f, wi, normal: _ } => {
                 // wiの方向にレイを飛ばす
                 let wi_render = &render_to_tangent.inverse() * wi;
                 let next_ray = Ray::new(shading_point.position, wi_render)
@@ -138,16 +135,15 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy>
                     throughput_modifier: f.clone(),
                 }
             }
-            BsdfSample::Bsdf { f, pdf, wi, normal } => {
+            MaterialDirectionSample::Bsdf { f, pdf, wi, normal } => {
                 // wiの方向にレイを飛ばす
                 let wi_render = &render_to_tangent.inverse() * wi;
                 let next_ray = Ray::new(shading_point.position, wi_render)
                     .move_forward(Self::RAY_FORWARD_EPSILON);
                 let intersect = scene.intersect(&next_ray, f32::MAX);
 
-                // cos_thetaを計算（法線マップを考慮）
-                let normal_vec = normal.to_vec3().normalize();
-                let cos_theta = wi.to_vec3().dot(normal_vec).abs();
+                // cos_thetaを計算（Normal mappingされた表面法線）
+                let cos_theta = normal.to_vec3().dot(wi.to_vec3()).abs();
 
                 let next_emissive_contribution = if let Some(ref next_hit_info) = intersect {
                     Self::evaluate_emissive_surface(&next_hit_info.interaction, &next_ray, lambda)
@@ -228,14 +224,11 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy> Render
                     None => break 'depth_loop,
                 };
 
-                // Render座標系からヒットしたシェーディングポイントのTangent座標系に変換
-                let render_to_tangent = Transform::from_shading_normal_tangent(
-                    &hit_info.interaction.shading_normal,
-                    &hit_info.interaction.tangent,
-                );
+                // Render座標系からヒットしたシェーディングポイントのShadingTangent座標系に変換
+                let render_to_tangent = hit_info.interaction.shading_transform();
                 let wo = &render_to_tangent * hit_info.wo;
 
-                // Tangent座標系でのシェーディング点の情報を計算
+                // ShadingTangent座標系でのシェーディング点の情報を計算
                 let shading_point = &render_to_tangent * &hit_info.interaction;
 
                 // BSDFのサンプリングを行う（geometric normal rejection sampling付き）
@@ -247,25 +240,25 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy> Render
                     if let Some(sample) = bsdf.sample(uv, &lambda, &wo, &shading_point) {
                         // 全てのバリアントでgeometric normalチェック
                         let wi = match &sample {
-                            scene::BsdfSample::Bsdf { wi, .. } => wi,
-                            scene::BsdfSample::Specular { wi, .. } => wi,
+                            scene::MaterialDirectionSample::Bsdf { wi, .. } => wi,
+                            scene::MaterialDirectionSample::Specular { wi, .. } => wi,
                         };
 
-                        // Geometric normalとの一貫性チェック
-                        let geometric_normal = shading_point.normal.to_vec3().normalize();
+                        // woとwiがGeometric normalに対して同じ側にあるかをチェック
+                        let geometric_normal = shading_point.normal.to_vec3();
                         let wi_cos_geometric = wi.to_vec3().dot(geometric_normal);
-                        if wi_cos_geometric > 1e-6 {
-                            // 数値誤差を考慮した閾値
+                        let wo_cos_geometric = wo.to_vec3().dot(geometric_normal);
+                        if wi_cos_geometric.signum() == wo_cos_geometric.signum() {
                             bsdf_sample = Some(sample);
                             break;
                         }
 
                         // めり込む場合の処理
                         match &sample {
-                            scene::BsdfSample::Bsdf { .. } => {
+                            scene::MaterialDirectionSample::Bsdf { .. } => {
                                 // Bsdfバリアントの場合は次の試行へ（乱数が変われば結果も変わる）
                             }
-                            scene::BsdfSample::Specular { .. } => {
+                            scene::MaterialDirectionSample::Specular { .. } => {
                                 // Specular反射の場合は決定論的なので、リトライしても無駄
                                 // パス全体をやり直すために即座にループを抜ける
                                 break;
