@@ -7,11 +7,12 @@ use rayon::prelude::*;
 
 use color::Color;
 use math::{Render, ShadingTangent, Transform};
-use scene::{Intersection, MaterialDirectionSample, Scene, SceneId};
+use scene::{Intersection, NonSpecularDirectionSample, Scene, SceneId};
 use spectrum::SampledSpectrum;
 
 use crate::camera::Camera;
 use crate::filter::Filter;
+use crate::renderer::base_renderer::BsdfSamplingResult;
 use crate::sampler::Sampler;
 
 mod base_renderer;
@@ -46,21 +47,21 @@ pub trait RenderingStrategy: Clone + Send + Sync {
         sampler: &mut S,
         render_to_tangent: &Transform<Render, ShadingTangent>,
         current_hit_info: &Intersection<Id, Render>,
-        bsdf_sample: &MaterialDirectionSample,
-    ) -> Option<NeeResult>;
-
-    /// BSDFサンプリング結果のエミッシブ寄与を追加するかどうか。
-    fn should_add_bsdf_emissive(&self, bsdf_sample: &MaterialDirectionSample) -> bool;
+        sample_contribution: &mut SampledSpectrum,
+        throughout: &SampledSpectrum,
+    );
 
     /// BSDFサンプリング結果に適用するMISウエイトを計算する。
-    fn calculate_bsdf_mis_weight<Id: SceneId>(
+    fn calculate_bsdf<Id: SceneId>(
         &self,
         scene: &Scene<Id>,
         lambda: &spectrum::SampledWavelengths,
         current_hit_info: &Intersection<Id, Render>,
-        next_hit_info: &Intersection<Id, Render>,
-        bsdf_sample: &MaterialDirectionSample,
-    ) -> f32;
+        non_specular_sample: &NonSpecularDirectionSample,
+        bsdf_result: &BsdfSamplingResult<Id>,
+        sample_contribution: &mut SampledSpectrum,
+        throughout: &mut SampledSpectrum,
+    );
 }
 
 /// レンダラーの作成のための引数。

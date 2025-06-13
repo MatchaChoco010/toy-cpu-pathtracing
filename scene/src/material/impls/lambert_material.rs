@@ -3,10 +3,11 @@
 use math::{Normal, ShadingTangent, Transform, Vector3};
 use spectrum::SampledWavelengths;
 
+use crate::material::bsdf::BsdfSample;
 use crate::{
-    BsdfSurfaceMaterial, Material, MaterialDirectionSample, MaterialEvaluationResult,
-    NormalParameter, NormalizedLambertBsdf, SceneId, SpectrumParameter, SurfaceInteraction,
-    SurfaceMaterial,
+    BsdfSurfaceMaterial, Material, MaterialEvaluationResult, MaterialSample,
+    NonSpecularDirectionSample, NormalParameter, NormalizedLambertBsdf, SceneId, SpectrumParameter,
+    SurfaceInteraction, SurfaceMaterial,
 };
 
 /// 拡散反射のみを行うLambertマテリアル。
@@ -45,7 +46,7 @@ impl<Id: SceneId> BsdfSurfaceMaterial<Id> for LambertMaterial {
         lambda: &SampledWavelengths,
         wo: &Vector3<ShadingTangent>,
         shading_point: &SurfaceInteraction<Id, ShadingTangent>,
-    ) -> Option<MaterialDirectionSample> {
+    ) -> MaterialSample {
         let albedo = self.albedo.sample(shading_point.uv).sample(lambda);
 
         // 法線マップから法線を取得（ない場合はデフォルトのZ+法線）
@@ -53,6 +54,9 @@ impl<Id: SceneId> BsdfSurfaceMaterial<Id> for LambertMaterial {
             .normal
             .sample(shading_point.uv)
             .unwrap_or_else(|| Normal::new(0.0, 0.0, 1.0));
+
+        // // テスト用にnormalを固定値で上書き
+        // let normal_map = Normal::new(-0.75, 0.0, 0.75);
 
         // シェーディングタンジェント空間からノーマルマップタンジェント空間への変換
         let transform = Transform::from_normal_map(&normal_map);
@@ -62,27 +66,43 @@ impl<Id: SceneId> BsdfSurfaceMaterial<Id> for LambertMaterial {
         let wo_normalmap = &transform * wo;
 
         // BSDFサンプリング（ノーマルマップタンジェント空間で実行）
-        let bsdf_result = self.bsdf.sample(&albedo, &wo_normalmap, uv)?;
+        let bsdf_result = match self.bsdf.sample(&albedo, &wo_normalmap, uv) {
+            Some(result) => result,
+            None => {
+                // BSDFサンプリング失敗の場合
+                return MaterialSample::NonSpecular {
+                    sample: None,
+                    normal: normal_map,
+                };
+            }
+        };
 
         // 結果をシェーディングタンジェント空間に変換して返す
         match bsdf_result {
-            crate::material::bsdf::BsdfSample::Bsdf { f, pdf, wi } => {
+            BsdfSample::Bsdf { f, pdf, wi } => {
                 let wi_shading = &transform_inv * &wi;
-                Some(MaterialDirectionSample::Bsdf {
-                    f,
-                    pdf,
-                    wi: wi_shading,
+
+                // 幾何学的制約チェック: wiとwoが幾何法線に対して同じ側にあるかチェック
+                let geometry_normal = shading_point.normal;
+                let wi_cos_geometric = geometry_normal.dot(&wi_shading);
+                let wo_cos_geometric = geometry_normal.dot(wo);
+                let sample = if wi_cos_geometric.signum() != wo_cos_geometric.signum() {
+                    // 不透明マテリアルなので表面貫通サンプルは無効
+                    None
+                } else {
+                    Some(NonSpecularDirectionSample {
+                        f,
+                        pdf,
+                        wi: wi_shading,
+                    })
+                };
+
+                MaterialSample::NonSpecular {
+                    sample,
                     normal: normal_map,
-                })
+                }
             }
-            crate::material::bsdf::BsdfSample::Specular { f, wi } => {
-                let wi_shading = &transform_inv * &wi;
-                Some(MaterialDirectionSample::Specular {
-                    f,
-                    wi: wi_shading,
-                    normal: normal_map,
-                })
-            }
+            _ => unreachable!("Lambert material should not produce specular samples"),
         }
     }
 
@@ -101,12 +121,28 @@ impl<Id: SceneId> BsdfSurfaceMaterial<Id> for LambertMaterial {
             .sample(shading_point.uv)
             .unwrap_or_else(|| Normal::new(0.0, 0.0, 1.0));
 
+        // // テスト用にnormalを固定値で上書き
+        // let normal_map = Normal::new(-0.75, 0.0, 0.75);
+
         // シェーディングタンジェント空間からノーマルマップタンジェント空間への変換
         let transform = Transform::from_normal_map(&normal_map);
 
         // ベクトルをノーマルマップタンジェント空間に変換
         let wo_normalmap = &transform * wo;
         let wi_normalmap = &transform * wi;
+
+        // 幾何学的制約チェック: wiとwoが幾何法線に対して同じ側にあるかチェック
+        let geometry_normal = shading_point.normal;
+        let wi_cos_geometric = geometry_normal.dot(wi);
+        let wo_cos_geometric = geometry_normal.dot(wo);
+        if wi_cos_geometric.signum() != wo_cos_geometric.signum() {
+            // 不透明マテリアルなので表面貫通は寄与0
+            return MaterialEvaluationResult {
+                f: spectrum::SampledSpectrum::zero(),
+                pdf: 1.0,
+                normal: normal_map,
+            };
+        }
 
         // BSDF評価（ノーマルマップタンジェント空間で実行）
         let f = self.bsdf.evaluate(&albedo, &wo_normalmap, &wi_normalmap);
@@ -131,8 +167,20 @@ impl<Id: SceneId> BsdfSurfaceMaterial<Id> for LambertMaterial {
             .sample(shading_point.uv)
             .unwrap_or_else(|| Normal::new(0.0, 0.0, 1.0));
 
+        // // テスト用にnormalを固定値で上書き
+        // let normal_map = Normal::new(-0.75, 0.0, 0.75);
+
         // シェーディングタンジェント空間からノーマルマップタンジェント空間への変換
         let transform = Transform::from_normal_map(&normal_map);
+
+        // 幾何学的制約チェック: wiとwoが幾何法線に対して同じ側にあるかチェック
+        let geometry_normal = shading_point.normal;
+        let wi_cos_geometric = geometry_normal.dot(wi);
+        let wo_cos_geometric = geometry_normal.dot(wo);
+        if wi_cos_geometric.signum() != wo_cos_geometric.signum() {
+            // 不透明マテリアルなので表面貫通のPDFは0
+            return 0.0;
+        }
 
         // ベクトルをノーマルマップタンジェント空間に変換
         let wo_normalmap = &transform * wo;

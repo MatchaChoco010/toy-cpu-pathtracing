@@ -4,7 +4,7 @@ use math::{ShadingTangent, Vector3};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 use std::sync::Arc;
 
-use crate::{MaterialDirectionSample, MaterialEvaluationResult, SceneId, SurfaceInteraction};
+use crate::{MaterialEvaluationResult, MaterialSample, SceneId, SurfaceInteraction};
 
 /// 基底マテリアルtrait - 全マテリアルが実装する。
 /// 複数のシーンで使い回せるよう、トレイト自体にはIdジェネリクスを持たない。
@@ -46,7 +46,7 @@ pub trait BsdfSurfaceMaterial<Id: SceneId>: SurfaceMaterial {
         lambda: &SampledWavelengths,
         wo: &Vector3<ShadingTangent>,
         shading_point: &SurfaceInteraction<Id, ShadingTangent>,
-    ) -> Option<MaterialDirectionSample>;
+    ) -> MaterialSample;
 
     /// BSDF値を評価する。
     ///

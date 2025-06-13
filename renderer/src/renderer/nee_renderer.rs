@@ -3,11 +3,12 @@
 use color::ColorSrgb;
 use color::tone_map::ToneMap;
 use math::{Render, ShadingTangent, Transform};
-use scene::{Intersection, LightIntensity, MaterialDirectionSample, SceneId};
+use scene::{Intersection, LightIntensity, NonSpecularDirectionSample, SceneId};
 use spectrum::SampledSpectrum;
 
 use crate::filter::Filter;
-use crate::renderer::{NeeResult, Renderer, RendererArgs, RenderingStrategy};
+use crate::renderer::base_renderer::BsdfSamplingResult;
+use crate::renderer::{Renderer, RendererArgs, RenderingStrategy};
 use crate::sampler::Sampler;
 
 use super::base_renderer::BaseSrgbRenderer;
@@ -34,7 +35,7 @@ fn evaluate_next_event_estimation<Id: SceneId, S: Sampler>(
     let u = sampler.get_1d();
     let light_sample = match light_sampler.sample_light(u) {
         Some(sample) => sample,
-        None => return SampledSpectrum::zero(), // ライトがない場合は寄与なし
+        None => return SampledSpectrum::zero(),
     };
 
     // サンプリングしたライトの強さを計算
@@ -48,17 +49,21 @@ fn evaluate_next_event_estimation<Id: SceneId, S: Sampler>(
         s,
         uv,
     ) {
-        LightIntensity::IntensityDeltaPointLight(intensity) => common::evaluate_delta_point_light(
-            scene,
-            shading_point,
-            &intensity,
-            bsdf,
-            lambda,
-            &current_hit_info.wo,
-            render_to_tangent,
-            light_sample.probability,
-        ),
+        LightIntensity::IntensityDeltaPointLight(intensity) => {
+            // デルタライトの場合はMISを適用しない
+            common::evaluate_delta_point_light(
+                scene,
+                shading_point,
+                &intensity,
+                bsdf,
+                lambda,
+                &current_hit_info.wo,
+                render_to_tangent,
+                light_sample.probability,
+            )
+        }
         LightIntensity::IntensityDeltaDirectionalLight(intensity) => {
+            // デルタライトの場合はMISを適用しない
             common::evaluate_delta_directional_light(
                 scene,
                 shading_point,
@@ -94,47 +99,32 @@ impl RenderingStrategy for NeeStrategy {
         sampler: &mut S,
         render_to_tangent: &Transform<Render, ShadingTangent>,
         current_hit_info: &Intersection<Id, Render>,
-        bsdf_sample: &MaterialDirectionSample,
-    ) -> Option<NeeResult> {
-        // 完全鏡面の場合はNEEを行わない
-        if matches!(bsdf_sample, MaterialDirectionSample::Specular { .. }) {
-            return None;
-        }
-
-        // 非鏡面の場合のみNEEを実行
-        if let MaterialDirectionSample::Bsdf { .. } = bsdf_sample {
-            let contribution = evaluate_next_event_estimation(
-                scene,
-                lambda,
-                sampler,
-                render_to_tangent,
-                current_hit_info,
-            );
-            Some(NeeResult {
-                contribution,
-                mis_weight: 1.0, // NEE戦略ではMISを使わない
-            })
-        } else {
-            None
-        }
+        sample_contribution: &mut SampledSpectrum,
+        throughout: &SampledSpectrum,
+    ) {
+        let contribution = evaluate_next_event_estimation(
+            scene,
+            lambda,
+            sampler,
+            render_to_tangent,
+            current_hit_info,
+        );
+        // NEE寄与を一時変数に蓄積（throughout、MISウエイト適用）
+        *sample_contribution += &*throughout * &contribution;
     }
 
-    fn should_add_bsdf_emissive(&self, bsdf_sample: &MaterialDirectionSample) -> bool {
-        // 完全鏡面の場合のみBSDFサンプル結果のエミッシブ寄与を追加
-        // （非鏡面の場合はNEEで代替されるのでダブルカウント防止）
-        matches!(bsdf_sample, MaterialDirectionSample::Specular { .. })
-    }
-
-    fn calculate_bsdf_mis_weight<Id: SceneId>(
+    fn calculate_bsdf<Id: SceneId>(
         &self,
         _scene: &scene::Scene<Id>,
         _lambda: &spectrum::SampledWavelengths,
         _current_hit_info: &Intersection<Id, Render>,
-        _next_hit_info: &Intersection<Id, Render>,
-        _bsdf_sample: &MaterialDirectionSample,
-    ) -> f32 {
-        // NEEはMISウエイトなし
-        1.0
+        _non_specular_sample: &NonSpecularDirectionSample,
+        bsdf_result: &BsdfSamplingResult<Id>,
+        _sample_contribution: &mut SampledSpectrum,
+        throughout: &mut SampledSpectrum,
+    ) {
+        // NEEはBSDFサンプリングで寄与は追加せず、MISウエイトなし
+        *throughout *= &bsdf_result.throughput_modifier;
     }
 }
 

@@ -18,20 +18,51 @@ pub struct MaterialEvaluationResult {
     pub normal: Normal<ShadingTangent>,
 }
 
-// マテリアルの方向サンプリング結果を表す列挙型。
+/// NonSpecular方向サンプリング結果。
 #[derive(Debug, Clone)]
-pub enum MaterialDirectionSample {
-    Bsdf {
-        f: spectrum::SampledSpectrum,
-        pdf: f32,
-        wi: math::Vector3<ShadingTangent>,
+pub struct NonSpecularDirectionSample {
+    pub f: spectrum::SampledSpectrum,
+    pub pdf: f32,
+    pub wi: math::Vector3<ShadingTangent>,
+}
+
+/// Specular方向サンプリング結果。
+#[derive(Debug, Clone)]
+pub struct SpecularDirectionSample {
+    pub f: spectrum::SampledSpectrum,
+    pub wi: math::Vector3<ShadingTangent>,
+}
+
+/// マテリアルの方向サンプリング結果を表す列挙型。
+#[derive(Debug, Clone)]
+pub enum MaterialSample {
+    NonSpecular {
+        sample: Option<NonSpecularDirectionSample>,
         normal: Normal<ShadingTangent>,
     },
     Specular {
-        f: spectrum::SampledSpectrum,
-        wi: math::Vector3<ShadingTangent>,
+        sample: Option<SpecularDirectionSample>,
         normal: Normal<ShadingTangent>,
     },
+}
+impl MaterialSample {
+    /// Specularのサンプリングかどうか。
+    pub fn is_specular(&self) -> bool {
+        matches!(self, MaterialSample::Specular { .. })
+    }
+
+    /// 非Specularのサンプリングかどうか。
+    pub fn is_non_specular(&self) -> bool {
+        matches!(self, MaterialSample::NonSpecular { .. })
+    }
+
+    /// サンプリングが成功したかどうか。
+    pub fn is_sampled(&self) -> bool {
+        match self {
+            MaterialSample::NonSpecular { sample, .. } => sample.is_some(),
+            MaterialSample::Specular { sample, .. } => sample.is_some(),
+        }
+    }
 }
 
 /// サンプルしたジオメトリを特定するための情報を持つ列挙型。
