@@ -95,6 +95,18 @@ impl<From: CoordinateSystem, To: CoordinateSystem> Transform<From, To> {
         Transform::from_matrix(matrix)
     }
 
+    /// Point3を使用して平行移動のTransformを作成する。
+    #[inline(always)]
+    pub fn translate_to<C: CoordinateSystem>(point: &Point3<C>) -> Self {
+        Self::from_translate(point.to_vec3())
+    }
+
+    /// Point3を使用して逆方向の平行移動Transformを作成する。
+    #[inline(always)]
+    pub fn translate_from<C: CoordinateSystem>(point: &Point3<C>) -> Self {
+        Self::from_translate(-point.to_vec3())
+    }
+
     /// 回転のTransformを作成する。
     #[inline(always)]
     pub fn from_rotate(rotate: glam::Quat) -> Self {

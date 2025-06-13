@@ -24,6 +24,61 @@ impl<C: CoordinateSystem> Point3<C> {
         Self::from(glam::Vec3::new(x, y, z))
     }
 
+    /// x成分を取得する。
+    #[inline(always)]
+    pub fn x(&self) -> f32 {
+        self.vec.x
+    }
+
+    /// y成分を取得する。
+    #[inline(always)]
+    pub fn y(&self) -> f32 {
+        self.vec.y
+    }
+
+    /// z成分を取得する。
+    #[inline(always)]
+    pub fn z(&self) -> f32 {
+        self.vec.z
+    }
+
+    /// 指定した軸の値を取得する。
+    #[inline(always)]
+    pub fn axis(&self, axis: usize) -> f32 {
+        match axis {
+            0 => self.vec.x,
+            1 => self.vec.y,
+            2 => self.vec.z,
+            _ => panic!("Invalid axis: {}", axis),
+        }
+    }
+
+    /// 複数のPoint3のmin/maxを計算する。
+    #[inline(always)]
+    pub fn min_max_from_points(points: &[Point3<C>]) -> (Point3<C>, Point3<C>) {
+        let mut min = glam::Vec3::splat(f32::INFINITY);
+        let mut max = glam::Vec3::splat(f32::NEG_INFINITY);
+        for point in points {
+            min = min.min(point.vec);
+            max = max.max(point.vec);
+        }
+        (Point3::from(min), Point3::from(max))
+    }
+
+    /// 3つのPoint3をbarycentric座標で補間する。
+    #[inline(always)]
+    pub fn interpolate_barycentric(
+        p0: &Point3<C>,
+        p1: &Point3<C>,
+        p2: &Point3<C>,
+        barycentric: [f32; 3],
+    ) -> Self {
+        let interpolated = p0.to_vec3() * barycentric[0]
+            + p1.to_vec3() * barycentric[1]
+            + p2.to_vec3() * barycentric[2];
+        Point3::from(interpolated)
+    }
+
     /// 2点間の距離を計算する。
     #[inline(always)]
     pub fn distance(&self, other: impl AsRef<Point3<C>>) -> f32 {
@@ -44,7 +99,7 @@ impl<C: CoordinateSystem> Point3<C> {
 
     /// Point3をglam::Vec3に変換する。
     #[inline(always)]
-    pub fn to_vec3(&self) -> glam::Vec3 {
+    pub(crate) fn to_vec3(&self) -> glam::Vec3 {
         self.vec
     }
 }

@@ -48,7 +48,7 @@ impl NormalizedLambertBsdf {
         wo: &Vector3<NormalMapTangent>,
         uv: glam::Vec2,
     ) -> Option<BsdfSample> {
-        let wo_cos_n = wo.to_vec3().z;
+        let wo_cos_n = wo.z();
         if wo_cos_n == 0.0 {
             return None;
         }
@@ -62,7 +62,7 @@ impl NormalizedLambertBsdf {
         };
 
         // ノーマルマップ接空間でのコサイン項チェック
-        let wi_cos_n = wi.to_vec3().z;
+        let wi_cos_n = wi.z();
         if wi_cos_n == 0.0 {
             return None;
         }
@@ -92,8 +92,8 @@ impl NormalizedLambertBsdf {
         wo: &Vector3<NormalMapTangent>,
         wi: &Vector3<NormalMapTangent>,
     ) -> SampledSpectrum {
-        let wo_cos_n = wo.to_vec3().z;
-        let wi_cos_n = wi.to_vec3().z;
+        let wo_cos_n = wo.z();
+        let wi_cos_n = wi.z();
 
         if wo_cos_n == 0.0 || wi_cos_n == 0.0 {
             return SampledSpectrum::zero();
@@ -114,8 +114,8 @@ impl NormalizedLambertBsdf {
     /// - `wo` - 出射方向（ノーマルマップ接空間）
     /// - `wi` - 入射方向（ノーマルマップ接空間）
     pub fn pdf(&self, wo: &Vector3<NormalMapTangent>, wi: &Vector3<NormalMapTangent>) -> f32 {
-        let wo_cos_n = wo.to_vec3().z;
-        let wi_cos_n = wi.to_vec3().z;
+        let wo_cos_n = wo.z();
+        let wi_cos_n = wi.z();
 
         if wo_cos_n == 0.0 || wi_cos_n == 0.0 {
             return 0.0;

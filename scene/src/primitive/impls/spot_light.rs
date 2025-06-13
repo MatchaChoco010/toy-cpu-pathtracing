@@ -114,7 +114,7 @@ impl<Id: SceneId> PrimitiveDeltaPointLight<Id> for SpotLight {
             let t = ((t - a) / (b - a)).clamp(0.0, 1.0);
             t * t * (3.0 - 2.0 * t)
         }
-        let angle_theta = (self.local_to_render.inverse() * wi).to_vec3().z;
+        let angle_theta = (self.local_to_render.inverse() * wi).z();
         let falloff = smoothstep(self.angle_outer, self.angle_inner, angle_theta);
 
         // 放射強度を計算する。

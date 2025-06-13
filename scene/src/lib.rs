@@ -16,8 +16,9 @@ pub use material::{
 };
 pub use primitive::{CreatePrimitiveDesc, Intersection, PrimitiveBvh, PrimitiveIndex};
 pub use samples::{
-    AreaLightSampleRadiance, MaterialDirectionSample, DeltaDirectionalLightIntensity, DeltaPointLightIntensity,
-    InteractGeometryInfo, LightIntensity, MaterialEvaluationResult, SurfaceInteraction,
+    AreaLightSampleRadiance, DeltaDirectionalLightIntensity, DeltaPointLightIntensity,
+    InteractGeometryInfo, LightIntensity, MaterialDirectionSample, MaterialEvaluationResult,
+    SurfaceInteraction,
 };
 pub use scene::{Scene, SceneId, WorldToRender, internal};
 pub use texture::{NormalTexture, RgbTexture, SpectrumType, TextureConfig};

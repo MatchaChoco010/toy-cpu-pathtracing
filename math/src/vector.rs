@@ -73,9 +73,26 @@ impl<C: CoordinateSystem> Vector3<C> {
         self.vec.length_squared()
     }
 
+    /// 指定した軸の値を取得する。
+    #[inline(always)]
+    pub fn axis(&self, axis: usize) -> f32 {
+        match axis {
+            0 => self.vec.x,
+            1 => self.vec.y,
+            2 => self.vec.z,
+            _ => panic!("Invalid axis: {}", axis),
+        }
+    }
+
+    /// このVectorをNormalに変換する。
+    #[inline(always)]
+    pub fn to_normal(&self) -> crate::Normal<C> {
+        crate::Normal::from(self.to_vec3())
+    }
+
     /// Vector3をglam::Vec3に変換する。
     #[inline(always)]
-    pub fn to_vec3(&self) -> glam::Vec3 {
+    pub(crate) fn to_vec3(&self) -> glam::Vec3 {
         self.vec
     }
 }
@@ -128,4 +145,8 @@ fn div<C: CoordinateSystem>(lhs: &Vector3<C>, rhs: &f32) -> Vector3<C> {
 #[impl_binary_ops(Div)]
 fn div<C: CoordinateSystem>(lhs: &Vector3<C>, rhs: &Vector3<C>) -> Vector3<C> {
     Vector3::from(lhs.vec / rhs.vec)
+}
+#[impl_binary_ops(Div)]
+fn div<C: CoordinateSystem>(lhs: &f32, rhs: &Vector3<C>) -> glam::Vec3 {
+    *lhs / rhs.vec
 }
