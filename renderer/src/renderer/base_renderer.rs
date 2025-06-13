@@ -4,7 +4,7 @@ use color::ColorSrgb;
 use color::eotf;
 use color::tone_map::ToneMap;
 use math::{Ray, Render, ShadingTangent, Transform};
-use scene::{Intersection, MaterialDirectionSample, SceneId, SurfaceInteraction};
+use scene::{Intersection, MaterialSample, SceneId, SurfaceInteraction};
 use spectrum::{DenselySampledSpectrum, SampledSpectrum, SampledWavelengths, SpectrumTrait};
 
 use crate::filter::Filter;
@@ -13,7 +13,7 @@ use crate::sampler::Sampler;
 
 /// BSDFサンプリングの結果を管理する構造体。
 pub struct BsdfSamplingResult<Id: SceneId> {
-    pub next_hit_info: Option<Intersection<Id, Render>>,
+    pub next_hit_info: Intersection<Id, Render>,
     pub next_emissive_contribution: SampledSpectrum,
     pub throughput_modifier: SampledSpectrum,
 }
@@ -64,7 +64,11 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy>
         let ray_tangent = &render_to_tangent * incoming_ray;
         let wo = -ray_tangent.dir;
 
-        Some(emissive_material.radiance(lambda, wo, &(render_to_tangent * interaction)))
+        let emission_radiance =
+            emissive_material.radiance(lambda, wo, &(render_to_tangent * interaction));
+
+        // PT（方向積分）では面積光源の放射輝度をそのまま使用
+        Some(emission_radiance)
     }
 
     /// ロシアンルーレットによる経路終了判定を行う。
@@ -109,55 +113,75 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy>
     fn process_bsdf_sampling(
         scene: &scene::Scene<Id>,
         lambda: &SampledWavelengths,
-        bsdf_sample: &MaterialDirectionSample,
+        material_sample: &MaterialSample,
         render_to_tangent: &Transform<Render, ShadingTangent>,
         shading_point: &SurfaceInteraction<Id, Render>,
-    ) -> BsdfSamplingResult<Id> {
-        match bsdf_sample {
-            MaterialDirectionSample::Specular { f, wi, normal: _ } => {
+    ) -> Option<BsdfSamplingResult<Id>> {
+        match material_sample {
+            MaterialSample::Specular {
+                sample: Some(sample),
+                ..
+            } => {
                 // wiの方向にレイを飛ばす
-                let wi_render = &render_to_tangent.inverse() * wi;
+                let wi_render = &render_to_tangent.inverse() * &sample.wi;
                 let next_ray = Ray::new(shading_point.position, wi_render)
                     .move_forward(Self::RAY_FORWARD_EPSILON);
                 let intersect = scene.intersect(&next_ray, f32::MAX);
 
-                let next_emissive_contribution = if let Some(ref next_hit_info) = intersect {
-                    Self::evaluate_emissive_surface(&next_hit_info.interaction, &next_ray, lambda)
-                        .map(|radiance| f * radiance)
-                        .unwrap_or_else(SampledSpectrum::zero)
-                } else {
-                    SampledSpectrum::zero()
-                };
+                intersect.map(|next_hit_info| {
+                    let next_emissive_contribution = if let Some(radiance) =
+                        Self::evaluate_emissive_surface(
+                            &next_hit_info.interaction,
+                            &next_ray,
+                            lambda,
+                        ) {
+                        &sample.f * &radiance
+                    } else {
+                        SampledSpectrum::zero()
+                    };
 
-                BsdfSamplingResult {
-                    next_hit_info: intersect,
-                    next_emissive_contribution,
-                    throughput_modifier: f.clone(),
-                }
+                    BsdfSamplingResult {
+                        next_hit_info,
+                        next_emissive_contribution,
+                        throughput_modifier: sample.f.clone(),
+                    }
+                })
             }
-            MaterialDirectionSample::Bsdf { f, pdf, wi, normal } => {
+            MaterialSample::NonSpecular {
+                sample: Some(sample),
+                normal,
+            } => {
                 // wiの方向にレイを飛ばす
-                let wi_render = &render_to_tangent.inverse() * wi;
+                let wi_render = &render_to_tangent.inverse() * &sample.wi;
                 let next_ray = Ray::new(shading_point.position, wi_render)
                     .move_forward(Self::RAY_FORWARD_EPSILON);
                 let intersect = scene.intersect(&next_ray, f32::MAX);
 
                 // cos_thetaを計算（Normal mappingされた表面法線）
-                let cos_theta = normal.dot(&wi).abs();
+                let cos_theta = normal.dot(&sample.wi).abs();
 
-                let next_emissive_contribution = if let Some(ref next_hit_info) = intersect {
-                    Self::evaluate_emissive_surface(&next_hit_info.interaction, &next_ray, lambda)
-                        .map(|radiance| f * &radiance * cos_theta / pdf)
-                        .unwrap_or_else(SampledSpectrum::zero)
-                } else {
-                    SampledSpectrum::zero()
-                };
+                intersect.map(|next_hit_info| {
+                    let next_emissive_contribution = if let Some(radiance) =
+                        Self::evaluate_emissive_surface(
+                            &next_hit_info.interaction,
+                            &next_ray,
+                            lambda,
+                        ) {
+                        &sample.f * &radiance * cos_theta / sample.pdf
+                    } else {
+                        SampledSpectrum::zero()
+                    };
 
-                BsdfSamplingResult {
-                    next_hit_info: intersect,
-                    next_emissive_contribution,
-                    throughput_modifier: f * cos_theta / pdf,
-                }
+                    BsdfSamplingResult {
+                        next_hit_info,
+                        next_emissive_contribution,
+                        throughput_modifier: &sample.f * cos_theta / sample.pdf,
+                    }
+                })
+            }
+            _ => {
+                // 方向サンプリングが失敗した場合
+                None
             }
         }
     }
@@ -178,7 +202,6 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy> Render
         let mut sampler = S::new(spp, resolution, seed);
 
         let mut output = DenselySampledSpectrum::zero();
-        let mut effective_spp = 0u32;
 
         // spp数だけループする
         'sample_loop: for sample_index in 0..spp {
@@ -204,7 +227,6 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy> Render
                 None => {
                     // ヒットしなかった場合はsample_contribution = 0のまま終了
                     output.add_sample(&lambda, sample_contribution);
-                    effective_spp += 1;
                     continue 'sample_loop;
                 }
             };
@@ -231,95 +253,66 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy> Render
                 // ShadingTangent座標系でのシェーディング点の情報を計算
                 let shading_point = &render_to_tangent * &hit_info.interaction;
 
-                // BSDFのサンプリングを行う（geometric normal rejection sampling付き）
-                const MAX_BSDF_ATTEMPTS: usize = 20;
-                let mut bsdf_sample = None;
+                // マテリアルのサンプリングを行う
+                let uv = sampler.get_2d();
+                let material_sample = bsdf.sample(uv, &lambda, &wo, &shading_point);
 
-                for _ in 0..MAX_BSDF_ATTEMPTS {
-                    let uv = sampler.get_2d();
-                    if let Some(sample) = bsdf.sample(uv, &lambda, &wo, &shading_point) {
-                        // 全てのバリアントでgeometric normalチェック
-                        let wi = match &sample {
-                            scene::MaterialDirectionSample::Bsdf { wi, .. } => wi,
-                            scene::MaterialDirectionSample::Specular { wi, .. } => wi,
-                        };
-
-                        // woとwiがGeometric normalに対して同じ側にあるかをチェック
-                        let wi_cos_geometric = wi.dot(&shading_point.normal);
-                        let wo_cos_geometric = wo.dot(&shading_point.normal);
-                        if wi_cos_geometric.signum() == wo_cos_geometric.signum() {
-                            bsdf_sample = Some(sample);
-                            break;
-                        }
-
-                        // めり込む場合の処理
-                        match &sample {
-                            scene::MaterialDirectionSample::Bsdf { .. } => {
-                                // Bsdfバリアントの場合は次の試行へ（乱数が変われば結果も変わる）
-                            }
-                            scene::MaterialDirectionSample::Specular { .. } => {
-                                // Specular反射の場合は決定論的なので、リトライしても無駄
-                                // パス全体をやり直すために即座にループを抜ける
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                let bsdf_sample = match bsdf_sample {
-                    Some(sample) => sample,
-                    None => continue 'sample_loop, // パス全体を棄却（output.add_sample()を呼ばない）
-                };
-
-                // 戦略に基づいてNEE寄与を評価
-                if let Some(nee_result) = self.strategy.evaluate_nee(
-                    scene,
-                    &lambda,
-                    &mut sampler,
-                    &render_to_tangent,
-                    &hit_info,
-                    &bsdf_sample,
-                ) {
-                    // NEE寄与を一時変数に蓄積（throughout、MISウエイト適用）
-                    sample_contribution +=
-                        &throughout * &nee_result.contribution * nee_result.mis_weight;
+                // サンプルしたマテリアルが非Specularな場合、NEEを評価する
+                if material_sample.is_non_specular() {
+                    self.strategy.evaluate_nee(
+                        scene,
+                        &lambda,
+                        &mut sampler,
+                        &render_to_tangent,
+                        &hit_info,
+                        &mut sample_contribution,
+                        &mut throughout,
+                    );
                 }
 
                 // BSDFサンプルの処理と次のレイのトレース
                 let bsdf_result = Self::process_bsdf_sampling(
                     scene,
                     &lambda,
-                    &bsdf_sample,
+                    &material_sample,
                     &render_to_tangent,
                     &hit_info.interaction,
                 );
 
-                // 次のヒット情報を取得
-                let next_hit_info = match bsdf_result.next_hit_info {
-                    Some(next_hit) => next_hit,
-                    None => break 'depth_loop, // レイがミスした場合はそれまでの寄与で確定
+                // BSDFサンプリング失敗の場合は深度ループ終了
+                let Some(bsdf_result) = bsdf_result else {
+                    break 'depth_loop;
                 };
 
-                // BSDFサンプルのMISウエイトを計算
-                let mis_weight = self.strategy.calculate_bsdf_mis_weight(
-                    scene,
-                    &lambda,
-                    &hit_info,
-                    &next_hit_info,
-                    &bsdf_sample,
-                );
+                match material_sample {
+                    // Specular反射の場合はMISを使用せずエミッシブ寄与をそのまま蓄積
+                    MaterialSample::Specular { .. } => {
+                        // エミッシブ寄与を一時変数に蓄積
+                        sample_contribution += &throughout * bsdf_result.next_emissive_contribution;
 
-                // 戦略に応じてBSDFサンプリング結果のエミッシブ寄与を一時変数に蓄積
-                if self.strategy.should_add_bsdf_emissive(&bsdf_sample) {
-                    sample_contribution +=
-                        &throughout * bsdf_result.next_emissive_contribution * mis_weight;
+                        // throughoutを更新
+                        throughout *= bsdf_result.throughput_modifier;
+                    }
+                    // 非Specularの場合はstrategyに応じてMISウエイトを計算して寄与を蓄積
+                    MaterialSample::NonSpecular {
+                        sample: Some(sample),
+                        ..
+                    } => {
+                        self.strategy.calculate_bsdf(
+                            scene,
+                            &lambda,
+                            &hit_info,
+                            &sample,
+                            &bsdf_result,
+                            &mut sample_contribution,
+                            &mut throughout,
+                        );
+                    }
+                    _ => unreachable!(),
                 }
 
-                // throughoutを更新（MISウエイト適用）
-                throughout *= bsdf_result.throughput_modifier * mis_weight;
-
                 // 次のヒット情報に進める
-                hit_info = next_hit_info;
+                hit_info = bsdf_result.next_hit_info;
 
                 // ロシアンルーレットで打ち切る
                 if !Self::apply_russian_roulette(&mut throughout, &mut sampler) {
@@ -327,16 +320,10 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy> Render
                 }
             }
 
-            // depth_loopが正常に完了した場合のみ、蓄積した寄与をoutputに追加
+            // 蓄積した寄与をoutputに追加
             output.add_sample(&lambda, sample_contribution);
-            effective_spp += 1;
         }
 
-        Self::finalize_spectrum_to_color(
-            output,
-            effective_spp,
-            self.tone_map.clone(),
-            self.exposure,
-        )
+        Self::finalize_spectrum_to_color(output, spp, self.tone_map.clone(), self.exposure)
     }
 }

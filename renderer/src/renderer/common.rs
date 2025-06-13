@@ -40,8 +40,8 @@ pub fn evaluate_delta_point_light<Id: SceneId>(
     if visible {
         let wo = render_to_tangent * wo;
         let wi = render_to_tangent * distance_vector.normalize();
-        let shading_point = render_to_tangent * shading_point;
-        let material_result = bsdf.evaluate(lambda, &wo, &wi, &shading_point);
+        let shading_point_tangent = render_to_tangent * shading_point;
+        let material_result = bsdf.evaluate(lambda, &wo, &wi, &shading_point_tangent);
 
         // Normal mappingされた表面法線に対するcos項
         let distance_squared = distance_vector.length_squared();
@@ -72,8 +72,8 @@ pub fn evaluate_delta_directional_light<Id: SceneId>(
     if visible {
         let wo = render_to_tangent * wo;
         let wi = render_to_tangent * intensity.direction.normalize();
-        let shading_point = render_to_tangent * shading_point;
-        let material_result = bsdf.evaluate(lambda, &wo, &wi, &shading_point);
+        let shading_point_tangent = render_to_tangent * shading_point;
+        let material_result = bsdf.evaluate(lambda, &wo, &wi, &shading_point_tangent);
 
         // Normal mappingされた表面法線に対するcos項
         let cos_theta = material_result.normal.dot(&wi).abs();
@@ -115,10 +115,9 @@ pub fn evaluate_area_light<Id: SceneId>(
 
         // 幾何項の計算
         let distance2 = distance_vector.length_squared();
-        let material_normal = render_to_tangent.inverse() * material_result.normal;
-        let light_normal = radiance.light_normal;
-        let cos_material = material_normal.dot(&wi).abs();
-        let cos_light = light_normal.dot(&(-wi)).abs();
+        let light_normal = render_to_tangent * radiance.light_normal; // ShadingTangent座標系に変換
+        let cos_material = material_result.normal.dot(&wi_tangent).abs(); // ShadingTangent座標系で統一
+        let cos_light = light_normal.dot(&(-wi_tangent)).abs(); // ShadingTangent座標系で統一
         let g = cos_material * cos_light / distance2;
 
         material_result.f * &radiance.radiance * g / (pdf * light_probability)
@@ -150,9 +149,9 @@ pub fn evaluate_area_light_with_mis<Id: SceneId>(
     if visible {
         let wo = render_to_tangent * wo;
         let wi = render_to_tangent * distance_vector.normalize();
-        let shading_point = render_to_tangent * shading_point;
+        let shading_point_tangent = render_to_tangent * shading_point;
         let pdf = radiance.pdf;
-        let material_result = bsdf.evaluate(lambda, &wo, &wi, &shading_point);
+        let material_result = bsdf.evaluate(lambda, &wo, &wi, &shading_point_tangent);
 
         // 幾何項の計算
         let distance2 = distance_vector.length_squared();
@@ -163,7 +162,7 @@ pub fn evaluate_area_light_with_mis<Id: SceneId>(
 
         // MISのウエイトを計算
         let pdf_light_dir = radiance.pdf_dir;
-        let pdf_bsdf_dir = bsdf.pdf(lambda, &wo, &wi, &shading_point);
+        let pdf_bsdf_dir = bsdf.pdf(lambda, &wo, &wi, &shading_point_tangent);
         let mis_weight = balance_heuristic(pdf_light_dir, pdf_bsdf_dir);
 
         let contribution = material_result.f * &radiance.radiance * g / (pdf * light_probability);

@@ -3,10 +3,12 @@
 use color::ColorSrgb;
 use color::tone_map::ToneMap;
 use math::{Render, ShadingTangent, Transform};
-use scene::{Intersection, MaterialDirectionSample, SceneId};
+use scene::{Intersection, NonSpecularDirectionSample, SceneId};
+use spectrum::SampledSpectrum;
 
 use crate::filter::Filter;
-use crate::renderer::{NeeResult, Renderer, RendererArgs, RenderingStrategy};
+use crate::renderer::base_renderer::BsdfSamplingResult;
+use crate::renderer::{Renderer, RendererArgs, RenderingStrategy};
 use crate::sampler::Sampler;
 
 use super::base_renderer::BaseSrgbRenderer;
@@ -22,27 +24,27 @@ impl RenderingStrategy for PtStrategy {
         _sampler: &mut S,
         _render_to_tangent: &Transform<Render, ShadingTangent>,
         _current_hit_info: &Intersection<Id, Render>,
-        _bsdf_sample: &MaterialDirectionSample,
-    ) -> Option<NeeResult> {
+        _sample_contribution: &mut SampledSpectrum,
+        _throughout: &SampledSpectrum,
+    ) {
         // PTはNEEを実行しない
-        None
     }
 
-    fn should_add_bsdf_emissive(&self, _bsdf_sample: &MaterialDirectionSample) -> bool {
-        // PTは全てのBSDFサンプル結果のエミッシブ寄与を追加
-        true
-    }
-
-    fn calculate_bsdf_mis_weight<Id: SceneId>(
+    fn calculate_bsdf<Id: SceneId>(
         &self,
         _scene: &scene::Scene<Id>,
         _lambda: &spectrum::SampledWavelengths,
         _current_hit_info: &Intersection<Id, Render>,
-        _next_hit_info: &Intersection<Id, Render>,
-        _bsdf_sample: &MaterialDirectionSample,
-    ) -> f32 {
-        // PTはMISウエイトなし
-        1.0
+        _non_specular_sample: &NonSpecularDirectionSample,
+        bsdf_result: &BsdfSamplingResult<Id>,
+        sample_contribution: &mut SampledSpectrum,
+        throughout: &mut SampledSpectrum,
+    ) {
+        // エミッシブ寄与を一時変数に蓄積
+        *sample_contribution += &*throughout * &bsdf_result.next_emissive_contribution;
+
+        // throughoutを更新（MISウエイト無し）
+        *throughout *= &bsdf_result.throughput_modifier;
     }
 }
 

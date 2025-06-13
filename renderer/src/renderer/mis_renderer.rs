@@ -3,10 +3,12 @@
 use color::ColorSrgb;
 use color::tone_map::ToneMap;
 use math::{Render, ShadingTangent, Transform};
-use scene::{Intersection, LightIntensity, MaterialDirectionSample, SceneId};
+use scene::{Intersection, LightIntensity, NonSpecularDirectionSample, SceneId};
 use spectrum::SampledSpectrum;
 
 use crate::filter::Filter;
+use crate::renderer::base_renderer::BsdfSamplingResult;
+use crate::renderer::common::balance_heuristic;
 use crate::renderer::{NeeResult, Renderer, RendererArgs, RenderingStrategy};
 use crate::sampler::Sampler;
 
@@ -116,59 +118,47 @@ impl RenderingStrategy for MisStrategy {
         sampler: &mut S,
         render_to_tangent: &Transform<Render, ShadingTangent>,
         current_hit_info: &Intersection<Id, Render>,
-        bsdf_sample: &MaterialDirectionSample,
-    ) -> Option<NeeResult> {
-        // 完全鏡面の場合はMISを行わない
-        if matches!(bsdf_sample, MaterialDirectionSample::Specular { .. }) {
-            return None;
-        }
-
-        // 非鏡面の場合のみMIS付きNEEを実行
-        if let MaterialDirectionSample::Bsdf { .. } = bsdf_sample {
-            let nee_result = evaluate_next_event_estimation_with_mis(
-                scene,
-                lambda,
-                sampler,
-                render_to_tangent,
-                current_hit_info,
-            );
-            Some(nee_result)
-        } else {
-            None
-        }
+        sample_contribution: &mut SampledSpectrum,
+        throughout: &SampledSpectrum,
+    ) {
+        // MISはNEEを実行する（MISウエイト付き）
+        let nee_result = evaluate_next_event_estimation_with_mis(
+            scene,
+            lambda,
+            sampler,
+            render_to_tangent,
+            current_hit_info,
+        );
+        // NEE寄与を一時変数に蓄積（throughout、MISウエイト適用）
+        *sample_contribution += &*throughout * &nee_result.contribution * nee_result.mis_weight;
     }
 
-    fn should_add_bsdf_emissive(&self, _bsdf_sample: &MaterialDirectionSample) -> bool {
-        // MISは鏡面・非鏡面に関わらずBSDFサンプル結果のエミッシブ寄与を追加
-        // （非鏡面の場合はMISウエイト適用）
-        true
-    }
-
-    fn calculate_bsdf_mis_weight<Id: SceneId>(
+    fn calculate_bsdf<Id: SceneId>(
         &self,
         scene: &scene::Scene<Id>,
         lambda: &spectrum::SampledWavelengths,
         current_hit_info: &Intersection<Id, Render>,
-        next_hit_info: &Intersection<Id, Render>,
-        bsdf_sample: &MaterialDirectionSample,
-    ) -> f32 {
-        match bsdf_sample {
-            MaterialDirectionSample::Specular { .. } => {
-                // 完全鏡面の場合はMISウエイトなし
-                1.0
-            }
-            MaterialDirectionSample::Bsdf { pdf, .. } => {
-                // 非鏡面の場合はMISウエイトを計算
-                let light_sampler = scene.light_sampler(lambda);
-                let pdf_bsdf_dir = *pdf;
-                let pdf_light_dir = scene.pdf_light_sample(
-                    &light_sampler,
-                    &current_hit_info.interaction,
-                    &next_hit_info.interaction,
-                );
-                common::balance_heuristic(pdf_bsdf_dir, pdf_light_dir)
-            }
-        }
+        non_specular_sample: &NonSpecularDirectionSample,
+        bsdf_result: &BsdfSamplingResult<Id>,
+        sample_contribution: &mut SampledSpectrum,
+        throughout: &mut SampledSpectrum,
+    ) {
+        let next_hit_info = &bsdf_result.next_hit_info;
+        let light_sampler = scene.light_sampler(lambda);
+        let pdf_bsdf_dir = non_specular_sample.pdf;
+        let pdf_light_dir = scene.pdf_light_sample(
+            &light_sampler,
+            &current_hit_info.interaction,
+            &next_hit_info.interaction,
+        );
+        let mis_weight = balance_heuristic(pdf_bsdf_dir, pdf_light_dir);
+
+        // MISウエイトが有効の場合（MIS）、
+        // エミッシブ寄与をMISウエイト付きで一時変数に蓄積
+        *sample_contribution += &*throughout * &bsdf_result.next_emissive_contribution * mis_weight;
+
+        // throughoutを更新（MISウエイト適用）
+        *throughout *= &bsdf_result.throughput_modifier * mis_weight;
     }
 }
 

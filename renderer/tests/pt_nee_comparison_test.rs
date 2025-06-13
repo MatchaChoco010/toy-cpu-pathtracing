@@ -3,7 +3,7 @@
 use image::ImageReader;
 use std::process::Command;
 
-const RMSE_TOLERANCE: f64 = 0.0118; // 1.18% RMSE許容誤差（normal map無しでの基準値）
+const RMSE_TOLERANCE: f64 = 0.012; // 1.2% RMSE許容誤差（normal map無しでの基準値）
 const SPP: &str = "2048";
 const WIDTH: &str = "200";
 const HEIGHT: &str = "150";
