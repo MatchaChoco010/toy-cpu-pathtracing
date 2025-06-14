@@ -105,7 +105,7 @@ fn eval_delta_e<G: ColorGamut>(
         // シグモイドの計算。
         let sigmoid_value = sigmoid(value);
 
-        // スペクトルをXYZに変換する。
+        // スペクトルをRGBに変換する。
         out_rgb[0] += rgb_table[i][0] * sigmoid_value;
         out_rgb[1] += rgb_table[i][1] * sigmoid_value;
         out_rgb[2] += rgb_table[i][2] * sigmoid_value;
@@ -158,8 +158,8 @@ fn calculate_coefficients<G: ColorGamut>(
 
     // 係数の初期化の初期値。
     // 初期値に割と鋭敏で初期値によっては収束しない。
-    // この値は試行錯誤してだいたいのRGBで収束しそうなことを確認したもの。
-    let mut coefficients = [0.5, 0.0, -0.1];
+    // この値は試行錯誤して収束しそうな初期値を決めた。
+    let mut coefficients = [0.35, -0.1, 0.0];
 
     // Adamのパラメータ。
     let mut m = [0.0; 5];
@@ -167,7 +167,7 @@ fn calculate_coefficients<G: ColorGamut>(
     let beta1 = 0.9;
     let beta2 = 0.999;
     let epsilon = 1e-8;
-    let lr = 0.1;
+    let lr = 0.01;
 
     for i in 0..ITERATION {
         // 現在の係数での誤差のdelta Eを計算する。
