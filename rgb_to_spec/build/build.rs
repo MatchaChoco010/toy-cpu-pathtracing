@@ -5,7 +5,11 @@ use std::fs::File;
 use std::io::Write;
 
 use color::gamut::*;
-use rgb_to_spec::{TABLE_SIZE, init_table};
+
+mod data;
+mod init;
+
+use init::{TABLE_SIZE, init_table};
 
 /// 可視光の波長の範囲の最小値 (nm)。
 pub const LAMBDA_MIN: f64 = 360.0;
@@ -54,34 +58,34 @@ fn main() -> anyhow::Result<()> {
     init_table::<GamutSrgb>(&mut z_nodes, &mut table);
     write_binary_table("srgb_table.bin", &z_nodes, &table, &out_dir)?;
 
-    // Rec. 709は同じガマットなのでsRGBと同じテーブルを使用
-    write_binary_table("rec709_table.bin", &z_nodes, &table, &out_dir)?;
+    // // Rec. 709は同じガマットなのでsRGBと同じテーブルを使用
+    // write_binary_table("rec709_table.bin", &z_nodes, &table, &out_dir)?;
 
-    // Display P3
-    init_table::<GamutDciP3D65>(&mut z_nodes, &mut table);
-    write_binary_table("displayp3_table.bin", &z_nodes, &table, &out_dir)?;
+    // // Display P3
+    // init_table::<GamutDciP3D65>(&mut z_nodes, &mut table);
+    // write_binary_table("displayp3_table.bin", &z_nodes, &table, &out_dir)?;
 
-    // P3-D65は同じガマットなのでDisplay P3と同じテーブルを使用
-    write_binary_table("p3d65_table.bin", &z_nodes, &table, &out_dir)?;
+    // // P3-D65は同じガマットなのでDisplay P3と同じテーブルを使用
+    // write_binary_table("p3d65_table.bin", &z_nodes, &table, &out_dir)?;
 
-    // Adobe RGB
-    init_table::<GamutAdobeRgb>(&mut z_nodes, &mut table);
-    write_binary_table("adobergb_table.bin", &z_nodes, &table, &out_dir)?;
+    // // Adobe RGB
+    // init_table::<GamutAdobeRgb>(&mut z_nodes, &mut table);
+    // write_binary_table("adobergb_table.bin", &z_nodes, &table, &out_dir)?;
 
-    // Rec. 2020
-    init_table::<GamutRec2020>(&mut z_nodes, &mut table);
-    write_binary_table("rec2020_table.bin", &z_nodes, &table, &out_dir)?;
+    // // Rec. 2020
+    // init_table::<GamutRec2020>(&mut z_nodes, &mut table);
+    // write_binary_table("rec2020_table.bin", &z_nodes, &table, &out_dir)?;
 
-    // ACEScg
-    init_table::<GamutAcesCg>(&mut z_nodes, &mut table);
-    write_binary_table("acescg_table.bin", &z_nodes, &table, &out_dir)?;
+    // // ACEScg
+    // init_table::<GamutAcesCg>(&mut z_nodes, &mut table);
+    // write_binary_table("acescg_table.bin", &z_nodes, &table, &out_dir)?;
 
-    // ACES2065-1
-    init_table::<GamutAces2065_1>(&mut z_nodes, &mut table);
-    write_binary_table("aces2065_1_table.bin", &z_nodes, &table, &out_dir)?;
+    // // ACES2065-1
+    // init_table::<GamutAces2065_1>(&mut z_nodes, &mut table);
+    // write_binary_table("aces2065_1_table.bin", &z_nodes, &table, &out_dir)?;
 
-    // build.rsがdirtyなときだけ実行するようにする。
-    println!("cargo:rerun-if-changed=build.rs");
+    // build/*.rsがdirtyなときだけ実行するようにする。
+    println!("cargo:rerun-if-changed=build");
 
     Ok(())
 }

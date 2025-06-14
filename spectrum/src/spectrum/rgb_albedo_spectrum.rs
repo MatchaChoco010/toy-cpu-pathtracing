@@ -37,10 +37,10 @@ macro_rules! impl_rgb_albedo_spectrum {
 }
 
 impl_rgb_albedo_spectrum!(ColorSrgb<tone_map::NoneToneMap>);
-impl_rgb_albedo_spectrum!(ColorDisplayP3<tone_map::NoneToneMap>);
-impl_rgb_albedo_spectrum!(ColorP3D65<tone_map::NoneToneMap>);
-impl_rgb_albedo_spectrum!(ColorAdobeRGB<tone_map::NoneToneMap>);
-impl_rgb_albedo_spectrum!(ColorRec709<tone_map::NoneToneMap>);
-impl_rgb_albedo_spectrum!(ColorRec2020<tone_map::NoneToneMap>);
-impl_rgb_albedo_spectrum!(ColorAcesCg<tone_map::NoneToneMap>);
-impl_rgb_albedo_spectrum!(ColorAces2065_1<tone_map::NoneToneMap>);
+// impl_rgb_albedo_spectrum!(ColorDisplayP3<tone_map::NoneToneMap>);
+// impl_rgb_albedo_spectrum!(ColorP3D65<tone_map::NoneToneMap>);
+// impl_rgb_albedo_spectrum!(ColorAdobeRGB<tone_map::NoneToneMap>);
+// impl_rgb_albedo_spectrum!(ColorRec709<tone_map::NoneToneMap>);
+// impl_rgb_albedo_spectrum!(ColorRec2020<tone_map::NoneToneMap>);
+// impl_rgb_albedo_spectrum!(ColorAcesCg<tone_map::NoneToneMap>);
+// impl_rgb_albedo_spectrum!(ColorAces2065_1<tone_map::NoneToneMap>);

@@ -2,8 +2,15 @@
 name = "rgb_to_spec"
 version.workspace = true
 edition.workspace = true
+build = "build/build.rs"
 
-[dependencies]
+[build-dependencies]
+anyhow.workspace = true
+color.workspace = true
+glam.workspace = true
+rayon.workspace = true
+
+[dev-dependencies]
 color.workspace = true
 glam.workspace = true
 rayon.workspace = true

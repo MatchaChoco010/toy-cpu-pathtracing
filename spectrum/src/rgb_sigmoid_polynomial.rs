@@ -8,21 +8,12 @@ use color::{
     Color, ColorAces2065_1, ColorAcesCg, ColorAdobeRGB, ColorDisplayP3, ColorImpl, ColorP3D65,
     ColorRec709, ColorRec2020, ColorSrgb, eotf::Eotf, gamut::ColorGamut, tone_map::NoneToneMap,
 };
+use rgb_to_spec::*;
 
 use crate::spectrum::{LAMBDA_MAX, LAMBDA_MIN};
 
 /// 作成するテーブルの配列のサイズ。
 const TABLE_SIZE: usize = 64;
-
-/// 各色空間のバイナリデータ
-static SRGB_DATA: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/srgb_table.bin"));
-static REC709_DATA: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/rec709_table.bin"));
-static DISPLAYP3_DATA: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/displayp3_table.bin"));
-static P3D65_DATA: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/p3d65_table.bin"));
-static ADOBERGB_DATA: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/adobergb_table.bin"));
-static REC2020_DATA: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/rec2020_table.bin"));
-static ACESCG_DATA: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/acescg_table.bin"));
-static ACES2065_1_DATA: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/aces2065_1_table.bin"));
 
 /// シグモイド関数。
 fn sigmoid(x: f32) -> f32 {
@@ -227,58 +218,58 @@ impl From<ColorSrgb<NoneToneMap>> for RgbSigmoidPolynomial<ColorSrgb<NoneToneMap
     }
 }
 
-impl From<ColorRec709<NoneToneMap>> for RgbSigmoidPolynomial<ColorRec709<NoneToneMap>> {
-    fn from(color: ColorRec709<NoneToneMap>) -> Self {
-        let table = get_table!(REC709_DATA, REC709_TABLE);
-        let [c0, c1, c2] = table.get(color);
-        Self::new(c0, c1, c2)
-    }
-}
+// impl From<ColorRec709<NoneToneMap>> for RgbSigmoidPolynomial<ColorRec709<NoneToneMap>> {
+//     fn from(color: ColorRec709<NoneToneMap>) -> Self {
+//         let table = get_table!(REC709_DATA, REC709_TABLE);
+//         let [c0, c1, c2] = table.get(color);
+//         Self::new(c0, c1, c2)
+//     }
+// }
 
-impl From<ColorDisplayP3<NoneToneMap>> for RgbSigmoidPolynomial<ColorDisplayP3<NoneToneMap>> {
-    fn from(color: ColorDisplayP3<NoneToneMap>) -> Self {
-        let table = get_table!(DISPLAYP3_DATA, DISPLAYP3_TABLE);
-        let [c0, c1, c2] = table.get(color);
-        Self::new(c0, c1, c2)
-    }
-}
+// impl From<ColorDisplayP3<NoneToneMap>> for RgbSigmoidPolynomial<ColorDisplayP3<NoneToneMap>> {
+//     fn from(color: ColorDisplayP3<NoneToneMap>) -> Self {
+//         let table = get_table!(DISPLAYP3_DATA, DISPLAYP3_TABLE);
+//         let [c0, c1, c2] = table.get(color);
+//         Self::new(c0, c1, c2)
+//     }
+// }
 
-impl From<ColorP3D65<NoneToneMap>> for RgbSigmoidPolynomial<ColorP3D65<NoneToneMap>> {
-    fn from(color: ColorP3D65<NoneToneMap>) -> Self {
-        let table = get_table!(P3D65_DATA, P3D65_TABLE);
-        let [c0, c1, c2] = table.get(color);
-        Self::new(c0, c1, c2)
-    }
-}
+// impl From<ColorP3D65<NoneToneMap>> for RgbSigmoidPolynomial<ColorP3D65<NoneToneMap>> {
+//     fn from(color: ColorP3D65<NoneToneMap>) -> Self {
+//         let table = get_table!(P3D65_DATA, P3D65_TABLE);
+//         let [c0, c1, c2] = table.get(color);
+//         Self::new(c0, c1, c2)
+//     }
+// }
 
-impl From<ColorAdobeRGB<NoneToneMap>> for RgbSigmoidPolynomial<ColorAdobeRGB<NoneToneMap>> {
-    fn from(color: ColorAdobeRGB<NoneToneMap>) -> Self {
-        let table = get_table!(ADOBERGB_DATA, ADOBERGB_TABLE);
-        let [c0, c1, c2] = table.get(color);
-        Self::new(c0, c1, c2)
-    }
-}
+// impl From<ColorAdobeRGB<NoneToneMap>> for RgbSigmoidPolynomial<ColorAdobeRGB<NoneToneMap>> {
+//     fn from(color: ColorAdobeRGB<NoneToneMap>) -> Self {
+//         let table = get_table!(ADOBERGB_DATA, ADOBERGB_TABLE);
+//         let [c0, c1, c2] = table.get(color);
+//         Self::new(c0, c1, c2)
+//     }
+// }
 
-impl From<ColorRec2020<NoneToneMap>> for RgbSigmoidPolynomial<ColorRec2020<NoneToneMap>> {
-    fn from(color: ColorRec2020<NoneToneMap>) -> Self {
-        let table = get_table!(REC2020_DATA, REC2020_TABLE);
-        let [c0, c1, c2] = table.get(color);
-        Self::new(c0, c1, c2)
-    }
-}
+// impl From<ColorRec2020<NoneToneMap>> for RgbSigmoidPolynomial<ColorRec2020<NoneToneMap>> {
+//     fn from(color: ColorRec2020<NoneToneMap>) -> Self {
+//         let table = get_table!(REC2020_DATA, REC2020_TABLE);
+//         let [c0, c1, c2] = table.get(color);
+//         Self::new(c0, c1, c2)
+//     }
+// }
 
-impl From<ColorAcesCg<NoneToneMap>> for RgbSigmoidPolynomial<ColorAcesCg<NoneToneMap>> {
-    fn from(color: ColorAcesCg<NoneToneMap>) -> Self {
-        let table = get_table!(ACESCG_DATA, ACESCG_TABLE);
-        let [c0, c1, c2] = table.get(color);
-        Self::new(c0, c1, c2)
-    }
-}
+// impl From<ColorAcesCg<NoneToneMap>> for RgbSigmoidPolynomial<ColorAcesCg<NoneToneMap>> {
+//     fn from(color: ColorAcesCg<NoneToneMap>) -> Self {
+//         let table = get_table!(ACESCG_DATA, ACESCG_TABLE);
+//         let [c0, c1, c2] = table.get(color);
+//         Self::new(c0, c1, c2)
+//     }
+// }
 
-impl From<ColorAces2065_1<NoneToneMap>> for RgbSigmoidPolynomial<ColorAces2065_1<NoneToneMap>> {
-    fn from(color: ColorAces2065_1<NoneToneMap>) -> Self {
-        let table = get_table!(ACES2065_1_DATA, ACES2065_1_TABLE);
-        let [c0, c1, c2] = table.get(color);
-        Self::new(c0, c1, c2)
-    }
-}
+// impl From<ColorAces2065_1<NoneToneMap>> for RgbSigmoidPolynomial<ColorAces2065_1<NoneToneMap>> {
+//     fn from(color: ColorAces2065_1<NoneToneMap>) -> Self {
+//         let table = get_table!(ACES2065_1_DATA, ACES2065_1_TABLE);
+//         let [c0, c1, c2] = table.get(color);
+//         Self::new(c0, c1, c2)
+//     }
+// }
