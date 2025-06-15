@@ -7,21 +7,21 @@ use util_macros::impl_assign_ops;
 use crate::spectrum::{LAMBDA_MAX, LAMBDA_MIN, Spectrum, SpectrumTrait};
 use crate::{SampledSpectrum, SampledWavelengths};
 
-const N_SPECTRUM_SAMPLES: usize = (LAMBDA_MAX - LAMBDA_MIN) as usize;
+pub const N_SPECTRUM_DENSELY_SAMPLES: usize = (LAMBDA_MAX - LAMBDA_MIN) as usize;
 
 /// 密にサンプリングされたスペクトルを表す構造体。
 /// 1nmごとにサンプリングされたスペクトル強度を格納する。
 #[derive(Debug, Clone)]
 pub struct DenselySampledSpectrum {
-    values: [f32; N_SPECTRUM_SAMPLES],
+    values: [f32; N_SPECTRUM_DENSELY_SAMPLES],
     max_value: f32,
 }
 impl DenselySampledSpectrum {
     /// 新しい密にサンプリングされたスペクトルを作成する。
-    pub fn new(values: [f32; N_SPECTRUM_SAMPLES]) -> Spectrum {
+    pub fn new(values: [f32; N_SPECTRUM_DENSELY_SAMPLES]) -> Spectrum {
         let mut max_value = 0.0;
         let mut i = 0;
-        while i < N_SPECTRUM_SAMPLES {
+        while i < N_SPECTRUM_DENSELY_SAMPLES {
             if values[i] > max_value {
                 max_value = values[i];
             }
@@ -32,7 +32,7 @@ impl DenselySampledSpectrum {
 
     /// ゼロで初期化された密にサンプリングされたスペクトルを作成する。
     pub fn zero() -> Self {
-        let values = [0.0; N_SPECTRUM_SAMPLES];
+        let values = [0.0; N_SPECTRUM_DENSELY_SAMPLES];
         Self {
             values,
             max_value: 0.0,
@@ -41,10 +41,19 @@ impl DenselySampledSpectrum {
 
     /// SampledSpectrumを足し合わせる。
     pub fn add_sample(&mut self, lambda: &SampledWavelengths, s: SampledSpectrum) {
-        for index in 0..crate::N_SPECTRUM_SAMPLES {
+        let count = if lambda.is_secondary_terminated() {
+            1
+        } else {
+            crate::N_SPECTRUM_SAMPLES
+        };
+        for index in 0..count {
             let l = lambda.lambda(index);
             let i = (l - LAMBDA_MIN).floor() as usize;
-            let i = if i == N_SPECTRUM_SAMPLES { 0 } else { i };
+            let i = if i == N_SPECTRUM_DENSELY_SAMPLES {
+                0
+            } else {
+                i
+            };
             self.values[i] += s.value(index) / lambda.pdf().value(index);
             self.max_value = self.max_value.max(self.values[i]);
         }
@@ -52,9 +61,9 @@ impl DenselySampledSpectrum {
 
     /// 与えられたスペクトルをサンプリングして、密にサンプリングされたスペクトルを作成する。
     pub fn from(spectrum: &Spectrum) -> Spectrum {
-        let mut values = [0.0; N_SPECTRUM_SAMPLES];
+        let mut values = [0.0; N_SPECTRUM_DENSELY_SAMPLES];
         let mut max_value = 0.0;
-        for i in 0..N_SPECTRUM_SAMPLES {
+        for i in 0..N_SPECTRUM_DENSELY_SAMPLES {
             let lambda = LAMBDA_MIN + i as f32;
             values[i] = spectrum.value(lambda);
             assert!(values[i] >= 0.0);
@@ -82,9 +91,19 @@ impl SpectrumTrait for DenselySampledSpectrum {
         self.max_value
     }
 }
+#[impl_assign_ops(MulAssign)]
+fn mul_assign(lhs: &mut DenselySampledSpectrum, rhs: &Spectrum) {
+    for i in 0..N_SPECTRUM_DENSELY_SAMPLES {
+        let lambda = LAMBDA_MIN + i as f32;
+        lhs.values[i] *= rhs.value(lambda);
+        if lhs.values[i] > lhs.max_value {
+            lhs.max_value = lhs.values[i];
+        }
+    }
+}
 #[impl_assign_ops(DivAssign)]
 fn div_assign(lhs: &mut DenselySampledSpectrum, rhs: &f32) {
-    for i in 0..N_SPECTRUM_SAMPLES {
+    for i in 0..N_SPECTRUM_DENSELY_SAMPLES {
         lhs.values[i] /= *rhs;
     }
 }

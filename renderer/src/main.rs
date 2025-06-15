@@ -10,7 +10,8 @@ pub mod tone_map;
 use camera::Camera;
 use filter::BoxFilter;
 use renderer::{
-    NormalRenderer, RendererArgs, RendererImage, SrgbRendererMis, SrgbRendererNee, SrgbRendererPt,
+    AlbedoRenderer, NormalRenderer, RendererArgs, RendererImage, SrgbRendererMis, SrgbRendererNee,
+    SrgbRendererPt,
 };
 use sampler::{RandomSampler, ZSobolSampler};
 use tone_map::ReinhardToneMap;
@@ -143,6 +144,20 @@ fn render_with_sampler<Id: ::scene::SceneId, F: filter::Filter, S: sampler::Samp
     };
 
     match renderer_type {
+        "albedo" => {
+            let renderer = AlbedoRenderer::new(renderer_args);
+            let mut image = RendererImage::new(width, height, renderer);
+
+            println!("Start rendering...");
+            let start = std::time::Instant::now();
+
+            image.render::<S>();
+
+            let end = start.elapsed();
+            println!("Finish rendering: {} seconds.", end.as_secs_f32());
+
+            image.save(output);
+        }
         "normal" => {
             let renderer = NormalRenderer::new(renderer_args);
             let mut image = RendererImage::new(width, height, renderer);
@@ -159,7 +174,7 @@ fn render_with_sampler<Id: ::scene::SceneId, F: filter::Filter, S: sampler::Samp
         }
         "pt" => {
             let tone_map = ReinhardToneMap::new();
-            let renderer = SrgbRendererPt::new(renderer_args, tone_map, 0.01, max_depth);
+            let renderer = SrgbRendererPt::new(renderer_args, tone_map, 1.0, max_depth);
             let mut image = RendererImage::new(width, height, renderer);
 
             println!("Start rendering...");
@@ -174,7 +189,7 @@ fn render_with_sampler<Id: ::scene::SceneId, F: filter::Filter, S: sampler::Samp
         }
         "nee" => {
             let tone_map = ReinhardToneMap::new();
-            let renderer = SrgbRendererNee::new(renderer_args, tone_map, 0.01, max_depth);
+            let renderer = SrgbRendererNee::new(renderer_args, tone_map, 1.0, max_depth);
             let mut image = RendererImage::new(width, height, renderer);
 
             println!("Start rendering...");
@@ -189,7 +204,7 @@ fn render_with_sampler<Id: ::scene::SceneId, F: filter::Filter, S: sampler::Samp
         }
         "mis" => {
             let tone_map = ReinhardToneMap::new();
-            let renderer = SrgbRendererMis::new(renderer_args, tone_map, 0.01, max_depth);
+            let renderer = SrgbRendererMis::new(renderer_args, tone_map, 1.0, max_depth);
             let mut image = RendererImage::new(width, height, renderer);
 
             println!("Start rendering...");

@@ -30,6 +30,13 @@ impl SpectrumParameter {
         }
     }
 
+    pub fn sample_raw(&self, uv: Vec2) -> [f32; 3] {
+        match self {
+            SpectrumParameter::Constant(_spectrum) => [1.0, 0.0, 1.0],
+            SpectrumParameter::Texture { texture, .. } => texture.sample(uv),
+        }
+    }
+
     /// 定数値からSpectrumParameterを作成する。
     pub fn constant(spectrum: Spectrum) -> Self {
         SpectrumParameter::Constant(spectrum)

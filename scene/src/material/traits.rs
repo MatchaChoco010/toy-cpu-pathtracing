@@ -77,6 +77,13 @@ pub trait BsdfSurfaceMaterial<Id: SceneId>: SurfaceMaterial {
         wi: &Vector3<ShadingTangent>,
         shading_point: &SurfaceInteraction<Id, ShadingTangent>,
     ) -> f32;
+
+    /// Albedoスペクトルをサンプリングする。
+    fn sample_albedo_spectrum(
+        &self,
+        uv: glam::Vec2,
+        lambda: &SampledWavelengths,
+    ) -> SampledSpectrum;
 }
 
 /// EDF発光計算を提供するマテリアルトレイト。

@@ -577,7 +577,6 @@ pub fn load_scene_5<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
         transform: Transform::identity(),
     });
 
-    // カメラをうさぎに近づける（より大きく映るように）
     camera.set_look_to(
         Point3::new(0.3, 1.6, 2.8),                // より近い位置
         Vector3::new(0.0, -0.5, -2.0).normalize(), // 少し上から見下ろす

@@ -18,11 +18,13 @@ use crate::sampler::Sampler;
 mod base_renderer;
 mod common;
 
+mod albedo_renderer;
 mod mis_renderer;
 mod nee_renderer;
 mod normal_renderer;
 mod pt_renderer;
 
+pub use albedo_renderer::AlbedoRenderer;
 pub use mis_renderer::SrgbRendererMis;
 pub use nee_renderer::SrgbRendererNee;
 pub use normal_renderer::NormalRenderer;

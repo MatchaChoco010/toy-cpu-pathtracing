@@ -17,19 +17,12 @@ const TABLE_SIZE: usize = 64;
 
 /// シグモイド関数。
 fn sigmoid(x: f32) -> f32 {
-    if x.is_infinite() {
-        return if x > 0.0 { 1.0 } else { 0.0 };
-    }
-    0.5 + x / (2.0 * (1.0 + x * x).sqrt())
+    1.0 / (1.0 + (-x).exp())
 }
 
 /// 係数から二次式を計算する関数。
 fn parabolic(t: f32, coefficients: &[f32]) -> f32 {
-    // coefficients[0]だけxに平行移動してcoefficients[1]だけyに平行移動した、
-    // 係数coefficients[2]に100を乗じた二次式。
-    let x = t - coefficients[0];
-    let xx = 100.0 * coefficients[2] * x * x;
-    xx + coefficients[1]
+    t * t * coefficients[0] + t * coefficients[1] + coefficients[2]
 }
 
 /// バイナリデータから変換されたテーブル構造体
@@ -113,7 +106,7 @@ impl RgbToSpectrumTable {
 
         // RGBの成分が均一の場合は特別に定数関数になるように返す。
         if rgb.x == rgb.y && rgb.y == rgb.z {
-            return [0.0, 0.0, (rgb.x - 0.5) / (rgb.x * (1.0 - rgb.x).sqrt())];
+            return [0.0, 0.0, (rgb.x / (1.0 - rgb.x)).ln()];
         }
 
         // RGBのEOTFを逆変換してリニアな値にする。

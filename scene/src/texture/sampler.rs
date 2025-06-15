@@ -12,7 +12,7 @@ pub trait TextureSample<T> {
 pub fn bilinear_sample_rgb(data: &[u8], width: u32, height: u32, uv: Vec2) -> [f32; 3] {
     // UV座標をラップ
     let u = uv.x.fract().abs();
-    let v = 1.0 - uv.y.fract().abs(); // Y軸反転を削除してテスト
+    let v = 1.0 - uv.y.fract().abs();
 
     // 連続座標を計算
     let x = u * (width as f32 - 1.0);
