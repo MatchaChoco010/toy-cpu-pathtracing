@@ -3,6 +3,10 @@
 use std::sync::Arc;
 
 use crate::spectrum::{Spectrum, SpectrumTrait};
+use crate::{
+    ConstantSpectrum, DenselySampledSpectrum, LAMBDA_MIN, N_SPECTRUM_DENSELY_SAMPLES,
+    inner_product, presets,
+};
 
 /// 線形補間されたスペクトルを表す構造体。
 #[derive(Clone)]
@@ -27,7 +31,7 @@ impl PiecewiseLinearSpectrum {
     }
 
     /// 波長と値が交互に並んだ配列から新しい線形補間されたスペクトルを作成する。
-    pub fn from_interleaved(lambdas_and_values: &[f32]) -> Spectrum {
+    pub fn from_interleaved(lambdas_and_values: &[f32], normalized: bool) -> Spectrum {
         assert_eq!(lambdas_and_values.len() % 2, 0);
         let len = lambdas_and_values.len() / 2;
         let (lambdas, values) = lambdas_and_values.chunks_exact(2).fold(
@@ -38,7 +42,25 @@ impl PiecewiseLinearSpectrum {
                 (lambdas, values)
             },
         );
-        Arc::new(Self { lambdas, values })
+        let spec = Self { lambdas, values };
+
+        // 光源用の正規化されたスペクトルの場合、Yとの内積で割る
+        if normalized {
+            let y = presets::y();
+            let y_self = inner_product(&spec, &y);
+            if y_self == 0.0 {
+                ConstantSpectrum::new(0.0)
+            } else {
+                let mut values = [0.0; N_SPECTRUM_DENSELY_SAMPLES];
+                for i in 0..N_SPECTRUM_DENSELY_SAMPLES {
+                    let lambda = LAMBDA_MIN + i as f32;
+                    values[i] = spec.value(lambda) / y_self;
+                }
+                DenselySampledSpectrum::new(values)
+            }
+        } else {
+            Arc::new(spec)
+        }
     }
 }
 impl SpectrumTrait for PiecewiseLinearSpectrum {

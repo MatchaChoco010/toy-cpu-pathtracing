@@ -58,13 +58,13 @@ pub trait SpectrumTrait: Send + Sync {
             inner_product(self, &presets::x()),
             inner_product(self, &presets::y()),
             inner_product(self, &presets::z()),
-        ) / presets::y_integral();
+        );
         Xyz::from(xyz)
     }
 }
 
 /// スペクトル同士の内積を計算する関数。
-fn inner_product<S>(s1: &S, s2: &Spectrum) -> f32
+pub fn inner_product<S>(s1: &S, s2: &Spectrum) -> f32
 where
     S: SpectrumTrait + ?Sized,
 {

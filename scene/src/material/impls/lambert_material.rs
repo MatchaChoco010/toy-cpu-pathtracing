@@ -189,4 +189,12 @@ impl<Id: SceneId> BsdfSurfaceMaterial<Id> for LambertMaterial {
         // BSDF PDF計算（ノーマルマップタンジェント空間で実行）
         self.bsdf.pdf(&wo_normalmap, &wi_normalmap)
     }
+
+    fn sample_albedo_spectrum(
+        &self,
+        uv: glam::Vec2,
+        lambda: &SampledWavelengths,
+    ) -> spectrum::SampledSpectrum {
+        self.albedo.sample(uv).sample(lambda)
+    }
 }
