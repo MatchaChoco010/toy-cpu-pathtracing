@@ -17,3 +17,6 @@ util_macros.workspace = true
 
 [dev-dependencies]
 imageproc.workspace = true
+
+[lints]
+workspace = true

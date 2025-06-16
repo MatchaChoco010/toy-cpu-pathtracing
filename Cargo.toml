@@ -33,3 +33,6 @@ rgb_to_spec = { path = "rgb_to_spec" }
 scene = { path = "scene" }
 spectrum = { path = "spectrum" }
 util_macros = { path = "util_macros" }
+
+[workspace.lints.clippy]
+excessive_precision = "allow"

@@ -11,3 +11,6 @@ math.workspace = true
 spectrum.workspace = true
 tobj.workspace = true
 util_macros.workspace = true
+
+[lints]
+workspace = true
