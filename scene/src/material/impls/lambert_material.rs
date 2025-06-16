@@ -1,11 +1,13 @@
 //! 拡散反射（Lambert）マテリアル実装。
 
+use std::sync::Arc;
+
 use math::{Normal, ShadingTangent, Transform, Vector3};
 use spectrum::SampledWavelengths;
 
 use crate::{
     BsdfSurfaceMaterial, Material, MaterialEvaluationResult, MaterialSample,
-    NonSpecularDirectionSample, NormalParameter, NormalizedLambertBsdf, SceneId, SpectrumParameter,
+    NonSpecularDirectionSample, NormalParameter, NormalizedLambertBsdf, SpectrumParameter,
     SurfaceInteraction, SurfaceMaterial, material::bsdf::BsdfSample,
 };
 
@@ -27,7 +29,7 @@ impl LambertMaterial {
     /// - `albedo` - 反射率パラメータ
     /// - `normal` - ノーマルマップパラメータ
     pub fn new(albedo: SpectrumParameter, normal: NormalParameter) -> Material {
-        std::sync::Arc::new(Self {
+        Arc::new(Self {
             albedo,
             normal,
             bsdf: NormalizedLambertBsdf::new(),
@@ -38,14 +40,18 @@ impl SurfaceMaterial for LambertMaterial {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+
+    fn as_bsdf_material(&self) -> Option<&dyn BsdfSurfaceMaterial> {
+        Some(self)
+    }
 }
-impl<Id: SceneId> BsdfSurfaceMaterial<Id> for LambertMaterial {
+impl BsdfSurfaceMaterial for LambertMaterial {
     fn sample(
         &self,
         uv: glam::Vec2,
         lambda: &SampledWavelengths,
         wo: &Vector3<ShadingTangent>,
-        shading_point: &SurfaceInteraction<Id, ShadingTangent>,
+        shading_point: &SurfaceInteraction<ShadingTangent>,
     ) -> MaterialSample {
         let albedo = self.albedo.sample(shading_point.uv).sample(lambda);
 
@@ -108,7 +114,7 @@ impl<Id: SceneId> BsdfSurfaceMaterial<Id> for LambertMaterial {
         lambda: &SampledWavelengths,
         wo: &Vector3<ShadingTangent>,
         wi: &Vector3<ShadingTangent>,
-        shading_point: &SurfaceInteraction<Id, ShadingTangent>,
+        shading_point: &SurfaceInteraction<ShadingTangent>,
     ) -> MaterialEvaluationResult {
         let albedo = self.albedo.sample(shading_point.uv).sample(lambda);
 
@@ -153,7 +159,7 @@ impl<Id: SceneId> BsdfSurfaceMaterial<Id> for LambertMaterial {
         _lambda: &SampledWavelengths,
         wo: &Vector3<ShadingTangent>,
         wi: &Vector3<ShadingTangent>,
-        shading_point: &SurfaceInteraction<Id, ShadingTangent>,
+        shading_point: &SurfaceInteraction<ShadingTangent>,
     ) -> f32 {
         // 法線マップから法線を取得（ない場合はデフォルトのZ+法線）
         let normal_map = self

@@ -45,7 +45,7 @@ pub trait Primitive<Id: SceneId>: Send + Sync {
 /// ジオメトリタイプのPrimitiveを表すトレイト。
 pub trait PrimitiveGeometry<Id: SceneId>: Primitive<Id> {
     /// バウンディングボックスを取得する。
-    fn bounds(&self, _geometry_repository: &GeometryRepository<Id>) -> Bounds<Render>;
+    fn bounds(&self, geometry_repository: &GeometryRepository<Id>) -> Bounds<Render>;
 
     /// 表面マテリアルを取得する。
     fn surface_material(&self) -> Material;
@@ -58,19 +58,19 @@ pub trait PrimitiveGeometry<Id: SceneId>: Primitive<Id> {
     /// ジオメトリとレイの交差を行い情報を返す。
     fn intersect(
         &self,
-        _primitive_index: PrimitiveIndex<Id>,
-        _geometry_repository: &GeometryRepository<Id>,
-        _ray: &Ray<Render>,
-        _t_max: f32,
+        primitive_index: PrimitiveIndex<Id>,
+        geometry_repository: &GeometryRepository<Id>,
+        ray: &Ray<Render>,
+        t_max: f32,
     ) -> Option<Intersection<Id, Render>>;
 
     /// ジオメトリとレイの交差判定を行う。
     fn intersect_p(
         &self,
-        _primitive_index: PrimitiveIndex<Id>,
-        _geometry_repository: &GeometryRepository<Id>,
-        _ray: &Ray<Render>,
-        _t_max: f32,
+        primitive_index: PrimitiveIndex<Id>,
+        geometry_repository: &GeometryRepository<Id>,
+        ray: &Ray<Render>,
+        t_max: f32,
     ) -> bool;
 }
 
@@ -90,16 +90,15 @@ pub trait PrimitiveNonDeltaLight<Id: SceneId>: PrimitiveLight<Id> {
     /// ライト上の点とそのスペクトル放射輝度のサンプリングを行う。
     fn sample_radiance(
         &self,
-        _primitive_index: PrimitiveIndex<Id>,
-        _geometry_repository: &GeometryRepository<Id>,
-        _shading_point: &SurfaceInteraction<Id, Render>,
-        _lambda: &SampledWavelengths,
-        _s: f32,
-        _uv: glam::Vec2,
-    ) -> AreaLightSampleRadiance<Id, Render>;
+        geometry_repository: &GeometryRepository<Id>,
+        shading_point: &SurfaceInteraction<Render>,
+        lambda: &SampledWavelengths,
+        s: f32,
+        uv: glam::Vec2,
+    ) -> AreaLightSampleRadiance<Render>;
 
     /// 交差点をライトのサンプルでサンプルしたときのpdfを計算する。
-    fn pdf_light_sample(&self, _interaction: &SurfaceInteraction<Id, Render>) -> f32;
+    fn pdf_light_sample(&self, intersection: &Intersection<Id, Render>) -> f32;
 }
 
 /// Deltaな点光源のPrimitiveを表すトレイト。
@@ -107,8 +106,8 @@ pub trait PrimitiveDeltaPointLight<Id: SceneId>: PrimitiveLight<Id> {
     /// 与えた波長でのスペクトル放射強度の計算を行う。
     fn calculate_intensity(
         &self,
-        _shading_point: &SurfaceInteraction<Id, Render>,
-        _lambda: &SampledWavelengths,
+        shading_point: &SurfaceInteraction<Render>,
+        lambda: &SampledWavelengths,
     ) -> DeltaPointLightIntensity<Render>;
 }
 
@@ -117,8 +116,8 @@ pub trait PrimitiveDeltaDirectionalLight<Id: SceneId>: PrimitiveLight<Id> {
     /// 与えた波長でのスペクトル放射強度の計算を行う。
     fn calculate_intensity(
         &self,
-        _shading_point: &SurfaceInteraction<Id, Render>,
-        _lambda: &SampledWavelengths,
+        shading_point: &SurfaceInteraction<Render>,
+        lambda: &SampledWavelengths,
     ) -> DeltaDirectionalLightIntensity<Render>;
 }
 
@@ -127,18 +126,15 @@ pub trait PrimitiveAreaLight<Id: SceneId>: PrimitiveNonDeltaLight<Id> {
     /// 与えた波長における交差点でのスペクトル放射輝度を計算する。
     fn intersect_radiance(
         &self,
-        _shading_point: &SurfaceInteraction<Id, Render>,
-        _interaction: &SurfaceInteraction<Id, Render>,
-        _lambda: &SampledWavelengths,
+        shading_point: &SurfaceInteraction<Render>,
+        interaction: &SurfaceInteraction<Render>,
+        lambda: &SampledWavelengths,
     ) -> SampledSpectrum;
 }
 
 /// 無限光源のPrimitiveを表すトレイト。
 pub trait PrimitiveInfiniteLight<Id: SceneId>: PrimitiveNonDeltaLight<Id> {
     /// 与えた波長における特定方向でのスペクトル放射輝度を計算する。
-    fn direction_radiance(
-        &self,
-        _ray: &Ray<Render>,
-        _lambda: &SampledWavelengths,
-    ) -> SampledSpectrum;
+    fn direction_radiance(&self, ray: &Ray<Render>, lambda: &SampledWavelengths)
+    -> SampledSpectrum;
 }

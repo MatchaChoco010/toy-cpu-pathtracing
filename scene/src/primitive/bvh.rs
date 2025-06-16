@@ -4,7 +4,7 @@ use math::{Bounds, CoordinateSystem, Ray, Render, Transform, Vector3};
 use util_macros::impl_binary_ops;
 
 use crate::{
-    PrimitiveIndex, SceneId, SurfaceInteraction,
+    InteractGeometryInfo, PrimitiveIndex, SceneId, SurfaceInteraction,
     bvh::{Bvh, BvhItem, BvhItemData, HitInfo},
     geometry::GeometryRepository,
     primitive::PrimitiveRepository,
@@ -86,8 +86,12 @@ pub struct Intersection<Id: SceneId, C: CoordinateSystem> {
     pub t_hit: f32,
     /// 出射方向。
     pub wo: Vector3<C>,
+    /// 交差したプリミティブのインデックス。
+    pub primitive_index: PrimitiveIndex<Id>,
+    /// 交差したジオメトリの追加情報。
+    pub geometry_info: InteractGeometryInfo,
     /// 交差した情報。
-    pub interaction: SurfaceInteraction<Id, C>,
+    pub interaction: SurfaceInteraction<C>,
 }
 #[impl_binary_ops(Mul)]
 fn mul<Id: SceneId, From: CoordinateSystem, To: CoordinateSystem>(
@@ -97,6 +101,8 @@ fn mul<Id: SceneId, From: CoordinateSystem, To: CoordinateSystem>(
     Intersection {
         t_hit: rhs.t_hit,
         wo: lhs * rhs.wo,
+        primitive_index: rhs.primitive_index,
+        geometry_info: rhs.geometry_info,
         interaction: lhs * &rhs.interaction,
     }
 }

@@ -127,11 +127,11 @@ impl<Id: SceneId> Scene<Id> {
     pub fn calculate_light(
         &self,
         primitive_index: PrimitiveIndex<Id>,
-        shading_point: &SurfaceInteraction<Id, Render>,
+        shading_point: &SurfaceInteraction<Render>,
         lambda: &SampledWavelengths,
         s: f32,
         uv: glam::Vec2,
-    ) -> LightIntensity<Id, Render> {
+    ) -> LightIntensity<Render> {
         let primitive = self.primitive_repository.get(primitive_index);
         if let Some(delta_light) = primitive.as_delta_point_light() {
             let intensity = delta_light.calculate_intensity(shading_point, lambda);
@@ -142,14 +142,8 @@ impl<Id: SceneId> Scene<Id> {
         } else if let Some(_inf_light) = primitive.as_infinite_light() {
             todo!()
         } else if let Some(area_light) = primitive.as_area_light() {
-            let radiance = area_light.sample_radiance(
-                primitive_index,
-                &self.geometry_repository,
-                shading_point,
-                lambda,
-                s,
-                uv,
-            );
+            let radiance =
+                area_light.sample_radiance(&self.geometry_repository, shading_point, lambda, s, uv);
             LightIntensity::RadianceAreaLight(radiance)
         } else {
             panic!("Primitive is not a light");
@@ -160,19 +154,19 @@ impl<Id: SceneId> Scene<Id> {
     pub fn pdf_light_sample(
         &self,
         light_sampler: &LightSampler<Id>,
-        shading_point: &SurfaceInteraction<Id, Render>,
-        interaction: &SurfaceInteraction<Id, Render>,
+        shading_point: &SurfaceInteraction<Render>,
+        intersection: &Intersection<Id, Render>,
     ) -> f32 {
-        let primitive_index = interaction.primitive_index;
-        let primitive = self.primitive_repository.get(primitive_index);
+        let primitive = self.primitive_repository.get(intersection.primitive_index);
         if let Some(light) = primitive.as_non_delta_light() {
             // ライトの選択確率を計算する。
-            let probability = light_sampler.probability(&primitive_index);
+            let probability = light_sampler.probability(&intersection.primitive_index);
 
             // ライトのpdfを計算する。
-            let light_pdf_area = light.pdf_light_sample(interaction);
+            let light_pdf_area = light.pdf_light_sample(intersection);
 
             // pdfを面積要素から方向要素に変換する。
+            let interaction = &intersection.interaction;
             let distance_vector = interaction.position.vector_to(shading_point.position);
             let distance = distance_vector.length();
             let wo = -distance_vector.normalize();
