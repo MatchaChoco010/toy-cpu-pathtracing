@@ -10,17 +10,17 @@ use crate::texture::{FloatTexture, NormalTexture, RgbTexture, SpectrumType};
 
 /// スペクトラムパラメータ。
 #[derive(Clone)]
-pub enum SpectrumParameter<G: color::gamut::ColorGamut, E: color::eotf::Eotf> {
+pub enum SpectrumParameter {
     /// 定数値。
     Constant(Spectrum),
     /// テクスチャから取得。
     Texture {
-        texture: Arc<RgbTexture<G, E>>,
+        texture: Arc<RgbTexture>,
         spectrum_type: SpectrumType,
     },
 }
 
-impl<G: color::gamut::ColorGamut, E: color::eotf::Eotf> SpectrumParameter<G, E> {
+impl SpectrumParameter {
     pub fn sample_raw(&self, uv: Vec2) -> [f32; 3] {
         match self {
             SpectrumParameter::Constant(_spectrum) => [1.0, 0.0, 1.0],
@@ -34,86 +34,13 @@ impl<G: color::gamut::ColorGamut, E: color::eotf::Eotf> SpectrumParameter<G, E> 
     }
 
     /// テクスチャからSpectrumParameterを作成する。
-    pub fn texture(texture: Arc<RgbTexture<G, E>>, spectrum_type: SpectrumType) -> Self {
+    pub fn texture(texture: Arc<RgbTexture>, spectrum_type: SpectrumType) -> Self {
         SpectrumParameter::Texture {
             texture,
             spectrum_type,
         }
     }
-}
 
-// sRGB色域用の実装
-impl<E: color::eotf::Eotf> SpectrumParameter<color::gamut::GamutSrgb, E> {
-    /// UV座標でスペクトラムをサンプリングする。
-    pub fn sample(&self, uv: Vec2) -> Spectrum {
-        match self {
-            SpectrumParameter::Constant(spectrum) => spectrum.clone(),
-            SpectrumParameter::Texture {
-                texture,
-                spectrum_type,
-            } => texture.sample_spectrum(uv, *spectrum_type),
-        }
-    }
-}
-
-// Display P3色域用の実装
-impl<E: color::eotf::Eotf> SpectrumParameter<color::gamut::GamutDciP3D65, E> {
-    /// UV座標でスペクトラムをサンプリングする。
-    pub fn sample(&self, uv: Vec2) -> Spectrum {
-        match self {
-            SpectrumParameter::Constant(spectrum) => spectrum.clone(),
-            SpectrumParameter::Texture {
-                texture,
-                spectrum_type,
-            } => texture.sample_spectrum(uv, *spectrum_type),
-        }
-    }
-}
-
-// Adobe RGB色域用の実装
-impl<E: color::eotf::Eotf> SpectrumParameter<color::gamut::GamutAdobeRgb, E> {
-    /// UV座標でスペクトラムをサンプリングする。
-    pub fn sample(&self, uv: Vec2) -> Spectrum {
-        match self {
-            SpectrumParameter::Constant(spectrum) => spectrum.clone(),
-            SpectrumParameter::Texture {
-                texture,
-                spectrum_type,
-            } => texture.sample_spectrum(uv, *spectrum_type),
-        }
-    }
-}
-
-// Rec. 2020色域用の実装
-impl<E: color::eotf::Eotf> SpectrumParameter<color::gamut::GamutRec2020, E> {
-    /// UV座標でスペクトラムをサンプリングする。
-    pub fn sample(&self, uv: Vec2) -> Spectrum {
-        match self {
-            SpectrumParameter::Constant(spectrum) => spectrum.clone(),
-            SpectrumParameter::Texture {
-                texture,
-                spectrum_type,
-            } => texture.sample_spectrum(uv, *spectrum_type),
-        }
-    }
-}
-
-// ACES CG色域用の実装
-impl<E: color::eotf::Eotf> SpectrumParameter<color::gamut::GamutAcesCg, E> {
-    /// UV座標でスペクトラムをサンプリングする。
-    pub fn sample(&self, uv: Vec2) -> Spectrum {
-        match self {
-            SpectrumParameter::Constant(spectrum) => spectrum.clone(),
-            SpectrumParameter::Texture {
-                texture,
-                spectrum_type,
-            } => texture.sample_spectrum(uv, *spectrum_type),
-        }
-    }
-}
-
-// ACES 2065-1色域用の実装
-impl<E: color::eotf::Eotf> SpectrumParameter<color::gamut::GamutAces2065_1, E> {
     /// UV座標でスペクトラムをサンプリングする。
     pub fn sample(&self, uv: Vec2) -> Spectrum {
         match self {
