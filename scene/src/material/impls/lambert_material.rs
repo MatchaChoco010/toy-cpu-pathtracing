@@ -1,13 +1,12 @@
 //! 拡散反射（Lambert）マテリアル実装。
 
 use math::{Normal, ShadingTangent, Transform, Vector3};
-use spectrum::{SampledSpectrum, SampledWavelengths};
+use spectrum::SampledWavelengths;
 
-use crate::material::bsdf::BsdfSample;
 use crate::{
     BsdfSurfaceMaterial, Material, MaterialEvaluationResult, MaterialSample,
     NonSpecularDirectionSample, NormalParameter, NormalizedLambertBsdf, SceneId, SpectrumParameter,
-    SurfaceInteraction, SurfaceMaterial,
+    SurfaceInteraction, SurfaceMaterial, material::bsdf::BsdfSample,
 };
 
 /// 拡散反射のみを行うLambertマテリアル。
@@ -81,7 +80,7 @@ impl<Id: SceneId> BsdfSurfaceMaterial<Id> for LambertMaterial {
 
                 // 幾何学的制約チェック: wiとwoが幾何法線に対して同じ側にあるかチェック
                 let geometry_normal = shading_point.normal;
-                let wi_cos_geometric = geometry_normal.dot(&wi_shading);
+                let wi_cos_geometric = geometry_normal.dot(wi_shading);
                 let wo_cos_geometric = geometry_normal.dot(wo);
                 let sample = if wi_cos_geometric.signum() != wo_cos_geometric.signum() {
                     // 不透明マテリアルなので表面貫通サンプルは無効

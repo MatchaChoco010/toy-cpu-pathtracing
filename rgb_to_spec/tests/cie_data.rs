@@ -1907,7 +1907,7 @@ const D65: [f32; N_CIE_SAMPLES] = [
 ];
 
 pub fn cie_value_x(lambda: f32) -> f32 {
-    if lambda < LAMBDA_MIN || lambda > LAMBDA_MAX {
+    if !(LAMBDA_MIN..=LAMBDA_MAX).contains(&lambda) {
         return 0.0;
     }
     let index = (lambda - LAMBDA_MIN) as usize;
@@ -1916,7 +1916,7 @@ pub fn cie_value_x(lambda: f32) -> f32 {
 
 pub fn cie_value_y(lambda: f32) -> f32 {
     let index = (lambda - LAMBDA_MIN) as usize;
-    if lambda < LAMBDA_MIN || lambda > LAMBDA_MAX {
+    if !(LAMBDA_MIN..=LAMBDA_MAX).contains(&lambda) {
         return 0.0;
     }
     CIE_Y[index]
@@ -1924,7 +1924,7 @@ pub fn cie_value_y(lambda: f32) -> f32 {
 
 pub fn cie_value_z(lambda: f32) -> f32 {
     let index = (lambda - LAMBDA_MIN) as usize;
-    if lambda < LAMBDA_MIN || lambda > LAMBDA_MAX {
+    if !(LAMBDA_MIN..=LAMBDA_MAX).contains(&lambda) {
         return 0.0;
     }
     CIE_Z[index]
@@ -1932,7 +1932,7 @@ pub fn cie_value_z(lambda: f32) -> f32 {
 
 pub fn cie_value_d65(lambda: f32) -> f32 {
     let index = (lambda - LAMBDA_MIN) as usize;
-    if lambda < LAMBDA_MIN || lambda > LAMBDA_MAX {
+    if !(LAMBDA_MIN..=LAMBDA_MAX).contains(&lambda) {
         return 0.0;
     }
     D65[index]

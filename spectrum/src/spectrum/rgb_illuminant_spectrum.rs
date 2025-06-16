@@ -7,9 +7,11 @@ use color::{
     ColorRec2020, ColorSrgb, tone_map,
 };
 
-use crate::presets;
-use crate::rgb_sigmoid_polynomial::RgbSigmoidPolynomial;
-use crate::spectrum::{Spectrum, SpectrumTrait};
+use crate::{
+    presets,
+    rgb_sigmoid_polynomial::RgbSigmoidPolynomial,
+    spectrum::{Spectrum, SpectrumTrait},
+};
 
 #[derive(Clone)]
 pub struct RgbIlluminantSpectrum<C: Color + Clone> {

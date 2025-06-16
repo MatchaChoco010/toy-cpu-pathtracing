@@ -2,10 +2,10 @@
 
 use std::sync::Arc;
 
-use crate::spectrum::{Spectrum, SpectrumTrait};
 use crate::{
     ConstantSpectrum, DenselySampledSpectrum, LAMBDA_MIN, N_SPECTRUM_DENSELY_SAMPLES,
     inner_product, presets,
+    spectrum::{Spectrum, SpectrumTrait},
 };
 
 /// 線形補間されたスペクトルを表す構造体。

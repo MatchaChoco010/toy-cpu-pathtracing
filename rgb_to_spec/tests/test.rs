@@ -226,10 +226,8 @@ fn color_match_test<G: ColorGamut, E: Eotf>(data: &[u8]) {
         .into_par_iter()
         .map(|r| {
             (0..=(255 / 32))
-                .into_iter()
                 .map(|g| {
                     (0..=(255 / 32))
-                        .into_iter()
                         .map(|b| {
                             let r = r * 32;
                             let g = g * 32;
@@ -249,8 +247,8 @@ fn color_match_test<G: ColorGamut, E: Eotf>(data: &[u8]) {
                                 rgb_to_lab(evaluated_color_linear.rgb(), G::new().rgb_to_xyz());
 
                             let delta_e = (color_lab - evaluated_color_lab).length();
-                            let error = delta_e > 10.0;
-                            error
+
+                            delta_e > 10.0
                         })
                         .collect::<Vec<_>>()
                         .into_iter()
@@ -275,10 +273,8 @@ fn color_match_test<G: ColorGamut, E: Eotf>(data: &[u8]) {
         .into_par_iter()
         .map(|r| {
             (0..=(255 / 32))
-                .into_iter()
                 .map(|g| {
                     (0..=(255 / 32))
-                        .into_iter()
                         .map(|b| {
                             let r = r * 32;
                             let g = g * 32;
@@ -299,14 +295,14 @@ fn color_match_test<G: ColorGamut, E: Eotf>(data: &[u8]) {
 
                             let delta_e = (color_lab - evaluated_color_lab).length();
                             let error = delta_e > 3.0;
-                            // if error {
-                            //     eprintln!(
-                            //         "Color mismatch: RGB({:.3}, {:.3}, {:.3}) vs Evaluated RGB({:.3}, {:.3}, {:.3}), Delta E: {:.3}",
-                            //         color.rgb().x, color.rgb().y, color.rgb().z,
-                            //         evaluated_color.rgb().x, evaluated_color.rgb().y, evaluated_color.rgb().z,
-                            //         delta_e
-                            //     );
-                            // }
+                            if error {
+                                eprintln!(
+                                    "Color mismatch: RGB({:.3}, {:.3}, {:.3}) vs Evaluated RGB({:.3}, {:.3}, {:.3}), Delta E: {:.3}",
+                                    color.rgb().x, color.rgb().y, color.rgb().z,
+                                    evaluated_color.rgb().x, evaluated_color.rgb().y, evaluated_color.rgb().z,
+                                    delta_e
+                                );
+                            }
                             error
                         })
                         .collect::<Vec<_>>()
@@ -327,20 +323,6 @@ fn color_match_test<G: ColorGamut, E: Eotf>(data: &[u8]) {
         error_3,
         256 / 32 * 256 / 32 * 256 / 32
     );
-
-    // let green = ColorImpl::<G, NoneToneMap, E>::new(0.0, 0.9, 0.0);
-    // let evaluated_green = evaluate_spectrum::<G, E>(data, &green);
-    // println!(
-    //     "Green color: RGB({:.3}, {:.3}, {:.3}), Evaluated RGB({:.3}, {:.3}, {:.3})",
-    //     green.rgb().x,
-    //     green.rgb().y,
-    //     green.rgb().z,
-    //     evaluated_green.rgb().x,
-    //     evaluated_green.rgb().y,
-    //     evaluated_green.rgb().z
-    // );
-
-    // println!("");
 }
 
 #[test]
@@ -348,4 +330,53 @@ fn test_srgb_match() {
     println!("Testing sRGB color match...");
     let data = rgb_to_spec::SRGB_DATA;
     color_match_test::<GamutSrgb, GammaSrgb>(data);
+}
+
+#[test]
+fn test_rec709_match() {
+    println!("Testing Rec. 709 color match...");
+    let data = rgb_to_spec::SRGB_DATA;
+    color_match_test::<GamutSrgb, GammaRec709>(data);
+}
+
+#[test]
+fn test_display_p3_match() {
+    println!("Testing Display P3 color match...");
+    let data = rgb_to_spec::DISPLAYP3_DATA;
+    color_match_test::<GamutDciP3D65, GammaSrgb>(data);
+}
+
+#[test]
+fn test_p3d65_match() {
+    println!("Testing P3 D65 color match...");
+    let data = rgb_to_spec::P3D65_DATA;
+    color_match_test::<GamutDciP3D65, Gamma2_6>(data);
+}
+
+#[test]
+fn test_adobe_rgb_match() {
+    println!("Testing Adobe RGB color match...");
+    let data = rgb_to_spec::ADOBERGB_DATA;
+    color_match_test::<GamutAdobeRgb, Gamma2_2>(data);
+}
+
+#[test]
+fn test_rec2020_match() {
+    println!("Testing Rec. 2020 color match...");
+    let data = rgb_to_spec::REC2020_DATA;
+    color_match_test::<GamutRec2020, GammaRec709>(data);
+}
+
+#[test]
+fn test_acescg_match() {
+    println!("Testing ACEScg color match...");
+    let data = rgb_to_spec::ACESCG_DATA;
+    color_match_test::<GamutAcesCg, Linear>(data);
+}
+
+#[test]
+fn test_aces2065_1_match() {
+    println!("Testing ACES2065-1 color match...");
+    let data = rgb_to_spec::ACES2065_1_DATA;
+    color_match_test::<GamutAces2065_1, Linear>(data);
 }

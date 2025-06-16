@@ -1,16 +1,18 @@
 //! MISでBSDFサンプルとNEEを組み合わせたレンダラーを実装するモジュール。
 
-use color::ColorSrgb;
-use color::tone_map::ToneMap;
+use color::{ColorSrgb, tone_map::ToneMap};
 use math::{Render, ShadingTangent, Transform};
 use scene::{Intersection, LightIntensity, NonSpecularDirectionSample, SceneId};
 use spectrum::SampledSpectrum;
 
-use crate::filter::Filter;
-use crate::renderer::base_renderer::BsdfSamplingResult;
-use crate::renderer::common::balance_heuristic;
-use crate::renderer::{NeeResult, Renderer, RendererArgs, RenderingStrategy};
-use crate::sampler::Sampler;
+use crate::{
+    filter::Filter,
+    renderer::{
+        NeeResult, Renderer, RendererArgs, RenderingStrategy, base_renderer::BsdfSamplingResult,
+        common::balance_heuristic,
+    },
+    sampler::Sampler,
+};
 
 use super::base_renderer::BaseSrgbRenderer;
 use super::common;
@@ -130,7 +132,7 @@ impl RenderingStrategy for MisStrategy {
             current_hit_info,
         );
         // NEE寄与を一時変数に蓄積（throughout、MISウエイト適用）
-        *sample_contribution += &*throughout * &nee_result.contribution * nee_result.mis_weight;
+        *sample_contribution += throughout * &nee_result.contribution * nee_result.mis_weight;
     }
 
     fn calculate_bsdf<Id: SceneId>(

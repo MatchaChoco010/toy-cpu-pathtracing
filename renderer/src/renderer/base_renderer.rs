@@ -1,15 +1,15 @@
 //! 全レンダラーの基底となるベースレンダラーの実装。
 
-use color::ColorSrgb;
-use color::eotf;
-use color::tone_map::ToneMap;
+use color::{ColorSrgb, eotf, tone_map::ToneMap};
 use math::{Ray, Render, ShadingTangent, Transform};
 use scene::{Intersection, MaterialSample, SceneId, SurfaceInteraction};
 use spectrum::{DenselySampledSpectrum, SampledSpectrum, SampledWavelengths, SpectrumTrait};
 
-use crate::filter::Filter;
-use crate::renderer::{Renderer, RendererArgs, RenderingStrategy};
-use crate::sampler::Sampler;
+use crate::{
+    filter::Filter,
+    renderer::{Renderer, RendererArgs, RenderingStrategy},
+    sampler::Sampler,
+};
 
 /// BSDFサンプリングの結果を管理する構造体。
 pub struct BsdfSamplingResult<Id: SceneId> {

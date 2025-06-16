@@ -1,8 +1,7 @@
 //! RGBをシグモイドを掛けた二次式を利用してスペクトルを評価し、
 //! スペクトルの波長成分を計算するモジュール。
 
-use std::marker::PhantomData;
-use std::sync::OnceLock;
+use std::{marker::PhantomData, sync::OnceLock};
 
 use color::{
     Color, ColorAces2065_1, ColorAcesCg, ColorAdobeRGB, ColorDisplayP3, ColorImpl, ColorP3D65,
