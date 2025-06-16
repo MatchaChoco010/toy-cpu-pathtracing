@@ -2,8 +2,8 @@
 
 use color::{ColorSrgb, tone_map::ToneMap};
 use math::{Render, ShadingTangent, Transform};
-use scene::{Intersection, NonSpecularDirectionSample, SceneId};
-use spectrum::SampledSpectrum;
+use scene::{Intersection, MaterialSample, SceneId};
+use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::{
     filter::Filter,
@@ -20,7 +20,7 @@ impl RenderingStrategy for PtStrategy {
     fn evaluate_nee<Id: SceneId, S: Sampler>(
         &self,
         _scene: &scene::Scene<Id>,
-        _lambda: &spectrum::SampledWavelengths,
+        _lambda: &SampledWavelengths,
         _sampler: &mut S,
         _render_to_tangent: &Transform<Render, ShadingTangent>,
         _current_hit_info: &Intersection<Id, Render>,
@@ -30,17 +30,17 @@ impl RenderingStrategy for PtStrategy {
         // PTはNEEを実行しない
     }
 
-    fn calculate_bsdf<Id: SceneId>(
+    fn calculate_bsdf_contribution<Id: SceneId>(
         &self,
-        _scene: &scene::Scene<Id>,
-        _lambda: &spectrum::SampledWavelengths,
-        _current_hit_info: &Intersection<Id, Render>,
-        _non_specular_sample: &NonSpecularDirectionSample,
+        _material_sample: &MaterialSample,
         bsdf_result: &BsdfSamplingResult<Id>,
+        _scene: &scene::Scene<Id>,
+        _lambda: &SampledWavelengths,
+        _current_hit_info: &Intersection<Id, Render>,
         sample_contribution: &mut SampledSpectrum,
         throughout: &mut SampledSpectrum,
     ) {
-        // エミッシブ寄与を一時変数に蓄積
+        // エミッシブ寄与を一時変数に蓄積（Specular/NonSpecular問わず同じ処理）
         *sample_contribution += &*throughout * &bsdf_result.next_emissive_contribution;
 
         // throughoutを更新（MISウエイト無し）

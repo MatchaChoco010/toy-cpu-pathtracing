@@ -97,6 +97,12 @@ impl<C: CoordinateSystem> Point3<C> {
         Vector3::from(other.as_ref().vec - self.vec)
     }
 
+    /// この点を指定したベクトルで平行移動する。
+    #[inline(always)]
+    pub fn translate(&self, translation: impl AsRef<Vector3<C>>) -> Self {
+        Point3::from(self.vec + translation.as_ref().to_vec3())
+    }
+
     /// Point3をglam::Vec3に変換する。
     #[inline(always)]
     pub(crate) fn to_vec3(&self) -> glam::Vec3 {

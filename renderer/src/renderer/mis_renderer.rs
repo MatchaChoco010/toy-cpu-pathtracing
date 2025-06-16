@@ -2,8 +2,8 @@
 
 use color::{ColorSrgb, tone_map::ToneMap};
 use math::{Render, ShadingTangent, Transform};
-use scene::{Intersection, LightIntensity, NonSpecularDirectionSample, SceneId};
-use spectrum::SampledSpectrum;
+use scene::{Intersection, LightIntensity, MaterialSample, SceneId};
+use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::{
     filter::Filter,
@@ -116,7 +116,7 @@ impl RenderingStrategy for MisStrategy {
     fn evaluate_nee<Id: SceneId, S: Sampler>(
         &self,
         scene: &scene::Scene<Id>,
-        lambda: &spectrum::SampledWavelengths,
+        lambda: &SampledWavelengths,
         sampler: &mut S,
         render_to_tangent: &Transform<Render, ShadingTangent>,
         current_hit_info: &Intersection<Id, Render>,
@@ -135,32 +135,49 @@ impl RenderingStrategy for MisStrategy {
         *sample_contribution += throughout * &nee_result.contribution * nee_result.mis_weight;
     }
 
-    fn calculate_bsdf<Id: SceneId>(
+    fn calculate_bsdf_contribution<Id: SceneId>(
         &self,
-        scene: &scene::Scene<Id>,
-        lambda: &spectrum::SampledWavelengths,
-        current_hit_info: &Intersection<Id, Render>,
-        non_specular_sample: &NonSpecularDirectionSample,
+        material_sample: &MaterialSample,
         bsdf_result: &BsdfSamplingResult<Id>,
+        scene: &scene::Scene<Id>,
+        lambda: &SampledWavelengths,
+        current_hit_info: &Intersection<Id, Render>,
         sample_contribution: &mut SampledSpectrum,
         throughout: &mut SampledSpectrum,
     ) {
-        let next_hit_info = &bsdf_result.next_hit_info;
-        let light_sampler = scene.light_sampler(lambda);
-        let pdf_bsdf_dir = non_specular_sample.pdf;
-        let pdf_light_dir = scene.pdf_light_sample(
-            &light_sampler,
-            &current_hit_info.interaction,
-            &next_hit_info.interaction,
-        );
-        let mis_weight = balance_heuristic(pdf_bsdf_dir, pdf_light_dir);
+        match material_sample {
+            MaterialSample::Specular { .. } => {
+                // Specularの場合はMISを適用せずエミッシブ寄与をそのまま蓄積
+                *sample_contribution += &*throughout * &bsdf_result.next_emissive_contribution;
+                *throughout *= &bsdf_result.throughput_modifier;
+            }
+            MaterialSample::NonSpecular {
+                sample: Some(non_specular_sample),
+                ..
+            } => {
+                // NonSpecularの場合はMISウエイトを計算
+                let next_hit_info = &bsdf_result.next_hit_info;
+                let light_sampler = scene.light_sampler(lambda);
+                let pdf_bsdf_dir = non_specular_sample.pdf;
+                let pdf_light_dir = scene.pdf_light_sample(
+                    &light_sampler,
+                    &current_hit_info.interaction,
+                    &next_hit_info.interaction,
+                );
+                let mis_weight = balance_heuristic(pdf_bsdf_dir, pdf_light_dir);
 
-        // MISウエイトが有効の場合（MIS）、
-        // エミッシブ寄与をMISウエイト付きで一時変数に蓄積
-        *sample_contribution += &*throughout * &bsdf_result.next_emissive_contribution * mis_weight;
+                // エミッシブ寄与をMISウエイト付きで一時変数に蓄積
+                *sample_contribution +=
+                    &*throughout * &bsdf_result.next_emissive_contribution * mis_weight;
 
-        // throughoutを更新（MISウエイト適用）
-        *throughout *= &bsdf_result.throughput_modifier * mis_weight;
+                // throughoutを更新（MISウエイト適用）
+                *throughout *= &bsdf_result.throughput_modifier * mis_weight;
+            }
+            MaterialSample::NonSpecular { sample: None, .. } => {
+                // サンプル失敗の場合はthroughputのみ更新
+                *throughout *= &bsdf_result.throughput_modifier;
+            }
+        }
     }
 }
 
