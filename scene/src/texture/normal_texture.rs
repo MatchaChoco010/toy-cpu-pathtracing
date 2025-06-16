@@ -1,13 +1,15 @@
 //! Normal マップテクスチャ実装。
 
+use std::path::Path;
+use std::sync::Arc;
+
+use glam::Vec2;
+use math::{Normal, ShadingTangent};
+
 use super::{
-    config::TextureConfig,
     loader::{ImageData, load_rgb_image},
     sampler::{bilinear_sample_rgb, bilinear_sample_rgb_f32},
 };
-use glam::Vec2;
-use math::{Normal, ShadingTangent};
-use std::sync::Arc;
 
 /// Normal マップテクスチャ。
 #[derive(Clone)]
@@ -18,8 +20,8 @@ pub struct NormalTexture {
 
 impl NormalTexture {
     /// テクスチャ設定から Normal テクスチャを読み込む。
-    pub fn load(config: TextureConfig, flip_y: bool) -> Result<Arc<Self>, image::ImageError> {
-        let data = load_rgb_image(&config.path)?;
+    pub fn load(path: impl AsRef<Path>, flip_y: bool) -> Result<Arc<Self>, image::ImageError> {
+        let data = load_rgb_image(path.as_ref())?;
         Ok(Arc::new(Self { data, flip_y }))
     }
 

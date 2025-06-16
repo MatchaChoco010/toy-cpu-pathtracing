@@ -21,4 +21,4 @@ pub use samples::{
     NonSpecularDirectionSample, SpecularDirectionSample, SurfaceInteraction,
 };
 pub use scene::{Scene, SceneId, WorldToRender, internal};
-pub use texture::{NormalTexture, RgbTexture, SpectrumType, TextureConfig};
+pub use texture::{NormalTexture, RgbTexture, SpectrumType};

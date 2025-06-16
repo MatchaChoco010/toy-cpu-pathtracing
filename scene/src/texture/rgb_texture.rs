@@ -1,5 +1,6 @@
 //! RGB テクスチャ実装。
 
+use std::path::Path;
 use std::sync::Arc;
 
 use glam::Vec2;
@@ -8,22 +9,21 @@ use color::{ColorImpl, eotf::Eotf, gamut::ColorGamut, tone_map::NoneToneMap};
 use spectrum::Spectrum;
 
 use super::{
-    config::TextureConfig,
     loader::{ImageData, load_rgb_image},
     sampler::{bilinear_sample_rgb, bilinear_sample_rgb_f32},
 };
 
-/// RGB テクスチャ。
+/// 型付きRGB テクスチャ。
 #[derive(Clone)]
-pub struct RgbTexture<G: ColorGamut, E: Eotf> {
+pub struct TypedRgbTexture<G: ColorGamut, E: Eotf> {
     data: ImageData,
     _color_type: std::marker::PhantomData<ColorImpl<G, NoneToneMap, E>>,
 }
 
-impl<G: ColorGamut, E: Eotf> RgbTexture<G, E> {
+impl<G: ColorGamut, E: Eotf> TypedRgbTexture<G, E> {
     /// テクスチャ設定から RGB テクスチャを読み込む。
-    pub fn load(config: TextureConfig) -> Result<Arc<Self>, image::ImageError> {
-        let data = load_rgb_image(&config.path)?;
+    pub fn load(path: impl AsRef<Path>) -> Result<Arc<Self>, image::ImageError> {
+        let data = load_rgb_image(path.as_ref())?;
         Ok(Arc::new(Self {
             data,
             _color_type: std::marker::PhantomData,
@@ -43,7 +43,7 @@ impl<G: ColorGamut, E: Eotf> RgbTexture<G, E> {
 }
 
 // sRGB色域用の実装
-impl<E: Eotf> RgbTexture<color::gamut::GamutSrgb, E> {
+impl<E: Eotf> TypedRgbTexture<color::gamut::GamutSrgb, E> {
     /// RGB値をスペクトラムに変換する。
     pub fn sample_spectrum(
         &self,
@@ -67,7 +67,7 @@ impl<E: Eotf> RgbTexture<color::gamut::GamutSrgb, E> {
 }
 
 // Display P3色域用の実装
-impl<E: Eotf> RgbTexture<color::gamut::GamutDciP3D65, E> {
+impl<E: Eotf> TypedRgbTexture<color::gamut::GamutDciP3D65, E> {
     /// RGB値をスペクトラムに変換する。
     pub fn sample_spectrum(
         &self,
@@ -92,7 +92,7 @@ impl<E: Eotf> RgbTexture<color::gamut::GamutDciP3D65, E> {
 }
 
 // Adobe RGB色域用の実装
-impl<E: Eotf> RgbTexture<color::gamut::GamutAdobeRgb, E> {
+impl<E: Eotf> TypedRgbTexture<color::gamut::GamutAdobeRgb, E> {
     /// RGB値をスペクトラムに変換する。
     pub fn sample_spectrum(
         &self,
@@ -117,7 +117,7 @@ impl<E: Eotf> RgbTexture<color::gamut::GamutAdobeRgb, E> {
 }
 
 // Rec. 2020色域用の実装
-impl<E: Eotf> RgbTexture<color::gamut::GamutRec2020, E> {
+impl<E: Eotf> TypedRgbTexture<color::gamut::GamutRec2020, E> {
     /// RGB値をスペクトラムに変換する。
     pub fn sample_spectrum(
         &self,
@@ -142,7 +142,7 @@ impl<E: Eotf> RgbTexture<color::gamut::GamutRec2020, E> {
 }
 
 // ACES CG色域用の実装
-impl<E: Eotf> RgbTexture<color::gamut::GamutAcesCg, E> {
+impl<E: Eotf> TypedRgbTexture<color::gamut::GamutAcesCg, E> {
     /// RGB値をスペクトラムに変換する。
     pub fn sample_spectrum(
         &self,
@@ -166,7 +166,7 @@ impl<E: Eotf> RgbTexture<color::gamut::GamutAcesCg, E> {
 }
 
 // ACES 2065-1色域用の実装
-impl<E: Eotf> RgbTexture<color::gamut::GamutAces2065_1, E> {
+impl<E: Eotf> TypedRgbTexture<color::gamut::GamutAces2065_1, E> {
     /// RGB値をスペクトラムに変換する。
     pub fn sample_spectrum(
         &self,
@@ -186,6 +186,96 @@ impl<E: Eotf> RgbTexture<color::gamut::GamutAces2065_1, E> {
             super::config::SpectrumType::Unbounded => spectrum::RgbUnboundedSpectrum::<
                 color::ColorAces2065_1<color::tone_map::NoneToneMap>,
             >::new(color),
+        }
+    }
+}
+
+/// 型消去されたRGB テクスチャ。
+/// 色域情報を実行時に保持し、SpectrumParameterで使用される。
+#[derive(Clone)]
+pub enum RgbTexture {
+    Srgb(Arc<TypedRgbTexture<color::gamut::GamutSrgb, color::eotf::GammaSrgb>>),
+    DisplayP3(Arc<TypedRgbTexture<color::gamut::GamutDciP3D65, color::eotf::GammaSrgb>>),
+    AdobeRgb(Arc<TypedRgbTexture<color::gamut::GamutAdobeRgb, color::eotf::GammaSrgb>>),
+    Rec2020(Arc<TypedRgbTexture<color::gamut::GamutRec2020, color::eotf::GammaSrgb>>),
+    AcesCg(Arc<TypedRgbTexture<color::gamut::GamutAcesCg, color::eotf::GammaSrgb>>),
+    Aces2065_1(Arc<TypedRgbTexture<color::gamut::GamutAces2065_1, color::eotf::Linear>>),
+}
+
+impl RgbTexture {
+    /// sRGB色域でテクスチャを読み込む。
+    pub fn load_srgb(path: impl AsRef<Path>) -> Result<Arc<Self>, image::ImageError> {
+        let texture = TypedRgbTexture::<color::gamut::GamutSrgb, color::eotf::GammaSrgb>::load(
+            path.as_ref(),
+        )?;
+        Ok(Arc::new(RgbTexture::Srgb(texture)))
+    }
+
+    /// Display P3色域でテクスチャを読み込む。
+    pub fn load_display_p3(path: impl AsRef<Path>) -> Result<Arc<Self>, image::ImageError> {
+        let texture = TypedRgbTexture::<color::gamut::GamutDciP3D65, color::eotf::GammaSrgb>::load(
+            path.as_ref(),
+        )?;
+        Ok(Arc::new(RgbTexture::DisplayP3(texture)))
+    }
+
+    /// Adobe RGB色域でテクスチャを読み込む。
+    pub fn load_adobe_rgb(path: impl AsRef<Path>) -> Result<Arc<Self>, image::ImageError> {
+        let texture = TypedRgbTexture::<color::gamut::GamutAdobeRgb, color::eotf::GammaSrgb>::load(
+            path.as_ref(),
+        )?;
+        Ok(Arc::new(RgbTexture::AdobeRgb(texture)))
+    }
+
+    /// Rec. 2020色域でテクスチャを読み込む。
+    pub fn load_rec2020(path: impl AsRef<Path>) -> Result<Arc<Self>, image::ImageError> {
+        let texture = TypedRgbTexture::<color::gamut::GamutRec2020, color::eotf::GammaSrgb>::load(
+            path.as_ref(),
+        )?;
+        Ok(Arc::new(RgbTexture::Rec2020(texture)))
+    }
+
+    /// ACES CG色域でテクスチャを読み込む。
+    pub fn load_aces_cg(path: impl AsRef<Path>) -> Result<Arc<Self>, image::ImageError> {
+        let texture = TypedRgbTexture::<color::gamut::GamutAcesCg, color::eotf::GammaSrgb>::load(
+            path.as_ref(),
+        )?;
+        Ok(Arc::new(RgbTexture::AcesCg(texture)))
+    }
+
+    /// ACES 2065-1色域でテクスチャを読み込む。
+    pub fn load_aces_2065_1(path: impl AsRef<Path>) -> Result<Arc<Self>, image::ImageError> {
+        let texture = TypedRgbTexture::<color::gamut::GamutAces2065_1, color::eotf::Linear>::load(
+            path.as_ref(),
+        )?;
+        Ok(Arc::new(RgbTexture::Aces2065_1(texture)))
+    }
+
+    /// UV座標でRGB値をサンプリングする。
+    pub fn sample(&self, uv: Vec2) -> [f32; 3] {
+        match self {
+            RgbTexture::Srgb(texture) => texture.sample(uv),
+            RgbTexture::DisplayP3(texture) => texture.sample(uv),
+            RgbTexture::AdobeRgb(texture) => texture.sample(uv),
+            RgbTexture::Rec2020(texture) => texture.sample(uv),
+            RgbTexture::AcesCg(texture) => texture.sample(uv),
+            RgbTexture::Aces2065_1(texture) => texture.sample(uv),
+        }
+    }
+
+    /// RGB値をスペクトラムに変換する。
+    pub fn sample_spectrum(
+        &self,
+        uv: Vec2,
+        spectrum_type: super::config::SpectrumType,
+    ) -> Spectrum {
+        match self {
+            RgbTexture::Srgb(texture) => texture.sample_spectrum(uv, spectrum_type),
+            RgbTexture::DisplayP3(texture) => texture.sample_spectrum(uv, spectrum_type),
+            RgbTexture::AdobeRgb(texture) => texture.sample_spectrum(uv, spectrum_type),
+            RgbTexture::Rec2020(texture) => texture.sample_spectrum(uv, spectrum_type),
+            RgbTexture::AcesCg(texture) => texture.sample_spectrum(uv, spectrum_type),
+            RgbTexture::Aces2065_1(texture) => texture.sample_spectrum(uv, spectrum_type),
         }
     }
 }

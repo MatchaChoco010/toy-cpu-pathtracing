@@ -11,22 +11,22 @@ use crate::{
 
 /// 拡散反射のみを行うLambertマテリアル。
 /// テクスチャ対応の反射率とノーマルマップパラメータを持つ。
-pub struct LambertMaterial<G: color::gamut::ColorGamut, E: color::eotf::Eotf> {
+pub struct LambertMaterial {
     /// 反射率パラメータ
-    albedo: SpectrumParameter<G, E>,
+    albedo: SpectrumParameter,
     /// ノーマルマップパラメータ
     normal: NormalParameter,
     /// 内部でBSDF計算を行う構造体
     bsdf: NormalizedLambertBsdf,
 }
 
-impl<G: color::gamut::ColorGamut + 'static, E: color::eotf::Eotf + 'static> LambertMaterial<G, E> {
+impl LambertMaterial {
     /// 新しいLambertMaterialを作成する。
     ///
     /// # Arguments
     /// - `albedo` - 反射率パラメータ
     /// - `normal` - ノーマルマップパラメータ
-    pub fn new(albedo: SpectrumParameter<G, E>, normal: NormalParameter) -> Material {
+    pub fn new(albedo: SpectrumParameter, normal: NormalParameter) -> Material {
         std::sync::Arc::new(Self {
             albedo,
             normal,
@@ -34,17 +34,12 @@ impl<G: color::gamut::ColorGamut + 'static, E: color::eotf::Eotf + 'static> Lamb
         })
     }
 }
-impl<G: color::gamut::ColorGamut + 'static, E: color::eotf::Eotf + 'static> SurfaceMaterial
-    for LambertMaterial<G, E>
-{
+impl SurfaceMaterial for LambertMaterial {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
 }
-// sRGB色域用の具体的な実装
-impl<Id: SceneId, E: color::eotf::Eotf + 'static> BsdfSurfaceMaterial<Id>
-    for LambertMaterial<color::gamut::GamutSrgb, E>
-{
+impl<Id: SceneId> BsdfSurfaceMaterial<Id> for LambertMaterial {
     fn sample(
         &self,
         uv: glam::Vec2,

@@ -1,10 +1,10 @@
 //! シーンにオブジェクトを配置する関数を集めたモジュール。
 
-use color::{ColorSrgb, tone_map::NoneToneMap, gamut::GamutSrgb, eotf::GammaSrgb};
+use color::{ColorSrgb, tone_map::NoneToneMap};
 use math::{Normal, Point3, Transform, Vector3};
 use scene::{
     CreatePrimitiveDesc, EmissiveMaterial, FloatParameter, LambertMaterial, NormalParameter,
-    NormalTexture, RgbTexture, Scene, SceneId, SpectrumParameter, SpectrumType, TextureConfig,
+    NormalTexture, RgbTexture, Scene, SceneId, SpectrumParameter, SpectrumType,
 };
 use spectrum::{RgbAlbedoSpectrum, presets};
 
@@ -16,8 +16,8 @@ pub fn load_scene_0<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.8, 0.8, 0.8));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: LambertMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(spectrum),
+        surface_material: LambertMaterial::new(
+            SpectrumParameter::constant(spectrum),
             NormalParameter::none(),
         ),
         transform: Transform::identity(),
@@ -27,8 +27,8 @@ pub fn load_scene_0<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.8, 0.8, 0.8));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: LambertMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(spectrum),
+        surface_material: LambertMaterial::new(
+            SpectrumParameter::constant(spectrum),
             NormalParameter::none(),
         ),
         transform: Transform::identity(),
@@ -38,8 +38,8 @@ pub fn load_scene_0<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.9, 0.0, 0.0));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: LambertMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(spectrum),
+        surface_material: LambertMaterial::new(
+            SpectrumParameter::constant(spectrum),
             NormalParameter::none(),
         ),
         transform: Transform::identity(),
@@ -49,8 +49,8 @@ pub fn load_scene_0<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.0, 0.9, 0.0));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: LambertMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(spectrum),
+        surface_material: LambertMaterial::new(
+            SpectrumParameter::constant(spectrum),
             NormalParameter::none(),
         ),
         transform: Transform::identity(),
@@ -60,8 +60,8 @@ pub fn load_scene_0<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.8, 0.8, 0.8));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: LambertMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(spectrum),
+        surface_material: LambertMaterial::new(
+            SpectrumParameter::constant(spectrum),
             NormalParameter::none(),
         ),
         transform: Transform::identity(),
@@ -71,8 +71,8 @@ pub fn load_scene_0<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.8, 0.8, 0.8));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: LambertMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(spectrum),
+        surface_material: LambertMaterial::new(
+            SpectrumParameter::constant(spectrum),
             NormalParameter::none(),
         ),
         transform: Transform::identity(),
@@ -82,8 +82,8 @@ pub fn load_scene_0<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.8, 0.8, 0.8));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: LambertMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(spectrum),
+        surface_material: LambertMaterial::new(
+            SpectrumParameter::constant(spectrum),
             NormalParameter::none(),
         ),
         transform: Transform::identity(),
@@ -93,8 +93,8 @@ pub fn load_scene_0<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let geom = scene.load_obj("./renderer/assets/light.obj");
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: EmissiveMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(presets::cie_illum_d6500()),
+        surface_material: EmissiveMaterial::new(
+            SpectrumParameter::constant(presets::cie_illum_d6500()),
             FloatParameter::constant(10.0),
         ),
         transform: Transform::identity(),
@@ -112,8 +112,8 @@ pub fn load_scene_1<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.5, 0.5, 0.8));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: LambertMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(spectrum),
+        surface_material: LambertMaterial::new(
+            SpectrumParameter::constant(spectrum),
             NormalParameter::none(),
         ),
         transform: Transform::identity(),
@@ -121,8 +121,8 @@ pub fn load_scene_1<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.5, 0.8, 0.5));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: LambertMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(spectrum),
+        surface_material: LambertMaterial::new(
+            SpectrumParameter::constant(spectrum),
             NormalParameter::none(),
         ),
         transform: Transform::from_rotate(glam::Quat::from_rotation_y(30_f32.to_radians()))
@@ -133,8 +133,8 @@ pub fn load_scene_1<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.8, 0.8, 0.8));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: LambertMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(spectrum),
+        surface_material: LambertMaterial::new(
+            SpectrumParameter::constant(spectrum),
             NormalParameter::none(),
         ),
         transform: Transform::identity(),
@@ -157,8 +157,8 @@ pub fn load_scene_1<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
             glam::Vec2::new(1.0, 0.0),
             glam::Vec2::new(0.0, 1.0),
         ],
-        surface_material: LambertMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(spectrum),
+        surface_material: LambertMaterial::new(
+            SpectrumParameter::constant(spectrum),
             NormalParameter::none(),
         ),
         transform: Transform::from_rotate(glam::Quat::from_rotation_y(60_f32.to_radians())),
@@ -188,8 +188,8 @@ pub fn load_scene_2<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.8, 0.8, 0.8));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: LambertMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(spectrum),
+        surface_material: LambertMaterial::new(
+            SpectrumParameter::constant(spectrum),
             NormalParameter::none(),
         ),
         transform: Transform::identity(),
@@ -199,8 +199,8 @@ pub fn load_scene_2<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.8, 0.8, 0.8));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: LambertMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(spectrum),
+        surface_material: LambertMaterial::new(
+            SpectrumParameter::constant(spectrum),
             NormalParameter::none(),
         ),
         transform: Transform::identity(),
@@ -210,8 +210,8 @@ pub fn load_scene_2<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.9, 0.0, 0.0));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: LambertMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(spectrum),
+        surface_material: LambertMaterial::new(
+            SpectrumParameter::constant(spectrum),
             NormalParameter::none(),
         ),
         transform: Transform::identity(),
@@ -221,8 +221,8 @@ pub fn load_scene_2<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.0, 0.9, 0.0));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: LambertMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(spectrum),
+        surface_material: LambertMaterial::new(
+            SpectrumParameter::constant(spectrum),
             NormalParameter::none(),
         ),
         transform: Transform::identity(),
@@ -232,8 +232,8 @@ pub fn load_scene_2<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.8, 0.8, 0.8));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: LambertMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(spectrum),
+        surface_material: LambertMaterial::new(
+            SpectrumParameter::constant(spectrum),
             NormalParameter::none(),
         ),
         transform: Transform::identity(),
@@ -243,8 +243,8 @@ pub fn load_scene_2<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.8, 0.8, 0.8));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: LambertMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(spectrum),
+        surface_material: LambertMaterial::new(
+            SpectrumParameter::constant(spectrum),
             NormalParameter::none(),
         ),
         transform: Transform::identity(),
@@ -254,8 +254,8 @@ pub fn load_scene_2<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.8, 0.8, 0.8));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: LambertMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(spectrum),
+        surface_material: LambertMaterial::new(
+            SpectrumParameter::constant(spectrum),
             NormalParameter::none(),
         ),
         transform: Transform::identity(),
@@ -279,18 +279,18 @@ pub fn load_scene_3<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
 
     // テクスチャ付きのbunny（法線マップも追加）
     let geom = scene.load_obj("./renderer/assets/bunny.obj");
-    let config = TextureConfig::new("./renderer/assets/bunny-material-0/BaseColor.png");
-    let texture = RgbTexture::<GamutSrgb, GammaSrgb>::load(config).expect("Failed to load texture");
-    let spectrum_param = SpectrumParameter::<GamutSrgb, GammaSrgb>::texture(texture, SpectrumType::Albedo);
+    let texture = RgbTexture::load_srgb("./renderer/assets/bunny-material-0/BaseColor.png")
+        .expect("Failed to load texture");
+    let spectrum_param = SpectrumParameter::texture(texture, SpectrumType::Albedo);
 
-    let normal_config = TextureConfig::new("./renderer/assets/bunny-material-0/Normal.png");
     let normal_texture =
-        NormalTexture::load(normal_config, false).expect("Failed to load normal texture");
+        NormalTexture::load("./renderer/assets/bunny-material-0/Normal.png", false)
+            .expect("Failed to load normal texture");
     let normal_param = NormalParameter::texture(normal_texture);
 
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: LambertMaterial::<GamutSrgb, GammaSrgb>::new(spectrum_param, normal_param),
+        surface_material: LambertMaterial::new(spectrum_param, normal_param),
         transform: Transform::identity(),
     });
 
@@ -298,8 +298,8 @@ pub fn load_scene_3<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.8, 0.8, 0.8));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: LambertMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(spectrum),
+        surface_material: LambertMaterial::new(
+            SpectrumParameter::constant(spectrum),
             NormalParameter::none(),
         ),
         transform: Transform::identity(),
@@ -309,8 +309,8 @@ pub fn load_scene_3<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.9, 0.0, 0.0));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: LambertMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(spectrum),
+        surface_material: LambertMaterial::new(
+            SpectrumParameter::constant(spectrum),
             NormalParameter::none(),
         ),
         transform: Transform::identity(),
@@ -320,8 +320,8 @@ pub fn load_scene_3<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.0, 0.9, 0.0));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: LambertMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(spectrum),
+        surface_material: LambertMaterial::new(
+            SpectrumParameter::constant(spectrum),
             NormalParameter::none(),
         ),
         transform: Transform::identity(),
@@ -331,8 +331,8 @@ pub fn load_scene_3<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.8, 0.8, 0.8));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: LambertMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(spectrum),
+        surface_material: LambertMaterial::new(
+            SpectrumParameter::constant(spectrum),
             NormalParameter::none(),
         ),
         transform: Transform::identity(),
@@ -342,8 +342,8 @@ pub fn load_scene_3<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.8, 0.8, 0.8));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: LambertMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(spectrum),
+        surface_material: LambertMaterial::new(
+            SpectrumParameter::constant(spectrum),
             NormalParameter::none(),
         ),
         transform: Transform::identity(),
@@ -353,8 +353,8 @@ pub fn load_scene_3<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.8, 0.8, 0.8));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: LambertMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(spectrum),
+        surface_material: LambertMaterial::new(
+            SpectrumParameter::constant(spectrum),
             NormalParameter::none(),
         ),
         transform: Transform::identity(),
@@ -364,8 +364,8 @@ pub fn load_scene_3<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let geom = scene.load_obj("./renderer/assets/light.obj");
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: EmissiveMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(presets::cie_illum_d6500()),
+        surface_material: EmissiveMaterial::new(
+            SpectrumParameter::constant(presets::cie_illum_d6500()),
             FloatParameter::constant(10.0),
         ),
         transform: Transform::identity(),
@@ -383,18 +383,18 @@ pub fn load_scene_4<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
 
     // bunny-material-1のテクスチャ付きのbunny
     let geom = scene.load_obj("./renderer/assets/bunny.obj");
-    let config = TextureConfig::new("./renderer/assets/bunny-material-1/BaseColor.png");
-    let texture = RgbTexture::<GamutSrgb, GammaSrgb>::load(config).expect("Failed to load texture");
-    let spectrum_param = SpectrumParameter::<GamutSrgb, GammaSrgb>::texture(texture, SpectrumType::Albedo);
+    let texture = RgbTexture::load_srgb("./renderer/assets/bunny-material-1/BaseColor.png")
+        .expect("Failed to load texture");
+    let spectrum_param = SpectrumParameter::texture(texture, SpectrumType::Albedo);
 
-    let normal_config = TextureConfig::new("./renderer/assets/bunny-material-1/Normal.png");
     let normal_texture =
-        NormalTexture::load(normal_config, false).expect("Failed to load normal texture");
+        NormalTexture::load("./renderer/assets/bunny-material-1/Normal.png", false)
+            .expect("Failed to load normal texture");
     let normal_param = NormalParameter::texture(normal_texture);
 
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: LambertMaterial::<GamutSrgb, GammaSrgb>::new(spectrum_param, normal_param),
+        surface_material: LambertMaterial::new(spectrum_param, normal_param),
         transform: Transform::identity(),
     });
 
@@ -402,8 +402,8 @@ pub fn load_scene_4<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.8, 0.8, 0.8));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: LambertMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(spectrum),
+        surface_material: LambertMaterial::new(
+            SpectrumParameter::constant(spectrum),
             NormalParameter::none(),
         ),
         transform: Transform::identity(),
@@ -413,8 +413,8 @@ pub fn load_scene_4<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.9, 0.0, 0.0));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: LambertMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(spectrum),
+        surface_material: LambertMaterial::new(
+            SpectrumParameter::constant(spectrum),
             NormalParameter::none(),
         ),
         transform: Transform::identity(),
@@ -424,8 +424,8 @@ pub fn load_scene_4<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.0, 0.9, 0.0));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: LambertMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(spectrum),
+        surface_material: LambertMaterial::new(
+            SpectrumParameter::constant(spectrum),
             NormalParameter::none(),
         ),
         transform: Transform::identity(),
@@ -435,8 +435,8 @@ pub fn load_scene_4<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.8, 0.8, 0.8));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: LambertMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(spectrum),
+        surface_material: LambertMaterial::new(
+            SpectrumParameter::constant(spectrum),
             NormalParameter::none(),
         ),
         transform: Transform::identity(),
@@ -446,8 +446,8 @@ pub fn load_scene_4<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.8, 0.8, 0.8));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: LambertMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(spectrum),
+        surface_material: LambertMaterial::new(
+            SpectrumParameter::constant(spectrum),
             NormalParameter::none(),
         ),
         transform: Transform::identity(),
@@ -457,8 +457,8 @@ pub fn load_scene_4<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.8, 0.8, 0.8));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: LambertMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(spectrum),
+        surface_material: LambertMaterial::new(
+            SpectrumParameter::constant(spectrum),
             NormalParameter::none(),
         ),
         transform: Transform::identity(),
@@ -468,8 +468,8 @@ pub fn load_scene_4<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let geom = scene.load_obj("./renderer/assets/light.obj");
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: EmissiveMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(presets::cie_illum_d6500()),
+        surface_material: EmissiveMaterial::new(
+            SpectrumParameter::constant(presets::cie_illum_d6500()),
             FloatParameter::constant(10.0),
         ),
         transform: Transform::identity(),
@@ -484,9 +484,9 @@ pub fn load_scene_4<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
 
 pub fn load_scene_5<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut Camera<F>) {
     let geom = scene.load_obj("./renderer/assets/bunny.obj");
-    let normal_config = TextureConfig::new("./renderer/assets/bunny-material-0/Normal.png");
     let normal_texture =
-        NormalTexture::load(normal_config, false).expect("Failed to load normal texture");
+        NormalTexture::load("./renderer/assets/bunny-material-0/Normal.png", false)
+            .expect("Failed to load normal texture");
     let normal_param = NormalParameter::texture(normal_texture);
     // let normal_param = NormalParameter::none();
 
@@ -496,7 +496,7 @@ pub fn load_scene_5<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
 
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: LambertMaterial::<GamutSrgb, GammaSrgb>::new(spectrum_param, normal_param),
+        surface_material: LambertMaterial::new(spectrum_param, normal_param),
         transform: Transform::identity(),
     });
 
@@ -504,8 +504,8 @@ pub fn load_scene_5<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.8, 0.8, 0.8));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: LambertMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(spectrum),
+        surface_material: LambertMaterial::new(
+            SpectrumParameter::constant(spectrum),
             NormalParameter::none(),
         ),
         transform: Transform::identity(),
@@ -515,8 +515,8 @@ pub fn load_scene_5<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.9, 0.0, 0.0));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: LambertMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(spectrum),
+        surface_material: LambertMaterial::new(
+            SpectrumParameter::constant(spectrum),
             NormalParameter::none(),
         ),
         transform: Transform::identity(),
@@ -526,8 +526,8 @@ pub fn load_scene_5<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.0, 0.9, 0.0));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: LambertMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(spectrum),
+        surface_material: LambertMaterial::new(
+            SpectrumParameter::constant(spectrum),
             NormalParameter::none(),
         ),
         transform: Transform::identity(),
@@ -537,8 +537,8 @@ pub fn load_scene_5<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.8, 0.8, 0.8));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: LambertMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(spectrum),
+        surface_material: LambertMaterial::new(
+            SpectrumParameter::constant(spectrum),
             NormalParameter::none(),
         ),
         transform: Transform::identity(),
@@ -548,8 +548,8 @@ pub fn load_scene_5<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.8, 0.8, 0.8));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: LambertMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(spectrum),
+        surface_material: LambertMaterial::new(
+            SpectrumParameter::constant(spectrum),
             NormalParameter::none(),
         ),
         transform: Transform::identity(),
@@ -559,8 +559,8 @@ pub fn load_scene_5<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.8, 0.8, 0.8));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: LambertMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(spectrum),
+        surface_material: LambertMaterial::new(
+            SpectrumParameter::constant(spectrum),
             NormalParameter::none(),
         ),
         transform: Transform::identity(),
@@ -570,8 +570,8 @@ pub fn load_scene_5<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     let geom = scene.load_obj("./renderer/assets/light.obj");
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: EmissiveMaterial::<GamutSrgb, GammaSrgb>::new(
-            SpectrumParameter::<GamutSrgb, GammaSrgb>::constant(presets::cie_illum_d6500()),
+        surface_material: EmissiveMaterial::new(
+            SpectrumParameter::constant(presets::cie_illum_d6500()),
             FloatParameter::constant(10.0),
         ),
         transform: Transform::identity(),
