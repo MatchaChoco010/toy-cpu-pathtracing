@@ -251,12 +251,6 @@ pub fn z() -> Spectrum {
     CACHED_CIE_Z_SPECTRUM.clone()
 }
 
-/// CIEの定義したXYZマッチング曲線のYの積分値を返す関数。
-#[inline(always)]
-pub fn y_integral() -> f32 {
-    106.856917101
-}
-
 /// CIEの定義した標準光源のA光源に対応するスペクトルを返す関数。
 #[inline(always)]
 pub fn cie_illum_a() -> Spectrum {
