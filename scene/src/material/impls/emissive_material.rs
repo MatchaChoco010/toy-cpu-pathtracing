@@ -10,22 +10,22 @@ use crate::{
 
 /// 発光のみを行うEmissiveマテリアル。
 /// テクスチャ対応の放射輝度と強度パラメータを持つ。
-pub struct EmissiveMaterial {
+pub struct EmissiveMaterial<G: color::gamut::ColorGamut, E: color::eotf::Eotf> {
     /// 放射輝度パラメータ
-    radiance: SpectrumParameter,
+    radiance: SpectrumParameter<G, E>,
     /// 強度乗算係数パラメータ
     intensity: FloatParameter,
     /// 内部でEDF計算を行う構造体
     edf: UniformEdf,
 }
 
-impl EmissiveMaterial {
+impl<G: color::gamut::ColorGamut + 'static, E: color::eotf::Eotf + 'static> EmissiveMaterial<G, E> {
     /// 新しいEmissiveMaterialを作成する。
     ///
     /// # Arguments
     /// - `radiance` - 放射輝度パラメータ
     /// - `intensity` - 強度乗算係数パラメータ
-    pub fn new(radiance: SpectrumParameter, intensity: FloatParameter) -> Material {
+    pub fn new(radiance: SpectrumParameter<G, E>, intensity: FloatParameter) -> Material {
         std::sync::Arc::new(Self {
             radiance,
             intensity,
@@ -33,12 +33,13 @@ impl EmissiveMaterial {
         })
     }
 }
-impl SurfaceMaterial for EmissiveMaterial {
+impl<G: color::gamut::ColorGamut + 'static, E: color::eotf::Eotf + 'static> SurfaceMaterial for EmissiveMaterial<G, E> {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
 }
-impl<Id: SceneId> EmissiveSurfaceMaterial<Id> for EmissiveMaterial {
+// sRGB色域用の具体的な実装
+impl<Id: SceneId, E: color::eotf::Eotf + 'static> EmissiveSurfaceMaterial<Id> for EmissiveMaterial<color::gamut::GamutSrgb, E> {
     fn radiance(
         &self,
         lambda: &SampledWavelengths,
