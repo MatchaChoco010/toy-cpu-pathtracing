@@ -3,19 +3,27 @@ import time
 
 import colour
 import torch
+from torch.amp import GradScaler, autocast
 
-FIRST_EPOCHS = 15000
+scaler = GradScaler(enabled=True)
+
+FIRST_EPOCHS = 30000
 FIRST_LR = 0.001
+N_POOL = 10_000_000
+FIRST_BATCH = 65536
 GREEN_LOSS_SCALE = 5
+DARK_LOSS_SCALE = 1
 
 SECOND_EPOCHS = 15000
 SECOND_LR = 0.001
 
 TABLE_SIZE = 64
 DEVICE = "cuda"
-DTYPE = torch.float32
-SCALE_A, SCALE_B, SCALE_C = 160.0, 35.0, 15.0
+DTYPE = torch.float16
 
+SCALE_A = 100.0
+SCALE_B = 100.0
+SCALE_C = 10.0
 
 # -------------------------------------
 # 波長軸の設定とCIEのX, Y, Zの軸、正規化d65光源を取得
@@ -63,11 +71,11 @@ z_nodes = smoothstep(smoothstep(idx_float / (TABLE_SIZE - 1)))
 # colour-science の色域キーと出力ファイル名
 SPACES = {
     "sRGB":             "../tables//srgb_table.bin",
-    "P3-D65":           "../tables/dcip3d65_table.bin",
-    "Adobe RGB (1998)": "../tables/adobergb_table.bin",
-    "ITU-R BT.2020":    "../tables/rec2020_table.bin",
-    "ACEScg":           "../tables/acescg_table.bin",
-    "ACES2065-1":       "../tables/aces2065_1_table.bin",
+    # "P3-D65":           "../tables/dcip3d65_table.bin",
+    # "Adobe RGB (1998)": "../tables/adobergb_table.bin",
+    # "ITU-R BT.2020":    "../tables/rec2020_table.bin",
+    # "ACEScg":           "../tables/acescg_table.bin",
+    # "ACES2065-1":       "../tables/aces2065_1_table.bin",
 }
 
 # -------------------------------------
@@ -96,6 +104,17 @@ def delta_e(rgb_pred, rgb_ref, m_rgb_to_xyz, white_xyz):
     )
 
 # -------------------------------------
+# 乱数の事前準備
+# -------------------------------------
+rand_rgb_pool = torch.rand((N_POOL, 3), device=DEVICE, dtype=DTYPE)
+rand_green_pool = torch.stack([
+    torch.zeros_like(rand_rgb_pool[:, 0]),
+    torch.rand_like(rand_rgb_pool[:, 1]),
+    torch.zeros_like(rand_rgb_pool[:, 2])
+], dim=-1).to(DEVICE, dtype=DTYPE)
+rand_dark_pool = torch.rand((N_POOL, 3), device=DEVICE, dtype=DTYPE) * 0.2
+
+# -------------------------------------
 # 最適化ループ
 # -------------------------------------
 def train_space(cs_name, out_file):
@@ -121,10 +140,16 @@ def train_space(cs_name, out_file):
     )
 
     # --- 係数スケール ---------------------------
+    init_scale = torch.ones((3, ), device=DEVICE, dtype=torch.float32)
+    log_scale = torch.nn.Parameter(init_scale.log())
+
     def decode(raw):
-        a = SCALE_A * torch.tanh(raw[..., 0])
-        b = SCALE_B * raw[..., 1]
-        c = SCALE_C * raw[..., 2]
+        scale_a = log_scale.exp()[0] * SCALE_A
+        scale_b = log_scale.exp()[1] * SCALE_B
+        scale_c = log_scale.exp()[2] * SCALE_C
+        a = scale_a * torch.tanh(raw[..., 0])
+        b = scale_b * torch.tanh(raw[..., 1])
+        c = scale_c * torch.tanh(raw[..., 2])
         return torch.stack([a, b, c], dim=-1)
 
     # --- 学習関数 --------------------------------
@@ -152,45 +177,61 @@ def train_space(cs_name, out_file):
         torch.nn.Linear(512, 512),
         torch.nn.ReLU(),
         torch.nn.Linear(512, 3)
-    ).to(DEVICE).to(DTYPE)
-    opt = torch.optim.Adam(mlp.parameters(), lr=FIRST_LR)
+    ).to(DEVICE).to(torch.float32)
+    opt = torch.optim.Adam([
+        { "params": mlp.parameters(), "lr": FIRST_LR },
+        { "params": log_scale, "lr": FIRST_LR * 10 },
+    ])
 
-    for i in range(FIRST_EPOCHS):
-        input_rgb = torch.rand((65536, 3), device=DEVICE, dtype=DTYPE)
-        input_green = torch.stack([
-            torch.zeros_like(input_rgb[:, 0]),
-            torch.rand_like(input_rgb[:, 1]),
-            torch.zeros_like(input_rgb[:, 2])
-        ], dim=-1).to(DEVICE, dtype=DTYPE)
+    for i in range(1, FIRST_EPOCHS + 1):
+        rand_idx  = torch.randint(0, N_POOL, (FIRST_BATCH,))
+        input_rgb = rand_rgb_pool[rand_idx]
+        input_green = rand_green_pool[rand_idx]
+        input_dark = rand_dark_pool[rand_idx]
 
         mlp.zero_grad(set_to_none=True)
-        pred_rgb = rgb_from_coeff(decode(mlp(input_rgb)))
-        pred_green = rgb_from_coeff(decode(mlp(input_green)))
-        loss = (pred_rgb - input_rgb).pow(2).mean() + GREEN_LOSS_SCALE * (pred_green - input_green).pow(2).mean()
-        loss.backward()
-        opt.step()
+
+        with autocast(DEVICE, dtype=torch.float16):
+            pred_rgb = rgb_from_coeff(decode(mlp(input_rgb)))
+            pred_green = rgb_from_coeff(decode(mlp(input_green)))
+            pred_dark = rgb_from_coeff(decode(mlp(input_dark)))
+
+            rgb_loss = (pred_rgb - input_rgb).pow(2).mean()
+            green_loss = (pred_green - input_green).pow(2).mean()
+            dark_loss = (pred_dark - input_dark).pow(2).mean()
+            reg = log_scale.exp().pow(2).sum() * 1e-5
+            loss = rgb_loss + green_loss + dark_loss + reg
+
+        scaler.scale(loss).backward()
+        scaler.step(opt)
+        scaler.update()
 
         delta = delta_e(pred_rgb, input_rgb, m_rgb2xyz, white_xyz)
         delta_green = delta_e(pred_green, input_green, m_rgb2xyz, white_xyz)
+        delta_dark = delta_e(pred_dark, input_dark, m_rgb2xyz, white_xyz)
 
         if i % 1000 == 0 or i == 1 or i == FIRST_EPOCHS:
-            print(f"[{cs_name}] MLP epoch {i:5d}/{FIRST_EPOCHS}  loss={loss.item():.8f}, ΔE_mean={delta.mean().item():.4f}, ΔE_green_mean={delta_green.mean().item():.4f}, ΔE_green_max={delta_green.max().item():.4f}")
+            print(f"[{cs_name}] MLP epoch {i:5d}/{FIRST_EPOCHS}  loss={loss.item():.8f}, ΔE_mean={delta.mean().item():.4f}, ΔE_green_mean={delta_green.mean().item():.4f}, ΔE_dark_mean={delta_dark.mean().item():.4f}, ΔE_max={delta.max().item():.4f}")
 
     # --- 最適化 --------------------------------
-    coeff_raw = torch.nn.Parameter(mlp(rgb_target))
+    coeff_raw = torch.nn.Parameter(mlp(rgb_target.to(torch.float32)))
     opt = torch.optim.Adam([coeff_raw], lr=SECOND_LR)
 
     for epoch in range(1, SECOND_EPOCHS + 1):
         opt.zero_grad(set_to_none=True)
-        rgb_pred = rgb_from_coeff(decode(coeff_raw))
-        loss = (rgb_pred - rgb_target).pow(2).mean()
-        loss.backward()
-        opt.step()
+
+        with autocast(DEVICE, dtype=torch.float16):
+            rgb_pred = rgb_from_coeff(decode(coeff_raw))
+            loss = (rgb_pred - rgb_target).pow(2).mean()
+
+        scaler.scale(loss).backward()
+        scaler.step(opt)
+        scaler.update()
 
         delta = delta_e(rgb_pred, rgb_target, m_rgb2xyz, white_xyz)
 
         if epoch % 1000 == 0 or epoch == 1 or epoch == SECOND_EPOCHS:
-            print(f"[{cs_name}] epoch {epoch:5d}/{SECOND_EPOCHS}  ΔE_mean={delta.mean().item():.4f}, ΔE_max={delta.max().item():.4f}")
+            print(f"[{cs_name}] OPT epoch {epoch:5d}/{SECOND_EPOCHS}  ΔE_mean={delta.mean().item():.4f}, ΔE_max={delta.max().item():.4f}")
 
         if epoch % 2500 == 0:
             out_path = pathlib.Path(out_file)

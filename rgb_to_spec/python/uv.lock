@@ -450,7 +450,7 @@ requires-dist = [
     { name = "colour-science" },
     { name = "matplotlib" },
     { name = "numpy" },
-    { name = "torch", specifier = ">=2.7.0", index = "https://download.pytorch.org/whl/cu128" },
+    { name = "torch", specifier = ">=2.7.1", index = "https://download.pytorch.org/whl/cu128" },
 ]
 
 [[package]]
