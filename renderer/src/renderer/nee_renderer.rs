@@ -2,8 +2,8 @@
 
 use color::{ColorSrgb, tone_map::ToneMap};
 use math::{Render, ShadingTangent, Transform};
-use scene::{Intersection, LightIntensity, NonSpecularDirectionSample, SceneId};
-use spectrum::SampledSpectrum;
+use scene::{Intersection, LightIntensity, MaterialSample, SceneId};
+use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::{
     filter::Filter,
@@ -95,7 +95,7 @@ impl RenderingStrategy for NeeStrategy {
     fn evaluate_nee<Id: SceneId, S: Sampler>(
         &self,
         scene: &scene::Scene<Id>,
-        lambda: &spectrum::SampledWavelengths,
+        lambda: &SampledWavelengths,
         sampler: &mut S,
         render_to_tangent: &Transform<Render, ShadingTangent>,
         current_hit_info: &Intersection<Id, Render>,
@@ -113,17 +113,27 @@ impl RenderingStrategy for NeeStrategy {
         *sample_contribution += throughout * &contribution;
     }
 
-    fn calculate_bsdf<Id: SceneId>(
+    fn calculate_bsdf_contribution<Id: SceneId>(
         &self,
-        _scene: &scene::Scene<Id>,
-        _lambda: &spectrum::SampledWavelengths,
-        _current_hit_info: &Intersection<Id, Render>,
-        _non_specular_sample: &NonSpecularDirectionSample,
+        material_sample: &MaterialSample,
         bsdf_result: &BsdfSamplingResult<Id>,
-        _sample_contribution: &mut SampledSpectrum,
+        _scene: &scene::Scene<Id>,
+        _lambda: &SampledWavelengths,
+        _current_hit_info: &Intersection<Id, Render>,
+        sample_contribution: &mut SampledSpectrum,
         throughout: &mut SampledSpectrum,
     ) {
-        // NEEはBSDFサンプリングで寄与は追加せず、MISウエイトなし
+        match material_sample {
+            MaterialSample::Specular { .. } => {
+                // Specularの場合はエミッシブ寄与を蓄積（NEEはSpecularに適用されない）
+                *sample_contribution += &*throughout * &bsdf_result.next_emissive_contribution;
+            }
+            MaterialSample::NonSpecular { .. } => {
+                // NonSpecularの場合はNEEで寄与を蓄積済みなので、エミッシブ寄与は追加しない
+            }
+        }
+
+        // throughputを更新（MISウエイトなし）
         *throughout *= &bsdf_result.throughput_modifier;
     }
 }

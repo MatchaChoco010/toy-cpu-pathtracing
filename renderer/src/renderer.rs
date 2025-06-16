@@ -7,8 +7,8 @@ use rayon::prelude::*;
 
 use color::Color;
 use math::{Render, ShadingTangent, Transform};
-use scene::{Intersection, NonSpecularDirectionSample, Scene, SceneId};
-use spectrum::SampledSpectrum;
+use scene::{Intersection, MaterialSample, Scene, SceneId};
+use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::camera::Camera;
 use crate::filter::Filter;
@@ -45,7 +45,7 @@ pub trait RenderingStrategy: Clone + Send + Sync {
     fn evaluate_nee<Id: SceneId, S: Sampler>(
         &self,
         scene: &Scene<Id>,
-        lambda: &spectrum::SampledWavelengths,
+        lambda: &SampledWavelengths,
         sampler: &mut S,
         render_to_tangent: &Transform<Render, ShadingTangent>,
         current_hit_info: &Intersection<Id, Render>,
@@ -53,14 +53,14 @@ pub trait RenderingStrategy: Clone + Send + Sync {
         throughout: &SampledSpectrum,
     );
 
-    /// BSDFサンプリング結果に適用するMISウエイトを計算する。
-    fn calculate_bsdf<Id: SceneId>(
+    /// マテリアルサンプリング結果に応じた寄与計算を行う。
+    fn calculate_bsdf_contribution<Id: SceneId>(
         &self,
-        scene: &Scene<Id>,
-        lambda: &spectrum::SampledWavelengths,
-        current_hit_info: &Intersection<Id, Render>,
-        non_specular_sample: &NonSpecularDirectionSample,
+        material_sample: &MaterialSample,
         bsdf_result: &BsdfSamplingResult<Id>,
+        scene: &Scene<Id>,
+        lambda: &SampledWavelengths,
+        current_hit_info: &Intersection<Id, Render>,
         sample_contribution: &mut SampledSpectrum,
         throughout: &mut SampledSpectrum,
     );

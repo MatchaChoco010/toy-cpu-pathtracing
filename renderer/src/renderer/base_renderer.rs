@@ -30,7 +30,7 @@ pub struct BaseSrgbRenderer<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: Re
 impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy>
     BaseSrgbRenderer<'a, Id, F, T, Strategy>
 {
-    const RAY_FORWARD_EPSILON: f32 = 1e-4;
+    const RAY_FORWARD_EPSILON: f32 = 1e-5;
 
     /// 新しいベースレンダラーを作成する。
     pub fn new(
@@ -117,73 +117,50 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy>
         render_to_tangent: &Transform<Render, ShadingTangent>,
         shading_point: &SurfaceInteraction<Id, Render>,
     ) -> Option<BsdfSamplingResult<Id>> {
-        match material_sample {
+        let (sample_wi, f_value, throughput_factor) = match material_sample {
             MaterialSample::Specular {
                 sample: Some(sample),
                 ..
-            } => {
-                // wiの方向にレイを飛ばす
-                let wi_render = &render_to_tangent.inverse() * &sample.wi;
-                let next_ray = Ray::new(shading_point.position, wi_render)
-                    .move_forward(Self::RAY_FORWARD_EPSILON);
-                let intersect = scene.intersect(&next_ray, f32::MAX);
-
-                intersect.map(|next_hit_info| {
-                    let next_emissive_contribution = if let Some(radiance) =
-                        Self::evaluate_emissive_surface(
-                            &next_hit_info.interaction,
-                            &next_ray,
-                            lambda,
-                        ) {
-                        &sample.f * &radiance
-                    } else {
-                        SampledSpectrum::zero()
-                    };
-
-                    BsdfSamplingResult {
-                        next_hit_info,
-                        next_emissive_contribution,
-                        throughput_modifier: sample.f.clone(),
-                    }
-                })
-            }
+            } => (sample.wi, &sample.f, 1.0),
             MaterialSample::NonSpecular {
                 sample: Some(sample),
                 normal,
             } => {
-                // wiの方向にレイを飛ばす
-                let wi_render = &render_to_tangent.inverse() * &sample.wi;
-                let next_ray = Ray::new(shading_point.position, wi_render)
-                    .move_forward(Self::RAY_FORWARD_EPSILON);
-                let intersect = scene.intersect(&next_ray, f32::MAX);
-
-                // cos_thetaを計算（Normal mappingされた表面法線）
-                let cos_theta = normal.dot(&sample.wi).abs();
-
-                intersect.map(|next_hit_info| {
-                    let next_emissive_contribution = if let Some(radiance) =
-                        Self::evaluate_emissive_surface(
-                            &next_hit_info.interaction,
-                            &next_ray,
-                            lambda,
-                        ) {
-                        &sample.f * &radiance * cos_theta / sample.pdf
-                    } else {
-                        SampledSpectrum::zero()
-                    };
-
-                    BsdfSamplingResult {
-                        next_hit_info,
-                        next_emissive_contribution,
-                        throughput_modifier: &sample.f * cos_theta / sample.pdf,
-                    }
-                })
+                let cos_theta = normal.dot(sample.wi).abs();
+                (sample.wi, &sample.f, cos_theta / sample.pdf)
             }
-            _ => {
-                // 方向サンプリングが失敗した場合
-                None
+            _ => return None,
+        };
+
+        // wiの方向にレイを飛ばす
+        let wi_render = &render_to_tangent.inverse() * &sample_wi;
+        let offset_dir: &math::Vector3<_> = shading_point.normal.as_ref();
+        let sign = if shading_point.normal.dot(wi_render) < 0.0 {
+            -1.0
+        } else {
+            1.0
+        };
+        let origin = shading_point
+            .position
+            .translate(sign * offset_dir * Self::RAY_FORWARD_EPSILON);
+        let next_ray = Ray::new(origin, wi_render).move_forward(Self::RAY_FORWARD_EPSILON);
+        let intersect = scene.intersect(&next_ray, f32::MAX);
+
+        intersect.map(|next_hit_info| {
+            let next_emissive_contribution = if let Some(radiance) =
+                Self::evaluate_emissive_surface(&next_hit_info.interaction, &next_ray, lambda)
+            {
+                f_value * &radiance * &throughput_factor
+            } else {
+                SampledSpectrum::zero()
+            };
+
+            BsdfSamplingResult {
+                next_hit_info,
+                next_emissive_contribution,
+                throughput_modifier: f_value * &throughput_factor,
             }
-        }
+        })
     }
 }
 impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy> Renderer
@@ -284,32 +261,16 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy> Render
                     break 'depth_loop;
                 };
 
-                match material_sample {
-                    // Specular反射の場合はMISを使用せずエミッシブ寄与をそのまま蓄積
-                    MaterialSample::Specular { .. } => {
-                        // エミッシブ寄与を一時変数に蓄積
-                        sample_contribution += &throughout * bsdf_result.next_emissive_contribution;
-
-                        // throughoutを更新
-                        throughout *= bsdf_result.throughput_modifier;
-                    }
-                    // 非Specularの場合はstrategyに応じてMISウエイトを計算して寄与を蓄積
-                    MaterialSample::NonSpecular {
-                        sample: Some(sample),
-                        ..
-                    } => {
-                        self.strategy.calculate_bsdf(
-                            scene,
-                            &lambda,
-                            &hit_info,
-                            &sample,
-                            &bsdf_result,
-                            &mut sample_contribution,
-                            &mut throughout,
-                        );
-                    }
-                    _ => unreachable!(),
-                }
+                // strategyに応じたBSDFサンプルの光源ヒット時の寄与計算
+                self.strategy.calculate_bsdf_contribution(
+                    &material_sample,
+                    &bsdf_result,
+                    scene,
+                    &lambda,
+                    &hit_info,
+                    &mut sample_contribution,
+                    &mut throughout,
+                );
 
                 // 次のヒット情報に進める
                 hit_info = bsdf_result.next_hit_info;
