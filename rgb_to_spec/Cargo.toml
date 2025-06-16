@@ -7,3 +7,6 @@ edition.workspace = true
 color.workspace = true
 glam.workspace = true
 rayon.workspace = true
+
+[lints]
+workspace = true

@@ -6,3 +6,6 @@ edition.workspace = true
 [dependencies]
 glam.workspace = true
 util_macros.workspace = true
+
+[lints]
+workspace = true
