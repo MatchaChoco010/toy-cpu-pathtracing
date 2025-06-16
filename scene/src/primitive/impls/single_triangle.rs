@@ -136,6 +136,8 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for SingleTriangle<Id> {
         Some(Intersection {
             t_hit: hit.t_hit,
             wo,
+            primitive_index,
+            geometry_info: InteractGeometryInfo::None,
             interaction: SurfaceInteraction {
                 position: &self.local_to_render * hit.position,
                 normal: &self.local_to_render * hit.normal,
@@ -143,8 +145,6 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for SingleTriangle<Id> {
                 tangent: &self.local_to_render * tangent,
                 uv,
                 material: self.material.clone(),
-                primitive_index,
-                geometry_info: InteractGeometryInfo::None,
             },
         })
     }

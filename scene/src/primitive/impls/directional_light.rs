@@ -99,7 +99,7 @@ impl<Id: SceneId> PrimitiveLight<Id> for DirectionalLight {
 impl<Id: SceneId> PrimitiveDeltaDirectionalLight<Id> for DirectionalLight {
     fn calculate_intensity(
         &self,
-        _shading_point: &SurfaceInteraction<Id, Render>,
+        _shading_point: &SurfaceInteraction<Render>,
         lambda: &SampledWavelengths,
     ) -> DeltaDirectionalLightIntensity<Render> {
         let direction = (&self.local_to_render * Vector3::new(0.0, 0.0, 1.0)).normalize();

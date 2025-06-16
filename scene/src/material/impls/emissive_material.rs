@@ -1,11 +1,13 @@
 //! 発光（Emissive）マテリアル実装。
 
+use std::sync::Arc;
+
 use math::{ShadingTangent, Vector3};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::{
-    EmissiveSurfaceMaterial, FloatParameter, Material, SceneId, SpectrumParameter,
-    SurfaceInteraction, SurfaceMaterial, UniformEdf,
+    EmissiveSurfaceMaterial, FloatParameter, Material, SpectrumParameter, SurfaceInteraction,
+    SurfaceMaterial, UniformEdf,
 };
 
 /// 発光のみを行うEmissiveマテリアル。
@@ -26,7 +28,7 @@ impl EmissiveMaterial {
     /// - `radiance` - 放射輝度パラメータ
     /// - `intensity` - 強度乗算係数パラメータ
     pub fn new(radiance: SpectrumParameter, intensity: FloatParameter) -> Material {
-        std::sync::Arc::new(Self {
+        Arc::new(Self {
             radiance,
             intensity,
             edf: UniformEdf::new(),
@@ -37,13 +39,17 @@ impl SurfaceMaterial for EmissiveMaterial {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+
+    fn as_emissive_material(&self) -> Option<&dyn EmissiveSurfaceMaterial> {
+        Some(self)
+    }
 }
-impl<Id: SceneId> EmissiveSurfaceMaterial<Id> for EmissiveMaterial {
+impl EmissiveSurfaceMaterial for EmissiveMaterial {
     fn radiance(
         &self,
         lambda: &SampledWavelengths,
         _wo: Vector3<ShadingTangent>,
-        light_sample_point: &SurfaceInteraction<Id, ShadingTangent>,
+        light_sample_point: &SurfaceInteraction<ShadingTangent>,
     ) -> SampledSpectrum {
         let radiance_spectrum = self.radiance.sample(light_sample_point.uv).sample(lambda);
         let intensity_value = self.intensity.sample(light_sample_point.uv);

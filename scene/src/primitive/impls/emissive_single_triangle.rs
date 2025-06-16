@@ -148,6 +148,10 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for EmissiveSingleTriangle<Id> {
         Some(Intersection {
             t_hit: hit.t_hit,
             wo,
+            primitive_index: _primitive_index,
+            geometry_info: InteractGeometryInfo::TriangleMesh {
+                triangle_index: 0, // TODO: 三角形のインデックスを取得する
+            },
             interaction: SurfaceInteraction {
                 position: &self.local_to_render * hit.position,
                 normal: &self.local_to_render * hit.normal,
@@ -155,10 +159,6 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for EmissiveSingleTriangle<Id> {
                 tangent: &self.local_to_render * tangent,
                 uv,
                 material: self.material.clone(),
-                primitive_index: _primitive_index,
-                geometry_info: InteractGeometryInfo::TriangleMesh {
-                    triangle_index: 0, // TODO: 三角形のインデックスを取得する
-                },
             },
         })
     }
@@ -178,7 +178,7 @@ impl<Id: SceneId> PrimitiveLight<Id> for EmissiveSingleTriangle<Id> {
     fn phi(&self, lambda: &SampledWavelengths) -> SampledSpectrum {
         // マテリアルの放射発散度の平均値に三角形の面積を掛けて全体の放射束とする。
         self.material
-            .as_emissive_material::<Id>()
+            .as_emissive_material()
             .unwrap()
             .average_intensity(lambda)
             * self.area
@@ -187,13 +187,12 @@ impl<Id: SceneId> PrimitiveLight<Id> for EmissiveSingleTriangle<Id> {
 impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveSingleTriangle<Id> {
     fn sample_radiance(
         &self,
-        primitive_index: PrimitiveIndex<Id>,
         _geometry_repository: &GeometryRepository<Id>,
-        shading_point: &SurfaceInteraction<Id, Render>,
+        shading_point: &SurfaceInteraction<Render>,
         lambda: &SampledWavelengths,
         _s: f32,
         uv: glam::Vec2,
-    ) -> AreaLightSampleRadiance<Id, Render> {
+    ) -> AreaLightSampleRadiance<Render> {
         // サンプリングする点のbarycentric座標を計算する。
         let b0;
         let b1;
@@ -252,20 +251,14 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveSingleTriangle<Id> {
             tangent,
             uv,
             material: self.material.clone(),
-            primitive_index,
-            geometry_info: InteractGeometryInfo::None,
         };
 
         // マテリアルから放射輝度を取得する。
-        let radiance = self
-            .material
-            .as_emissive_material::<Id>()
-            .unwrap()
-            .radiance(
-                lambda,
-                &render_to_tangent * -wi,
-                &(render_to_tangent * light_sample_point),
-            );
+        let radiance = self.material.as_emissive_material().unwrap().radiance(
+            lambda,
+            &render_to_tangent * -wi,
+            &(render_to_tangent * light_sample_point),
+        );
 
         // 面積を計算して一様サンプリングしたときのpdfを計算する。
         let pdf = 1.0 / self.area;
@@ -286,13 +279,11 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveSingleTriangle<Id> {
                 tangent,
                 uv,
                 material: self.material.clone(),
-                primitive_index,
-                geometry_info: InteractGeometryInfo::None,
             },
         }
     }
 
-    fn pdf_light_sample(&self, _interaction: &SurfaceInteraction<Id, Render>) -> f32 {
+    fn pdf_light_sample(&self, _interaction: &Intersection<Id, Render>) -> f32 {
         // 一様サンプリングしたときのpdfを計算する。
         1.0 / self.area
     }
@@ -300,8 +291,8 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveSingleTriangle<Id> {
 impl<Id: SceneId> PrimitiveAreaLight<Id> for EmissiveSingleTriangle<Id> {
     fn intersect_radiance(
         &self,
-        shading_point: &SurfaceInteraction<Id, Render>,
-        interaction: &SurfaceInteraction<Id, Render>,
+        shading_point: &SurfaceInteraction<Render>,
+        interaction: &SurfaceInteraction<Render>,
         lambda: &SampledWavelengths,
     ) -> SampledSpectrum {
         // 交差した光源上の点のTangent空間への変換Transformを計算する。
@@ -313,13 +304,10 @@ impl<Id: SceneId> PrimitiveAreaLight<Id> for EmissiveSingleTriangle<Id> {
             .vector_to(shading_point.position)
             .normalize();
 
-        self.material
-            .as_emissive_material::<Id>()
-            .unwrap()
-            .radiance(
-                lambda,
-                &render_to_tangent * wo,
-                &(render_to_tangent * interaction),
-            )
+        self.material.as_emissive_material().unwrap().radiance(
+            lambda,
+            &render_to_tangent * wo,
+            &(render_to_tangent * interaction),
+        )
     }
 }

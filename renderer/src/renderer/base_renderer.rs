@@ -51,11 +51,11 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy>
 
     /// エミッシブ面からのradiance計算を行う。
     fn evaluate_emissive_surface(
-        interaction: &SurfaceInteraction<Id, Render>,
+        interaction: &SurfaceInteraction<Render>,
         incoming_ray: &Ray<Render>,
         lambda: &SampledWavelengths,
     ) -> Option<SampledSpectrum> {
-        let emissive_material = interaction.material.as_emissive_material::<Id>()?;
+        let emissive_material = interaction.material.as_emissive_material()?;
 
         // Render座標系からヒットした光源上の点のShadingTangent座標系に変換
         let render_to_tangent = interaction.shading_transform();
@@ -115,7 +115,7 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy>
         lambda: &SampledWavelengths,
         material_sample: &MaterialSample,
         render_to_tangent: &Transform<Render, ShadingTangent>,
-        shading_point: &SurfaceInteraction<Id, Render>,
+        shading_point: &SurfaceInteraction<Render>,
     ) -> Option<BsdfSamplingResult<Id>> {
         let (sample_wi, f_value, throughput_factor) = match material_sample {
             MaterialSample::Specular {
@@ -218,7 +218,7 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy> Render
             // パストレーシングのメインループ
             'depth_loop: for _ in 1..=self.max_depth {
                 // マテリアルのBSDFを取得
-                let bsdf = match hit_info.interaction.material.as_bsdf_material::<Id>() {
+                let bsdf = match hit_info.interaction.material.as_bsdf_material() {
                     Some(bsdf) => bsdf,
                     None => break 'depth_loop,
                 };

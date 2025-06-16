@@ -5,7 +5,6 @@ use spectrum::SampledSpectrum;
 use util_macros::impl_binary_ops;
 
 use crate::material::Material;
-use crate::{SceneId, primitive::PrimitiveIndex};
 
 /// マテリアル評価結果を表す構造体。
 #[derive(Debug, Clone)]
@@ -78,7 +77,7 @@ pub enum InteractGeometryInfo {
 }
 
 /// シーンの表面をサンプルした結果の情報を持つ構造体。
-pub struct SurfaceInteraction<Id: SceneId, C: CoordinateSystem> {
+pub struct SurfaceInteraction<C: CoordinateSystem> {
     /// サンプルした位置。
     pub position: Point3<C>,
     /// サンプルした幾何法線。
@@ -91,16 +90,12 @@ pub struct SurfaceInteraction<Id: SceneId, C: CoordinateSystem> {
     pub uv: glam::Vec2,
     /// マテリアル。
     pub material: Material,
-    /// サンプルしたプリミティブのインデックス。
-    pub primitive_index: PrimitiveIndex<Id>,
-    /// サンプルしたジオメトリの追加情報。
-    pub geometry_info: InteractGeometryInfo,
 }
 #[impl_binary_ops(Mul)]
-fn mul<Id: SceneId, From: CoordinateSystem, To: CoordinateSystem>(
+fn mul<From: CoordinateSystem, To: CoordinateSystem>(
     lhs: &Transform<From, To>,
-    rhs: &SurfaceInteraction<Id, From>,
-) -> SurfaceInteraction<Id, To> {
+    rhs: &SurfaceInteraction<From>,
+) -> SurfaceInteraction<To> {
     SurfaceInteraction {
         position: lhs * rhs.position,
         normal: lhs * rhs.normal,
@@ -108,11 +103,9 @@ fn mul<Id: SceneId, From: CoordinateSystem, To: CoordinateSystem>(
         tangent: lhs * rhs.tangent,
         uv: rhs.uv,
         material: rhs.material.clone(),
-        primitive_index: rhs.primitive_index,
-        geometry_info: rhs.geometry_info,
     }
 }
-impl<Id: SceneId, C: CoordinateSystem> SurfaceInteraction<Id, C> {
+impl<C: CoordinateSystem> SurfaceInteraction<C> {
     /// ShadingTangent座標系に変換するTransformを取得する。
     pub fn shading_transform(&self) -> Transform<C, ShadingTangent> {
         Transform::from_shading_normal_tangent(&self.shading_normal, &self.tangent)
@@ -125,7 +118,7 @@ impl<Id: SceneId, C: CoordinateSystem> SurfaceInteraction<Id, C> {
 }
 
 /// ライト上のサンプルされた放射輝度情報とpdfを持つ構造体。
-pub struct AreaLightSampleRadiance<Id: SceneId, C: CoordinateSystem> {
+pub struct AreaLightSampleRadiance<C: CoordinateSystem> {
     /// サンプルした放射輝度。
     pub radiance: SampledSpectrum,
     /// サンプルのpdf。
@@ -135,7 +128,7 @@ pub struct AreaLightSampleRadiance<Id: SceneId, C: CoordinateSystem> {
     /// サンプルの方向要素のpdf。
     pub pdf_dir: f32,
     /// シーンをサンプルした結果の情報。
-    pub interaction: SurfaceInteraction<Id, C>,
+    pub interaction: SurfaceInteraction<C>,
 }
 
 /// ライトからの放射強度情報を持つ構造体。
@@ -155,9 +148,9 @@ pub struct DeltaDirectionalLightIntensity<C: CoordinateSystem> {
 }
 
 /// ライトのサンプル結果を持つ列挙子。
-pub enum LightIntensity<Id: SceneId, C: CoordinateSystem> {
+pub enum LightIntensity<C: CoordinateSystem> {
     /// 面積光源 からサンプルした放射輝度情報。
-    RadianceAreaLight(AreaLightSampleRadiance<Id, C>),
+    RadianceAreaLight(AreaLightSampleRadiance<C>),
     /// デルタ点光源の放射強度情報。
     IntensityDeltaPointLight(DeltaPointLightIntensity<C>),
     /// デルタ方向光源の放射強度情報。

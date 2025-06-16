@@ -101,7 +101,7 @@ impl<Id: SceneId> PrimitiveLight<Id> for SpotLight {
 impl<Id: SceneId> PrimitiveDeltaPointLight<Id> for SpotLight {
     fn calculate_intensity(
         &self,
-        shading_point: &SurfaceInteraction<Id, Render>,
+        shading_point: &SurfaceInteraction<Render>,
         lambda: &SampledWavelengths,
     ) -> DeltaPointLightIntensity<Render> {
         // Render空間でのライトの方向と距離を計算する。

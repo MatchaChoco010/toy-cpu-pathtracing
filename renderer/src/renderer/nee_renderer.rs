@@ -23,7 +23,7 @@ fn evaluate_next_event_estimation<Id: SceneId, S: Sampler>(
     current_hit_info: &Intersection<Id, Render>,
 ) -> SampledSpectrum {
     let shading_point = &current_hit_info.interaction;
-    let bsdf = match shading_point.material.as_bsdf_material::<Id>() {
+    let bsdf = match shading_point.material.as_bsdf_material() {
         Some(bsdf) => bsdf,
         None => return SampledSpectrum::zero(),
     };

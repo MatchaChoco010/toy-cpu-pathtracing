@@ -26,7 +26,7 @@ fn evaluate_next_event_estimation_with_mis<Id: SceneId, S: Sampler>(
     current_hit_info: &Intersection<Id, Render>,
 ) -> NeeResult {
     let shading_point = &current_hit_info.interaction;
-    let bsdf = match shading_point.material.as_bsdf_material::<Id>() {
+    let bsdf = match shading_point.material.as_bsdf_material() {
         Some(bsdf) => bsdf,
         None => {
             return NeeResult {
@@ -162,7 +162,7 @@ impl RenderingStrategy for MisStrategy {
                 let pdf_light_dir = scene.pdf_light_sample(
                     &light_sampler,
                     &current_hit_info.interaction,
-                    &next_hit_info.interaction,
+                    next_hit_info,
                 );
                 let mis_weight = balance_heuristic(pdf_bsdf_dir, pdf_light_dir);
 

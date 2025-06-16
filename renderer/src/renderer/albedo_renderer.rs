@@ -50,7 +50,7 @@ impl<'a, Id: SceneId, F: Filter> Renderer for AlbedoRenderer<'a, Id, F> {
             match intersect {
                 Some(intersect) => {
                     let SurfaceInteraction { uv, material, .. } = intersect.interaction;
-                    material.as_bsdf_material::<Id>().map(|s| {
+                    material.as_bsdf_material().map(|s| {
                         let sample = s.sample_albedo_spectrum(uv, &lambda);
                         acc_sample.add_sample(&lambda, sample * rs.weight);
                     });

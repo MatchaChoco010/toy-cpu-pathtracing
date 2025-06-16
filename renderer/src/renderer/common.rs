@@ -22,9 +22,9 @@ pub fn balance_heuristic(pdf_a: f32, pdf_b: f32) -> f32 {
 /// デルタ点光源の評価。
 pub fn evaluate_delta_point_light<Id: SceneId>(
     scene: &scene::Scene<Id>,
-    shading_point: &SurfaceInteraction<Id, Render>,
+    shading_point: &SurfaceInteraction<Render>,
     intensity: &DeltaPointLightIntensity<Render>,
-    bsdf: &dyn BsdfSurfaceMaterial<Id>,
+    bsdf: &dyn BsdfSurfaceMaterial,
     lambda: &spectrum::SampledWavelengths,
     wo: &math::Vector3<Render>,
     render_to_tangent: &Transform<Render, ShadingTangent>,
@@ -57,9 +57,9 @@ pub fn evaluate_delta_point_light<Id: SceneId>(
 /// デルタ方向光源の評価。
 pub fn evaluate_delta_directional_light<Id: SceneId>(
     scene: &scene::Scene<Id>,
-    shading_point: &SurfaceInteraction<Id, Render>,
+    shading_point: &SurfaceInteraction<Render>,
     intensity: &DeltaDirectionalLightIntensity<Render>,
-    bsdf: &dyn BsdfSurfaceMaterial<Id>,
+    bsdf: &dyn BsdfSurfaceMaterial,
     lambda: &spectrum::SampledWavelengths,
     wo: &math::Vector3<Render>,
     render_to_tangent: &Transform<Render, ShadingTangent>,
@@ -87,9 +87,9 @@ pub fn evaluate_delta_directional_light<Id: SceneId>(
 /// 面積光源の評価（MISなし）。
 pub fn evaluate_area_light<Id: SceneId>(
     scene: &scene::Scene<Id>,
-    shading_point: &SurfaceInteraction<Id, Render>,
-    radiance: &AreaLightSampleRadiance<Id, Render>,
-    bsdf: &dyn BsdfSurfaceMaterial<Id>,
+    shading_point: &SurfaceInteraction<Render>,
+    radiance: &AreaLightSampleRadiance<Render>,
+    bsdf: &dyn BsdfSurfaceMaterial,
     lambda: &spectrum::SampledWavelengths,
     wo: &math::Vector3<Render>,
     render_to_tangent: &Transform<Render, ShadingTangent>,
@@ -129,9 +129,9 @@ pub fn evaluate_area_light<Id: SceneId>(
 /// 面積光源の評価（MIS付き）。
 pub fn evaluate_area_light_with_mis<Id: SceneId>(
     scene: &scene::Scene<Id>,
-    shading_point: &SurfaceInteraction<Id, Render>,
-    radiance: &AreaLightSampleRadiance<Id, Render>,
-    bsdf: &dyn BsdfSurfaceMaterial<Id>,
+    shading_point: &SurfaceInteraction<Render>,
+    radiance: &AreaLightSampleRadiance<Render>,
+    bsdf: &dyn BsdfSurfaceMaterial,
     lambda: &spectrum::SampledWavelengths,
     wo: &math::Vector3<Render>,
     render_to_tangent: &Transform<Render, ShadingTangent>,

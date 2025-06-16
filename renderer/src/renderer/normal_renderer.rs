@@ -56,7 +56,7 @@ impl<'a, Id: SceneId, F: Filter> Renderer for NormalRenderer<'a, Id, F> {
                     let wo = &render_to_tangent * wo;
                     let shading_point = &render_to_tangent * &interaction;
 
-                    if let Some(bsdf) = interaction.material.as_bsdf_material::<Id>() {
+                    if let Some(bsdf) = interaction.material.as_bsdf_material() {
                         let uv = sampler.get_2d();
                         let material_sample = bsdf.sample(uv, &lambda, &wo, &shading_point);
                         let normal = match material_sample {

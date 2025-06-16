@@ -138,6 +138,10 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for EmissiveTriangleMesh<Id> {
                 * Intersection {
                     t_hit: intersection.t_hit,
                     wo: -ray.dir,
+                    primitive_index,
+                    geometry_info: InteractGeometryInfo::TriangleMesh {
+                        triangle_index: intersection.index,
+                    },
                     interaction: SurfaceInteraction {
                         position: intersection.position,
                         normal: intersection.normal,
@@ -145,10 +149,6 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for EmissiveTriangleMesh<Id> {
                         tangent: intersection.tangent,
                         uv: intersection.uv,
                         material: self.material.clone(),
-                        primitive_index,
-                        geometry_info: InteractGeometryInfo::TriangleMesh {
-                            triangle_index: intersection.index,
-                        },
                     },
                 }
         })
@@ -170,7 +170,7 @@ impl<Id: SceneId> PrimitiveLight<Id> for EmissiveTriangleMesh<Id> {
     fn phi(&self, lambda: &SampledWavelengths) -> SampledSpectrum {
         // 面積の総和を使って、放射面のスペクトル放射束を計算する。
         self.material
-            .as_emissive_material::<Id>()
+            .as_emissive_material()
             .unwrap()
             .average_intensity(lambda)
             * self.area_sum
@@ -179,13 +179,12 @@ impl<Id: SceneId> PrimitiveLight<Id> for EmissiveTriangleMesh<Id> {
 impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveTriangleMesh<Id> {
     fn sample_radiance(
         &self,
-        primitive_index: PrimitiveIndex<Id>,
         geometry_repository: &GeometryRepository<Id>,
-        shading_point: &SurfaceInteraction<Id, Render>,
+        shading_point: &SurfaceInteraction<Render>,
         lambda: &SampledWavelengths,
         s: f32,
         uv: glam::Vec2,
-    ) -> AreaLightSampleRadiance<Id, Render> {
+    ) -> AreaLightSampleRadiance<Render> {
         // sを使って三角形をarea_tableからサンプリングする.
         let mut index = 0;
         for (i, area) in self.area_table.iter().enumerate() {
@@ -275,20 +274,14 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveTriangleMesh<Id> {
             tangent,
             uv,
             material: self.material.clone(),
-            primitive_index,
-            geometry_info: InteractGeometryInfo::None,
         };
 
         // マテリアルのedfから放射輝度を取得する。
-        let radiance = self
-            .material
-            .as_emissive_material::<Id>()
-            .unwrap()
-            .radiance(
-                lambda,
-                &render_to_tangent * -wi,
-                &(render_to_tangent * light_sample_point),
-            );
+        let radiance = self.material.as_emissive_material().unwrap().radiance(
+            lambda,
+            &render_to_tangent * -wi,
+            &(render_to_tangent * light_sample_point),
+        );
 
         // pdfを計算する。
         // 三角形から一様に取得するので三角形の面積で割ったものをpdfとする。
@@ -314,13 +307,11 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveTriangleMesh<Id> {
                 tangent,
                 uv,
                 material: self.material.clone(),
-                primitive_index,
-                geometry_info: InteractGeometryInfo::None,
             },
         }
     }
 
-    fn pdf_light_sample(&self, interaction: &SurfaceInteraction<Id, Render>) -> f32 {
+    fn pdf_light_sample(&self, interaction: &Intersection<Id, Render>) -> f32 {
         // interactionした位置の三角形のジオメトリインデックスを確認する。
         let geometry_index = match interaction.geometry_info {
             InteractGeometryInfo::TriangleMesh { triangle_index } => triangle_index,
@@ -344,8 +335,8 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveTriangleMesh<Id> {
 impl<Id: SceneId> PrimitiveAreaLight<Id> for EmissiveTriangleMesh<Id> {
     fn intersect_radiance(
         &self,
-        shading_point: &SurfaceInteraction<Id, Render>,
-        interaction: &SurfaceInteraction<Id, Render>,
+        shading_point: &SurfaceInteraction<Render>,
+        interaction: &SurfaceInteraction<Render>,
         lambda: &SampledWavelengths,
     ) -> SampledSpectrum {
         // 交差した光源上の点のTangent空間への変換Transformを計算する。
@@ -359,13 +350,10 @@ impl<Id: SceneId> PrimitiveAreaLight<Id> for EmissiveTriangleMesh<Id> {
 
         // マテリアルのedfから放射輝度を取得する。
 
-        self.material
-            .as_emissive_material::<Id>()
-            .unwrap()
-            .radiance(
-                lambda,
-                &render_to_tangent * wo,
-                &(render_to_tangent * interaction),
-            )
+        self.material.as_emissive_material().unwrap().radiance(
+            lambda,
+            &render_to_tangent * wo,
+            &(render_to_tangent * interaction),
+        )
     }
 }

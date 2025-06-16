@@ -105,6 +105,10 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for TriangleMesh<Id> {
                 * Intersection {
                     t_hit: intersection.t_hit,
                     wo: -ray.dir,
+                    primitive_index,
+                    geometry_info: InteractGeometryInfo::TriangleMesh {
+                        triangle_index: intersection.index,
+                    },
                     interaction: SurfaceInteraction {
                         position: intersection.position,
                         normal: intersection.normal,
@@ -112,10 +116,6 @@ impl<Id: SceneId> PrimitiveGeometry<Id> for TriangleMesh<Id> {
                         tangent: intersection.tangent,
                         uv: intersection.uv,
                         material: self.material.clone(),
-                        primitive_index,
-                        geometry_info: InteractGeometryInfo::TriangleMesh {
-                            triangle_index: intersection.index,
-                        },
                     },
                 }
         })
