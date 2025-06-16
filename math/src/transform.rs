@@ -169,8 +169,8 @@ impl<C: CoordinateSystem> Transform<C, GeometryTangent> {
         tangent: &Vector3<C>,
     ) -> Transform<C, GeometryTangent> {
         let normal = normal.to_vec3().normalize();
-        let bitangent = tangent.to_vec3().cross(normal).normalize();
-        let tangent = bitangent.cross(normal);
+        let bitangent = normal.normalize().cross(tangent.to_vec3()).normalize();
+        let tangent = bitangent.cross(normal).normalize();
         let matrix = glam::Mat4::from_cols(
             tangent.extend(0.0),
             bitangent.extend(0.0),
@@ -180,7 +180,6 @@ impl<C: CoordinateSystem> Transform<C, GeometryTangent> {
         Transform::from_matrix(matrix.inverse())
     }
 }
-
 impl<C: CoordinateSystem> Transform<C, ShadingTangent> {
     /// 任意の座標系CからShadingTangent座標系への変換Transformを作成する。
     /// シェーディング法線がZ軸になり、tangentの方向にX軸が向くような座標系に変換するTransform。
@@ -189,8 +188,11 @@ impl<C: CoordinateSystem> Transform<C, ShadingTangent> {
         tangent: &Vector3<C>,
     ) -> Transform<C, ShadingTangent> {
         let shading_normal = shading_normal.to_vec3().normalize();
-        let bitangent = tangent.to_vec3().cross(shading_normal).normalize();
-        let tangent = bitangent.cross(shading_normal);
+        let bitangent = shading_normal
+            .normalize()
+            .cross(tangent.to_vec3())
+            .normalize();
+        let tangent = bitangent.cross(shading_normal).normalize();
         let matrix = glam::Mat4::from_cols(
             tangent.extend(0.0),
             bitangent.extend(0.0),
@@ -214,11 +216,6 @@ impl Transform<ShadingTangent, NormalMapTangent> {
         normal_map_normal: &Normal<ShadingTangent>,
     ) -> Transform<ShadingTangent, NormalMapTangent> {
         let perturbed_normal = normal_map_normal.to_vec3().normalize();
-
-        // 摂動された法線がZ軸とほぼ同じ場合は変換不要
-        if (perturbed_normal - glam::Vec3::Z).length() < 1e-6 {
-            return Transform::identity();
-        }
 
         // 新しい基底を構築：perturbed_normalをZ軸とする
         let new_z = perturbed_normal;

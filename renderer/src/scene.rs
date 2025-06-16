@@ -95,7 +95,7 @@ pub fn load_scene_0<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
         geometry_index: geom,
         surface_material: EmissiveMaterial::new(
             SpectrumParameter::constant(presets::cie_illum_d6500()),
-            FloatParameter::constant(1.0),
+            FloatParameter::constant(10.0),
         ),
         transform: Transform::identity(),
     });
@@ -165,13 +165,13 @@ pub fn load_scene_1<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     });
 
     scene.create_primitive(CreatePrimitiveDesc::PointLightPrimitive {
-        intensity: 1.0,
+        intensity: 10.0,
         spectrum: presets::cie_illum_d6500(),
         transform: Transform::from_translate(glam::vec3(0.0, 3.0, 0.0)),
     });
 
     scene.create_primitive(CreatePrimitiveDesc::PointLightPrimitive {
-        intensity: 2.0,
+        intensity: 10.0,
         spectrum: presets::cie_illum_d6500(),
         transform: Transform::from_translate(glam::vec3(3.0, 5.0, 0.0)),
     });
@@ -262,7 +262,7 @@ pub fn load_scene_2<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     });
 
     scene.create_primitive(CreatePrimitiveDesc::PointLightPrimitive {
-        intensity: 1.0,
+        intensity: 10.0,
         spectrum: presets::cie_illum_d6500(),
         transform: Transform::from_translate(glam::vec3(0.0, 3.0, 0.0)),
     });
@@ -366,14 +366,14 @@ pub fn load_scene_3<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
         geometry_index: geom,
         surface_material: EmissiveMaterial::new(
             SpectrumParameter::constant(presets::cie_illum_d6500()),
-            FloatParameter::constant(1.0),
+            FloatParameter::constant(10.0),
         ),
         transform: Transform::identity(),
     });
 
     camera.set_look_to(
-        Point3::new(0.0, 3.5, 6.0),
-        Vector3::new(0.0, -1.0, -3.0).normalize(),
+        Point3::new(0.0, 3.15221, 6.0),
+        Vector3::new(0.0, -0.9, -3.2).normalize(),
         Vector3::new(0.0, 1.0, 0.0),
     );
 }
@@ -470,7 +470,7 @@ pub fn load_scene_4<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
         geometry_index: geom,
         surface_material: EmissiveMaterial::new(
             SpectrumParameter::constant(presets::cie_illum_d6500()),
-            FloatParameter::constant(1.0),
+            FloatParameter::constant(10.0),
         ),
         transform: Transform::identity(),
     });
@@ -572,7 +572,7 @@ pub fn load_scene_5<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
         geometry_index: geom,
         surface_material: EmissiveMaterial::new(
             SpectrumParameter::constant(presets::cie_illum_d6500()),
-            FloatParameter::constant(1.0),
+            FloatParameter::constant(10.0),
         ),
         transform: Transform::identity(),
     });
