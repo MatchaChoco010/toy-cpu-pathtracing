@@ -3,7 +3,7 @@
 use super::{
     config::TextureConfig,
     loader::{ImageData, load_rgb_image},
-    sampler::{TextureSample, bilinear_sample_rgb, bilinear_sample_rgb_f32},
+    sampler::{bilinear_sample_rgb, bilinear_sample_rgb_f32},
 };
 use glam::Vec2;
 use spectrum::Spectrum;
@@ -24,6 +24,17 @@ impl RgbTexture {
             data,
             gamut: config.gamut,
         }))
+    }
+
+    /// UV座標でテクスチャをサンプリングしてRGB値を返す。
+    pub fn sample(&self, uv: Vec2) -> [f32; 3] {
+        match &self.data {
+            ImageData::Rgb8(data, width, height) => bilinear_sample_rgb(data, *width, *height, uv),
+            ImageData::RgbF32(data, width, height) => {
+                bilinear_sample_rgb_f32(data, *width, *height, uv)
+            }
+            _ => [0.0, 0.0, 0.0], // 不正なデータタイプの場合は黒を返す
+        }
     }
 
     /// RGB値をスペクトラムに変換する。
@@ -74,18 +85,6 @@ impl RgbTexture {
                 );
                 spectrum::RgbUnboundedSpectrum::<color::ColorSrgb<color::tone_map::NoneToneMap>>::new(color)
             }
-        }
-    }
-}
-
-impl TextureSample<[f32; 3]> for RgbTexture {
-    fn sample(&self, uv: Vec2) -> [f32; 3] {
-        match &self.data {
-            ImageData::Rgb8(data, width, height) => bilinear_sample_rgb(data, *width, *height, uv),
-            ImageData::RgbF32(data, width, height) => {
-                bilinear_sample_rgb_f32(data, *width, *height, uv)
-            }
-            _ => [0.0, 0.0, 0.0], // 不正なデータタイプの場合は黒を返す
         }
     }
 }

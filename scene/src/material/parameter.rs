@@ -1,6 +1,6 @@
 //! マテリアルパラメータ定義。
 
-use crate::texture::{FloatTexture, NormalTexture, RgbTexture, SpectrumType, TextureSample};
+use crate::texture::{FloatTexture, NormalTexture, RgbTexture, SpectrumType};
 use glam::Vec2;
 use math::{Normal, ShadingTangent};
 use spectrum::Spectrum;

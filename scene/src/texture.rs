@@ -12,4 +12,3 @@ pub use float_texture::FloatTexture;
 pub use loader::*;
 pub use normal_texture::NormalTexture;
 pub use rgb_texture::RgbTexture;
-pub use sampler::TextureSample;

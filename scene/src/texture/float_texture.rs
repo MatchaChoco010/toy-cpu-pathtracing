@@ -3,7 +3,7 @@
 use super::{
     config::TextureConfig,
     loader::{ImageData, load_grayscale_image},
-    sampler::{TextureSample, bilinear_sample_gray, bilinear_sample_gray_f32},
+    sampler::{bilinear_sample_gray, bilinear_sample_gray_f32},
 };
 use color::eotf::{Eotf, GammaSrgb};
 use glam::Vec2;
@@ -25,10 +25,9 @@ impl FloatTexture {
             gamma_corrected: config.gamma_corrected,
         }))
     }
-}
 
-impl TextureSample<f32> for FloatTexture {
-    fn sample(&self, uv: Vec2) -> f32 {
+    /// UV座標でテクスチャをサンプリングする。
+    pub fn sample(&self, uv: Vec2) -> f32 {
         let value = match &self.data {
             ImageData::Gray8(data, width, height) => {
                 bilinear_sample_gray(data, *width, *height, uv)

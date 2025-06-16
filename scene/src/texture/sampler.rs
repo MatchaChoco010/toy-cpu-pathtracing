@@ -2,12 +2,6 @@
 
 use glam::Vec2;
 
-/// バイリニア補間によるテクスチャサンプリング。
-pub trait TextureSample<T> {
-    /// UV座標（0.0-1.0）でテクスチャをサンプリングする。
-    fn sample(&self, uv: Vec2) -> T;
-}
-
 /// UV座標を画像座標に変換し、バイリニア補間を行う。
 pub fn bilinear_sample_rgb(data: &[u8], width: u32, height: u32, uv: Vec2) -> [f32; 3] {
     // UV座標をラップ
