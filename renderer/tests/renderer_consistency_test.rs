@@ -10,9 +10,18 @@ const WIDTH: &str = "200";
 const HEIGHT: &str = "150";
 
 /// テスト用の一意なファイル名を生成
-fn generate_unique_filename(base: &str, scene: u32, renderer1: &str, renderer2: &str, suffix: &str) -> String {
+fn generate_unique_filename(
+    base: &str,
+    scene: u32,
+    renderer1: &str,
+    renderer2: &str,
+    suffix: &str,
+) -> String {
     let test_id = std::thread::current().id();
-    format!("output.test_{}_{}_vs_{}_scene{}_{:?}{}", base, renderer1, renderer2, scene, test_id, suffix)
+    format!(
+        "output.test_{}_{}_vs_{}_scene{}_{:?}{}",
+        base, renderer1, renderer2, scene, test_id, suffix
+    )
 }
 
 /// 2つの画像間のRMSEを計算する（リニア色空間で）
@@ -168,16 +177,36 @@ fn cleanup_test_files(files: &[String]) {
 }
 
 /// レンダラー間の一貫性をテストする共通関数
-fn test_renderer_consistency(
-    scene: u32,
-    renderer1: &str,
-    renderer2: &str,
-) -> Result<(), String> {
+fn test_renderer_consistency(scene: u32, renderer1: &str, renderer2: &str) -> Result<(), String> {
     // 一意なファイル名を生成
-    let output1 = generate_unique_filename("raw", scene, renderer1, renderer2, &format!("_{}.png", renderer1));
-    let output2 = generate_unique_filename("raw", scene, renderer1, renderer2, &format!("_{}.png", renderer2));
-    let filtered1 = generate_unique_filename("filtered", scene, renderer1, renderer2, &format!("_{}.png", renderer1));
-    let filtered2 = generate_unique_filename("filtered", scene, renderer1, renderer2, &format!("_{}.png", renderer2));
+    let output1 = generate_unique_filename(
+        "raw",
+        scene,
+        renderer1,
+        renderer2,
+        &format!("_{}.png", renderer1),
+    );
+    let output2 = generate_unique_filename(
+        "raw",
+        scene,
+        renderer1,
+        renderer2,
+        &format!("_{}.png", renderer2),
+    );
+    let filtered1 = generate_unique_filename(
+        "filtered",
+        scene,
+        renderer1,
+        renderer2,
+        &format!("_{}.png", renderer1),
+    );
+    let filtered2 = generate_unique_filename(
+        "filtered",
+        scene,
+        renderer1,
+        renderer2,
+        &format!("_{}.png", renderer2),
+    );
 
     // クリーンアップ用ファイルリスト
     let cleanup_files = vec![
@@ -198,7 +227,12 @@ fn test_renderer_consistency(
 
         // RMSE計算
         let rmse = calculate_rmse(&format!("../{}", filtered1), &format!("../{}", filtered2))
-            .ok_or_else(|| format!("Failed to calculate RMSE between {} and {}", renderer1, renderer2))?;
+            .ok_or_else(|| {
+                format!(
+                    "Failed to calculate RMSE between {} and {}",
+                    renderer1, renderer2
+                )
+            })?;
 
         println!(
             "{} vs {} (Scene {}) RMSE (linear color space): {:.6} ({:.3}%)",
