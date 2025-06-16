@@ -31,12 +31,11 @@ impl<Id: SceneId> BvhItem<Local> for Triangle<Id> {
         Id: 'a,
     {
         let positions = [
-            &data.positions[data.indices[self.triangle_index as usize * 3] as usize],
-            &data.positions[data.indices[self.triangle_index as usize * 3 + 1] as usize],
-            &data.positions[data.indices[self.triangle_index as usize * 3 + 2] as usize],
+            data.positions[data.indices[self.triangle_index as usize * 3] as usize],
+            data.positions[data.indices[self.triangle_index as usize * 3 + 1] as usize],
+            data.positions[data.indices[self.triangle_index as usize * 3 + 2] as usize],
         ];
-        let positions_vec: Vec<Point3<Local>> = positions.iter().map(|&p| *p).collect();
-        let (min, max) = Point3::min_max_from_points(&positions_vec);
+        let (min, max) = Point3::min_max_from_points(&positions);
         Bounds::new(min, max)
     }
 
