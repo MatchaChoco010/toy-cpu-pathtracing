@@ -1,7 +1,7 @@
 //! 拡散反射（Lambert）マテリアル実装。
 
 use math::{Normal, ShadingTangent, Transform, Vector3};
-use spectrum::SampledWavelengths;
+use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::material::bsdf::BsdfSample;
 use crate::{
@@ -54,9 +54,6 @@ impl<Id: SceneId> BsdfSurfaceMaterial<Id> for LambertMaterial {
             .normal
             .sample(shading_point.uv)
             .unwrap_or_else(|| Normal::new(0.0, 0.0, 1.0));
-
-        // // テスト用にnormalを固定値で上書き
-        // let normal_map = Normal::new(-0.75, 0.0, 0.75);
 
         // シェーディングタンジェント空間からノーマルマップタンジェント空間への変換
         let transform = Transform::from_normal_map(&normal_map);
@@ -121,9 +118,6 @@ impl<Id: SceneId> BsdfSurfaceMaterial<Id> for LambertMaterial {
             .sample(shading_point.uv)
             .unwrap_or_else(|| Normal::new(0.0, 0.0, 1.0));
 
-        // // テスト用にnormalを固定値で上書き
-        // let normal_map = Normal::new(-0.75, 0.0, 0.75);
-
         // シェーディングタンジェント空間からノーマルマップタンジェント空間への変換
         let transform = Transform::from_normal_map(&normal_map);
 
@@ -166,9 +160,6 @@ impl<Id: SceneId> BsdfSurfaceMaterial<Id> for LambertMaterial {
             .normal
             .sample(shading_point.uv)
             .unwrap_or_else(|| Normal::new(0.0, 0.0, 1.0));
-
-        // // テスト用にnormalを固定値で上書き
-        // let normal_map = Normal::new(-0.75, 0.0, 0.75);
 
         // シェーディングタンジェント空間からノーマルマップタンジェント空間への変換
         let transform = Transform::from_normal_map(&normal_map);
