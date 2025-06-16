@@ -41,10 +41,10 @@ macro_rules! impl_rgb_unbounded_spectrum {
     };
 }
 impl_rgb_unbounded_spectrum!(ColorSrgb<tone_map::NoneToneMap>);
-// impl_rgb_unbounded_spectrum!(ColorDisplayP3<tone_map::NoneToneMap>);
-// impl_rgb_unbounded_spectrum!(ColorP3D65<tone_map::NoneToneMap>);
-// impl_rgb_unbounded_spectrum!(ColorAdobeRGB<tone_map::NoneToneMap>);
-// impl_rgb_unbounded_spectrum!(ColorRec709<tone_map::NoneToneMap>);
-// impl_rgb_unbounded_spectrum!(ColorRec2020<tone_map::NoneToneMap>);
-// impl_rgb_unbounded_spectrum!(ColorAcesCg<tone_map::NoneToneMap>);
-// impl_rgb_unbounded_spectrum!(ColorAces2065_1<tone_map::NoneToneMap>);
+impl_rgb_unbounded_spectrum!(ColorDisplayP3<tone_map::NoneToneMap>);
+impl_rgb_unbounded_spectrum!(ColorP3D65<tone_map::NoneToneMap>);
+impl_rgb_unbounded_spectrum!(ColorAdobeRGB<tone_map::NoneToneMap>);
+impl_rgb_unbounded_spectrum!(ColorRec709<tone_map::NoneToneMap>);
+impl_rgb_unbounded_spectrum!(ColorRec2020<tone_map::NoneToneMap>);
+impl_rgb_unbounded_spectrum!(ColorAcesCg<tone_map::NoneToneMap>);
+impl_rgb_unbounded_spectrum!(ColorAces2065_1<tone_map::NoneToneMap>);

@@ -7,11 +7,6 @@ mod cie_data;
 /// 多項式のテーブルのサイズ。
 pub const TABLE_SIZE: usize = 64;
 
-/// 可視光の波長の範囲の最小値 (nm)。
-pub const LAMBDA_MIN: f32 = 360.0;
-/// 可視光の波長の範囲の最大値 (nm)。
-pub const LAMBDA_MAX: f32 = 830.0;
-
 /// バイナリデータから変換されたテーブル構造体
 struct RgbToSpectrumTable {
     z_nodes: Vec<f32>,
@@ -77,8 +72,11 @@ impl RgbToSpectrumTable {
             a + (b - a) * t
         }
 
-        // RGBの最大値が1.0を超えている場合はエラーとする。
+        // RGBのEOTFを逆変換してリニアな値にする。
+        let color = color.invert_eotf();
         let rgb = color.rgb().max(glam::Vec3::splat(0.0));
+
+        // RGBの最大値が1.0を超えている場合はエラーとする。
         if rgb.max_element() > 1.0 {
             // Debug print before panic to understand which values are causing the issue
             eprintln!(
@@ -93,12 +91,8 @@ impl RgbToSpectrumTable {
 
         // RGBの成分が均一の場合は特別に定数関数になるように返す。
         if rgb.x == rgb.y && rgb.y == rgb.z {
-            return [0.0, 0.0, (rgb.x - 0.5) / (rgb.x * (1.0 - rgb.x).sqrt())];
+            return [0.0, 0.0, (rgb.x / (1.0 - rgb.x)).ln()];
         }
-
-        // RGBのEOTFを逆変換してリニアな値にする。
-        let color = color.invert_eotf();
-        let rgb = color.rgb().max(glam::Vec3::splat(0.0));
 
         // RGBの最大成分を元にマップし直す。
         let max_component = rgb.max_position();
@@ -145,24 +139,17 @@ impl RgbToSpectrumTable {
 
 /// シグモイド関数。
 fn sigmoid(x: f32) -> f32 {
-    if x.is_infinite() {
-        return if x > 0.0 { 1.0 } else { 0.0 };
-    }
-    0.5 + x / (2.0 * (1.0 + x * x).sqrt())
+    1.0 / (1.0 + (-x).exp())
 }
 
 /// 係数から二次式を計算する関数。
 fn parabolic(t: f32, coefficients: &[f32]) -> f32 {
-    // coefficients[0]だけxに平行移動してcoefficients[1]だけyに平行移動した、
-    // 係数coefficients[2]に100を乗じた二次式。
-    let x = t - coefficients[0];
-    let xx = 100.0 * coefficients[2] * x * x;
-    xx + coefficients[1]
+    t * t * coefficients[0] + t * coefficients[1] + coefficients[2]
 }
 
 /// SigmoidPolynomialの特定の波長における値を評価する。
 fn value(lambda: f32, cs: &[f32; 3]) -> f32 {
-    let lambda = (lambda - LAMBDA_MIN) / (LAMBDA_MAX - LAMBDA_MIN);
+    let lambda = (lambda - cie_data::LAMBDA_MIN) / (cie_data::LAMBDA_MAX - cie_data::LAMBDA_MIN);
     sigmoid(parabolic(lambda, cs))
 }
 
@@ -174,18 +161,21 @@ fn evaluate_spectrum<G: ColorGamut, E: Eotf>(
     let cs = table.get(color);
 
     let mut xyz = glam::Vec3::ZERO;
-    let range = 0..(LAMBDA_MAX - LAMBDA_MIN) as usize;
+    let range = 0..=(cie_data::LAMBDA_MAX - cie_data::LAMBDA_MIN) as usize;
     for i in range {
-        let lambda = LAMBDA_MIN + i as f32;
-        xyz.x += value(lambda, &cs) * cie_data::cie_value_x(lambda);
-        xyz.y += value(lambda, &cs) * cie_data::cie_value_y(lambda);
-        xyz.z += value(lambda, &cs) * cie_data::cie_value_z(lambda);
+        let lambda = cie_data::LAMBDA_MIN + i as f32;
+        xyz.x +=
+            value(lambda, &cs) * cie_data::cie_value_x(lambda) * cie_data::cie_value_d65(lambda);
+        xyz.y +=
+            value(lambda, &cs) * cie_data::cie_value_y(lambda) * cie_data::cie_value_d65(lambda);
+        xyz.z +=
+            value(lambda, &cs) * cie_data::cie_value_z(lambda) * cie_data::cie_value_d65(lambda);
     }
-    xyz /= cie_data::Y_INTEGRAL;
 
     let rgb = G::new().xyz_to_rgb() * xyz;
 
-    ColorImpl::<G, NoneToneMap, E>::new(rgb.x, rgb.y, rgb.z)
+    let linear_color = ColorImpl::<G, NoneToneMap, Linear>::new(rgb.x, rgb.y, rgb.z);
+    linear_color.apply_eotf()
 }
 
 fn xyy_to_xyz(xy: glam::Vec2, y: f32) -> glam::Vec3 {
@@ -214,8 +204,8 @@ fn rgb_to_lab(rgb: glam::Vec3, rgb_to_xyz: glam::Mat3) -> glam::Vec3 {
     // RGBをXYZに変換する。
     let xyz = rgb_to_xyz * rgb;
 
-    // D50白色点のXYZ値を取得する。
-    let w = glam::vec2(0.34567, 0.35850);
+    // D65白色点のXYZ値を取得する。
+    let w = glam::vec2(0.31270, 0.32900);
     let w_xyz = xy_to_xyz(w);
 
     // Xr, Yr, Zrを計算する。
@@ -232,18 +222,18 @@ fn rgb_to_lab(rgb: glam::Vec3, rgb_to_xyz: glam::Mat3) -> glam::Vec3 {
 }
 
 fn color_match_test<G: ColorGamut, E: Eotf>(data: &[u8]) {
-    let error = (0..=(255 / 16))
+    let error_10 = (0..=(255 / 32))
         .into_par_iter()
         .map(|r| {
-            (0..=(255 / 16))
+            (0..=(255 / 32))
                 .into_iter()
                 .map(|g| {
-                    (0..=(255 / 16))
+                    (0..=(255 / 32))
                         .into_iter()
                         .map(|b| {
-                            let r = r * 16;
-                            let g = g * 16;
-                            let b = b * 16;
+                            let r = r * 32;
+                            let g = g * 32;
+                            let b = b * 32;
                             let color = ColorImpl::<G, NoneToneMap, E>::new(
                                 r as f32 / 255.0,
                                 g as f32 / 255.0,
@@ -251,21 +241,70 @@ fn color_match_test<G: ColorGamut, E: Eotf>(data: &[u8]) {
                             );
                             let evaluated_color = evaluate_spectrum::<G, E>(data, &color);
 
-                            let color_lab = rgb_to_lab(color.rgb(), G::new().rgb_to_xyz());
+                            let linear_color = color.invert_eotf();
+                            let color_lab = rgb_to_lab(linear_color.rgb(), G::new().rgb_to_xyz());
+
+                            let evaluated_color_linear = evaluated_color.invert_eotf();
                             let evaluated_color_lab =
-                                rgb_to_lab(evaluated_color.rgb(), G::new().rgb_to_xyz());
+                                rgb_to_lab(evaluated_color_linear.rgb(), G::new().rgb_to_xyz());
 
                             let delta_e = (color_lab - evaluated_color_lab).length();
-                            let error = delta_e > 25.0;
+                            let error = delta_e > 10.0;
+                            error
+                        })
+                        .collect::<Vec<_>>()
+                        .into_iter()
+                        .map(|x| if x { 1 } else { 0 })
+                        .sum::<u32>()
+                })
+                .collect::<Vec<_>>()
+                .into_iter()
+                .sum::<u32>()
+        })
+        .collect::<Vec<_>>()
+        .into_iter()
+        .sum::<u32>();
+
+    println!(
+        "Color match test result: {}/{} violations (delta E > 10)",
+        error_10,
+        256 / 32 * 256 / 32 * 256 / 32
+    );
+
+    let error_3 = (0..=(255 / 32))
+        .into_par_iter()
+        .map(|r| {
+            (0..=(255 / 32))
+                .into_iter()
+                .map(|g| {
+                    (0..=(255 / 32))
+                        .into_iter()
+                        .map(|b| {
+                            let r = r * 32;
+                            let g = g * 32;
+                            let b = b * 32;
+                            let color = ColorImpl::<G, NoneToneMap, E>::new(
+                                r as f32 / 255.0,
+                                g as f32 / 255.0,
+                                b as f32 / 255.0,
+                            );
+                            let evaluated_color = evaluate_spectrum::<G, E>(data, &color);
+
+                            let linear_color = color.invert_eotf();
+                            let color_lab = rgb_to_lab(linear_color.rgb(), G::new().rgb_to_xyz());
+
+                            let evaluated_color_linear = evaluated_color.invert_eotf();
+                            let evaluated_color_lab =
+                                rgb_to_lab(evaluated_color_linear.rgb(), G::new().rgb_to_xyz());
+
+                            let delta_e = (color_lab - evaluated_color_lab).length();
+                            let error = delta_e > 3.0;
                             // if error {
                             //     eprintln!(
-                            //         "Color mismatch for RGB({},{},{}), deltaE: {}:\n   expected {:?}, got {:?}",
-                            //         r,
-                            //         g,
-                            //         b,
-                            //         delta_e,
-                            //         color.rgb(),
-                            //         evaluated_color.rgb()
+                            //         "Color mismatch: RGB({:.3}, {:.3}, {:.3}) vs Evaluated RGB({:.3}, {:.3}, {:.3}), Delta E: {:.3}",
+                            //         color.rgb().x, color.rgb().y, color.rgb().z,
+                            //         evaluated_color.rgb().x, evaluated_color.rgb().y, evaluated_color.rgb().z,
+                            //         delta_e
                             //     );
                             // }
                             error
@@ -284,14 +323,29 @@ fn color_match_test<G: ColorGamut, E: Eotf>(data: &[u8]) {
         .sum::<u32>();
 
     println!(
-        "Color match test result: {}/{} violations (delta E > 25)",
-        error,
-        256 / 16 * 256 / 16 * 256 / 16
+        "Color match test result: {}/{} violations (delta E > 3)",
+        error_3,
+        256 / 32 * 256 / 32 * 256 / 32
     );
+
+    // let green = ColorImpl::<G, NoneToneMap, E>::new(0.0, 0.9, 0.0);
+    // let evaluated_green = evaluate_spectrum::<G, E>(data, &green);
+    // println!(
+    //     "Green color: RGB({:.3}, {:.3}, {:.3}), Evaluated RGB({:.3}, {:.3}, {:.3})",
+    //     green.rgb().x,
+    //     green.rgb().y,
+    //     green.rgb().z,
+    //     evaluated_green.rgb().x,
+    //     evaluated_green.rgb().y,
+    //     evaluated_green.rgb().z
+    // );
+
+    // println!("");
 }
 
 #[test]
 fn test_srgb_match() {
+    println!("Testing sRGB color match...");
     let data = rgb_to_spec::SRGB_DATA;
     color_match_test::<GamutSrgb, GammaSrgb>(data);
 }
