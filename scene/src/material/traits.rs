@@ -18,14 +18,14 @@ impl dyn SurfaceMaterial {
     /// BSDF実装への安全なダウンキャスト。
     pub fn as_bsdf_material<Id: SceneId>(&self) -> Option<&dyn BsdfSurfaceMaterial<Id>> {
         self.as_any()
-            .downcast_ref::<crate::material::impls::LambertMaterial>()
+            .downcast_ref::<crate::material::impls::LambertMaterial<color::gamut::GamutSrgb, color::eotf::GammaSrgb>>()
             .map(|m| m as &dyn BsdfSurfaceMaterial<Id>)
     }
 
     /// Emissive実装への安全なダウンキャスト。
     pub fn as_emissive_material<Id: SceneId>(&self) -> Option<&dyn EmissiveSurfaceMaterial<Id>> {
         self.as_any()
-            .downcast_ref::<crate::material::impls::EmissiveMaterial>()
+            .downcast_ref::<crate::material::impls::EmissiveMaterial<color::gamut::GamutSrgb, color::eotf::GammaSrgb>>()
             .map(|m| m as &dyn EmissiveSurfaceMaterial<Id>)
     }
 }
