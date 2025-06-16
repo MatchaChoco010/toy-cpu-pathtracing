@@ -45,7 +45,7 @@ pub fn evaluate_delta_point_light<Id: SceneId>(
 
         // Normal mappingされた表面法線に対するcos項
         let distance_squared = distance_vector.length_squared();
-        let cos_theta = material_result.normal.dot(&wi).abs();
+        let cos_theta = material_result.normal.dot(wi).abs();
 
         material_result.f * &intensity.intensity * cos_theta
             / (distance_squared * light_probability)
@@ -76,7 +76,7 @@ pub fn evaluate_delta_directional_light<Id: SceneId>(
         let material_result = bsdf.evaluate(lambda, &wo, &wi, &shading_point_tangent);
 
         // Normal mappingされた表面法線に対するcos項
-        let cos_theta = material_result.normal.dot(&wi).abs();
+        let cos_theta = material_result.normal.dot(wi).abs();
 
         material_result.f * &intensity.intensity * cos_theta / light_probability
     } else {
@@ -116,8 +116,8 @@ pub fn evaluate_area_light<Id: SceneId>(
         // 幾何項の計算
         let distance2 = distance_vector.length_squared();
         let light_normal = render_to_tangent * radiance.light_normal; // ShadingTangent座標系に変換
-        let cos_material = material_result.normal.dot(&wi_tangent).abs(); // ShadingTangent座標系で統一
-        let cos_light = light_normal.dot(&(-wi_tangent)).abs(); // ShadingTangent座標系で統一
+        let cos_material = material_result.normal.dot(wi_tangent).abs(); // ShadingTangent座標系で統一
+        let cos_light = light_normal.dot(-wi_tangent).abs(); // ShadingTangent座標系で統一
         let g = cos_material * cos_light / distance2;
 
         material_result.f * &radiance.radiance * g / (pdf * light_probability)
@@ -156,8 +156,8 @@ pub fn evaluate_area_light_with_mis<Id: SceneId>(
         // 幾何項の計算
         let distance2 = distance_vector.length_squared();
         let light_normal = render_to_tangent * radiance.light_normal;
-        let cos_material = material_result.normal.dot(&wi).abs();
-        let cos_light = light_normal.dot(&(-wi)).abs();
+        let cos_material = material_result.normal.dot(wi).abs();
+        let cos_light = light_normal.dot(-wi).abs();
         let g = cos_material * cos_light / distance2;
 
         // MISのウエイトを計算

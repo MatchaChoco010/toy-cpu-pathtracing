@@ -4,9 +4,11 @@ use color::{ColorSrgb, tone_map};
 use scene::{Intersection, MaterialSample, SceneId};
 use spectrum::SampledWavelengths;
 
-use crate::filter::Filter;
-use crate::renderer::{Renderer, RendererArgs};
-use crate::sampler::Sampler;
+use crate::{
+    filter::Filter,
+    renderer::{Renderer, RendererArgs},
+    sampler::Sampler,
+};
 
 /// 法線をレンダリングするためのレンダラー。
 #[derive(Clone)]

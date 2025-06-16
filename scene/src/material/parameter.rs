@@ -1,10 +1,12 @@
 //! マテリアルパラメータ定義。
 
-use crate::texture::{FloatTexture, NormalTexture, RgbTexture, SpectrumType};
+use std::sync::Arc;
+
 use glam::Vec2;
 use math::{Normal, ShadingTangent};
 use spectrum::Spectrum;
-use std::sync::Arc;
+
+use crate::texture::{FloatTexture, NormalTexture, RgbTexture, SpectrumType};
 
 /// スペクトラムパラメータ。
 #[derive(Clone)]

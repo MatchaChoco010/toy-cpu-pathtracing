@@ -1,13 +1,14 @@
 //! 法線を出力するレンダラーを実装するモジュール。
 
-use color::gamut::GamutSrgb;
-use color::{ColorSrgb, eotf, tone_map};
+use color::{ColorSrgb, eotf, gamut::GamutSrgb, tone_map};
 use scene::{SceneId, SurfaceInteraction};
 use spectrum::{DenselySampledSpectrum, SampledWavelengths, SpectrumTrait, presets};
 
-use crate::filter::Filter;
-use crate::renderer::{Renderer, RendererArgs};
-use crate::sampler::Sampler;
+use crate::{
+    filter::Filter,
+    renderer::{Renderer, RendererArgs},
+    sampler::Sampler,
+};
 
 ///  アルベドをレンダリングするためのレンダラー。
 #[derive(Clone)]
@@ -70,8 +71,7 @@ impl<'a, Id: SceneId, F: Filter> Renderer for AlbedoRenderer<'a, Id, F> {
         // XYZをRGBに変換する。
         let rgb = xyz.xyz_to_rgb::<GamutSrgb>();
         // ガンマ補正のEOTFを適用する。
-        let acc_rgb = rgb.apply_eotf::<eotf::GammaSrgb>();
 
-        acc_rgb
+        rgb.apply_eotf::<eotf::GammaSrgb>()
     }
 }

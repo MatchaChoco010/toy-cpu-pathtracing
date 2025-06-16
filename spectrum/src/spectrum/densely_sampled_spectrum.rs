@@ -4,8 +4,10 @@ use std::sync::Arc;
 
 use util_macros::impl_assign_ops;
 
-use crate::spectrum::{LAMBDA_MAX, LAMBDA_MIN, Spectrum, SpectrumTrait};
-use crate::{SampledSpectrum, SampledWavelengths};
+use crate::{
+    SampledSpectrum, SampledWavelengths,
+    spectrum::{LAMBDA_MAX, LAMBDA_MIN, Spectrum, SpectrumTrait},
+};
 
 pub const N_SPECTRUM_DENSELY_SAMPLES: usize = (LAMBDA_MAX - LAMBDA_MIN) as usize;
 

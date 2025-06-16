@@ -1,7 +1,8 @@
 //! 画像ファイル読み込み機能。
 
-use image::{DynamicImage, ImageResult};
 use std::path::Path;
+
+use image::{DynamicImage, ImageResult};
 
 /// 画像データの種類。
 #[derive(Clone)]

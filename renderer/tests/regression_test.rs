@@ -1,6 +1,6 @@
+use std::{path::Path, process::Command};
+
 use image::{ImageBuffer, Rgb};
-use std::path::Path;
-use std::process::Command;
 
 /// sRGB逆ガンマ補正を適用して線形値に変換
 fn srgb_to_linear(srgb: f64) -> f64 {
@@ -52,12 +52,12 @@ fn run_render_and_compare(
     // レンダリング実行（プロジェクトルートディレクトリから実行）
     let output = Command::new("cargo.exe")
         .current_dir("..") // プロジェクトルートに移動
-        .args(&["run", "--release", "--bin", "renderer", "--"])
-        .args(&["--scene", &scene.to_string()])
-        .args(&["--renderer", renderer])
-        .args(&["--sampler", sampler])
-        .args(&["--spp", &spp.to_string()])
-        .args(&["--output", output_file])
+        .args(["run", "--release", "--bin", "renderer", "--"])
+        .args(["--scene", &scene.to_string()])
+        .args(["--renderer", renderer])
+        .args(["--sampler", sampler])
+        .args(["--spp", &spp.to_string()])
+        .args(["--output", output_file])
         .output()
         .expect("Failed to execute renderer");
 

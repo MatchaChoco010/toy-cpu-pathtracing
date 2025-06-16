@@ -97,7 +97,7 @@ fn test_pt_nee_normal_map_consistency() {
         SPP, WIDTH, HEIGHT
     );
     let pt_output = Command::new("cargo.exe")
-        .args(&[
+        .args([
             "run",
             "--release",
             "--bin",
@@ -134,7 +134,7 @@ fn test_pt_nee_normal_map_consistency() {
         SPP, WIDTH, HEIGHT
     );
     let nee_output = Command::new("cargo.exe")
-        .args(&[
+        .args([
             "run",
             "--release",
             "--bin",
