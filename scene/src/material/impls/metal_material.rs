@@ -1,0 +1,245 @@
+//! 金属マテリアル実装。
+
+use std::sync::Arc;
+
+use math::{Normal, ShadingTangent, Transform, Vector3};
+use spectrum::{SampledWavelengths, presets};
+
+use crate::{
+    BsdfSurfaceMaterial, Material, MaterialEvaluationResult, MaterialSample, NormalParameter,
+    SpecularDirectionSample, SurfaceInteraction, SurfaceMaterial,
+    material::bsdf::{BsdfSample, ConductorBsdf},
+};
+
+/// 金属の種類を表す列挙型。
+#[derive(Debug, Clone, Copy)]
+pub enum MetalType {
+    /// 金
+    Gold,
+    /// 銀
+    Silver,
+    /// 銅
+    Copper,
+    /// アルミニウム
+    Aluminum,
+    /// 真鍮
+    Brass,
+}
+
+/// 金属マテリアル。
+/// 完全鏡面反射のみを行う（マイクロファセットは後で実装予定）。
+pub struct MetalMaterial {
+    /// 金属の種類
+    metal_type: MetalType,
+    /// ノーマルマップパラメータ
+    normal: NormalParameter,
+}
+
+impl MetalMaterial {
+    /// 新しいMetalMaterialを作成する。
+    ///
+    /// # Arguments
+    /// - `metal_type` - 金属の種類
+    /// - `normal` - ノーマルマップパラメータ
+    pub fn new(metal_type: MetalType, normal: NormalParameter) -> Material {
+        Arc::new(Self { metal_type, normal })
+    }
+
+    /// 金属の屈折率（実部）を取得する。
+    fn get_eta(&self, lambda: &SampledWavelengths) -> spectrum::SampledSpectrum {
+        let spectrum = match self.metal_type {
+            MetalType::Gold => presets::au_eta(),
+            MetalType::Silver => presets::ag_eta(),
+            MetalType::Copper => presets::cu_eta(),
+            MetalType::Aluminum => presets::al_eta(),
+            MetalType::Brass => presets::cu_zn_eta(),
+        };
+        spectrum.sample(lambda)
+    }
+
+    /// 金属の消散係数（虚部）を取得する。
+    fn get_k(&self, lambda: &SampledWavelengths) -> spectrum::SampledSpectrum {
+        let spectrum = match self.metal_type {
+            MetalType::Gold => presets::au_k(),
+            MetalType::Silver => presets::ag_k(),
+            MetalType::Copper => presets::cu_k(),
+            MetalType::Aluminum => presets::al_k(),
+            MetalType::Brass => presets::cu_zn_k(),
+        };
+        spectrum.sample(lambda)
+    }
+}
+
+impl SurfaceMaterial for MetalMaterial {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_bsdf_material(&self) -> Option<&dyn BsdfSurfaceMaterial> {
+        Some(self)
+    }
+}
+
+impl BsdfSurfaceMaterial for MetalMaterial {
+    fn sample(
+        &self,
+        uv: glam::Vec2,
+        lambda: &SampledWavelengths,
+        wo: &Vector3<ShadingTangent>,
+        shading_point: &SurfaceInteraction<ShadingTangent>,
+    ) -> MaterialSample {
+        // 金属の光学特性を取得
+        let eta = self.get_eta(lambda);
+        let k = self.get_k(lambda);
+
+        // 法線マップから法線を取得（ない場合はデフォルトのZ+法線）
+        let normal_map = self
+            .normal
+            .sample(shading_point.uv)
+            .unwrap_or_else(|| Normal::new(0.0, 0.0, 1.0));
+
+        // シェーディングタンジェント空間からノーマルマップタンジェント空間への変換
+        let transform = Transform::from_normal_map(&normal_map);
+        let transform_inv = transform.inverse();
+
+        // ベクトルをノーマルマップタンジェント空間に変換
+        let wo_normalmap = &transform * wo;
+
+        // 導体BSDFサンプリング（ノーマルマップタンジェント空間で実行）
+        let conductor_bsdf = ConductorBsdf::new(eta, k);
+        let bsdf_result = match conductor_bsdf.sample(&wo_normalmap, uv) {
+            Some(result) => result,
+            None => {
+                // BSDFサンプリング失敗の場合
+                return MaterialSample::Specular {
+                    sample: None,
+                    normal: normal_map,
+                };
+            }
+        };
+
+        // 結果をシェーディングタンジェント空間に変換して返す
+        match bsdf_result {
+            BsdfSample::Specular { f, wi } => {
+                let wi_shading = &transform_inv * &wi;
+
+                // 幾何学的制約チェック: wiとwoが幾何法線に対して同じ側にあるかチェック
+                let geometry_normal = shading_point.normal;
+                let wi_cos_geometric = geometry_normal.dot(wi_shading);
+                let wo_cos_geometric = geometry_normal.dot(wo);
+                let sample = if wi_cos_geometric.signum() != wo_cos_geometric.signum() {
+                    // 不透明マテリアルなので表面貫通サンプルは無効
+                    None
+                } else {
+                    Some(SpecularDirectionSample { f, wi: wi_shading })
+                };
+
+                MaterialSample::Specular {
+                    sample,
+                    normal: normal_map,
+                }
+            }
+            _ => unreachable!("Metal material should only produce specular samples"),
+        }
+    }
+
+    fn evaluate(
+        &self,
+        lambda: &SampledWavelengths,
+        wo: &Vector3<ShadingTangent>,
+        wi: &Vector3<ShadingTangent>,
+        shading_point: &SurfaceInteraction<ShadingTangent>,
+    ) -> MaterialEvaluationResult {
+        // 金属の光学特性を取得
+        let eta = self.get_eta(lambda);
+        let k = self.get_k(lambda);
+
+        // 法線マップから法線を取得（ない場合はデフォルトのZ+法線）
+        let normal_map = self
+            .normal
+            .sample(shading_point.uv)
+            .unwrap_or_else(|| Normal::new(0.0, 0.0, 1.0));
+
+        // シェーディングタンジェント空間からノーマルマップタンジェント空間への変換
+        let transform = Transform::from_normal_map(&normal_map);
+
+        // ベクトルをノーマルマップタンジェント空間に変換
+        let wo_normalmap = &transform * wo;
+        let wi_normalmap = &transform * wi;
+
+        // 幾何学的制約チェック: wiとwoが幾何法線に対して同じ側にあるかチェック
+        let geometry_normal = shading_point.normal;
+        let wi_cos_geometric = geometry_normal.dot(wi);
+        let wo_cos_geometric = geometry_normal.dot(wo);
+        if wi_cos_geometric.signum() != wo_cos_geometric.signum() {
+            // 不透明マテリアルなので表面貫通は寄与0
+            return MaterialEvaluationResult {
+                f: spectrum::SampledSpectrum::zero(),
+                pdf: 1.0,
+                normal: normal_map,
+            };
+        }
+
+        // 導体BSDF評価（ノーマルマップタンジェント空間で実行）
+        let conductor_bsdf = ConductorBsdf::new(eta, k);
+        let f = conductor_bsdf.evaluate(&wo_normalmap, &wi_normalmap);
+
+        MaterialEvaluationResult {
+            f,
+            pdf: 1.0, // 単一BSDFなので選択確率は1.0
+            normal: normal_map,
+        }
+    }
+
+    fn pdf(
+        &self,
+        lambda: &SampledWavelengths,
+        wo: &Vector3<ShadingTangent>,
+        wi: &Vector3<ShadingTangent>,
+        shading_point: &SurfaceInteraction<ShadingTangent>,
+    ) -> f32 {
+        // 金属の光学特性を取得
+        let eta = self.get_eta(lambda);
+        let k = self.get_k(lambda);
+
+        // 法線マップから法線を取得（ない場合はデフォルトのZ+法線）
+        let normal_map = self
+            .normal
+            .sample(shading_point.uv)
+            .unwrap_or_else(|| Normal::new(0.0, 0.0, 1.0));
+
+        // シェーディングタンジェント空間からノーマルマップタンジェント空間への変換
+        let transform = Transform::from_normal_map(&normal_map);
+
+        // 幾何学的制約チェック: wiとwoが幾何法線に対して同じ側にあるかチェック
+        let geometry_normal = shading_point.normal;
+        let wi_cos_geometric = geometry_normal.dot(wi);
+        let wo_cos_geometric = geometry_normal.dot(wo);
+        if wi_cos_geometric.signum() != wo_cos_geometric.signum() {
+            // 不透明マテリアルなので表面貫通のPDFは0
+            return 0.0;
+        }
+
+        // ベクトルをノーマルマップタンジェント空間に変換
+        let wo_normalmap = &transform * wo;
+        let wi_normalmap = &transform * wi;
+
+        // 導体BSDF PDF計算（ノーマルマップタンジェント空間で実行）
+        let conductor_bsdf = ConductorBsdf::new(eta, k);
+        conductor_bsdf.pdf(&wo_normalmap, &wi_normalmap)
+    }
+
+    fn sample_albedo_spectrum(
+        &self,
+        _uv: glam::Vec2,
+        lambda: &SampledWavelengths,
+    ) -> spectrum::SampledSpectrum {
+        // 金属の場合、アルベドは垂直入射でのFresnel反射率に近似
+        let eta = self.get_eta(lambda);
+        let k = self.get_k(lambda);
+
+        // ConductorBsdfを使用してFresnel反射率を計算
+        let conductor_bsdf = ConductorBsdf::new(eta, k);
+        conductor_bsdf.fresnel(1.0) // 垂直入射
+    }
+}

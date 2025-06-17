@@ -141,6 +141,13 @@ impl SampledSpectrum {
         }
     }
 
+    /// 定数のスペクトルを作成する。
+    pub fn constant(value: f32) -> Self {
+        Self {
+            values: [value; N_SPECTRUM_SAMPLES],
+        }
+    }
+
     /// 新しいサンプルスペクトルを作成する。
     #[inline(always)]
     pub fn new() -> Self {

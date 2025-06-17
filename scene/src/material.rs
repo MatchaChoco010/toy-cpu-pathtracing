@@ -7,7 +7,7 @@ mod parameter;
 mod traits;
 
 // BSDF/EDF実装
-pub use bsdf::NormalizedLambertBsdf;
+pub use bsdf::{ConductorBsdf, NormalizedLambertBsdf};
 pub use edf::UniformEdf;
 
 // マテリアルパラメータ
@@ -17,4 +17,4 @@ pub use parameter::{FloatParameter, NormalParameter, SpectrumParameter};
 pub use traits::{BsdfSurfaceMaterial, EmissiveSurfaceMaterial, Material, SurfaceMaterial};
 
 // 具体的なマテリアル実装
-pub use impls::{EmissiveMaterial, LambertMaterial};
+pub use impls::{EmissiveMaterial, LambertMaterial, MetalMaterial, MetalType};

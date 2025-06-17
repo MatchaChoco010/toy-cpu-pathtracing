@@ -2,6 +2,8 @@
 
 mod emissive_material;
 mod lambert_material;
+mod metal_material;
 
 pub use emissive_material::EmissiveMaterial;
 pub use lambert_material::LambertMaterial;
+pub use metal_material::{MetalMaterial, MetalType};
