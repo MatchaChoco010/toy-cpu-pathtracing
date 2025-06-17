@@ -10,9 +10,9 @@ pub mod texture;
 pub use geometry::{Geometry, GeometryIndex};
 pub use light_sampler::{LightSample, LightSampler};
 pub use material::{
-    BsdfSurfaceMaterial, EmissiveMaterial, EmissiveSurfaceMaterial, FloatParameter,
-    LambertMaterial, Material, NormalParameter, NormalizedLambertBsdf, SpectrumParameter,
-    SurfaceMaterial, UniformEdf,
+    BsdfSurfaceMaterial, ConductorBsdf, EmissiveMaterial, EmissiveSurfaceMaterial, FloatParameter,
+    LambertMaterial, Material, MetalMaterial, MetalType, NormalParameter, NormalizedLambertBsdf,
+    SpectrumParameter, SurfaceMaterial, UniformEdf,
 };
 pub use primitive::{CreatePrimitiveDesc, Intersection, PrimitiveBvh, PrimitiveIndex};
 pub use samples::{
