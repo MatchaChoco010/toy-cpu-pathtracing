@@ -6,8 +6,9 @@ use math::{Normal, ShadingTangent, Transform, Vector3};
 use spectrum::{SampledWavelengths, presets};
 
 use crate::{
-    BsdfSurfaceMaterial, Material, MaterialEvaluationResult, MaterialSample, NormalParameter,
-    SpecularDirectionSample, SurfaceInteraction, SurfaceMaterial,
+    BsdfSurfaceMaterial, FloatParameter, Material, MaterialEvaluationResult, MaterialSample,
+    NonSpecularDirectionSample, NormalParameter, SpecularDirectionSample, SurfaceInteraction,
+    SurfaceMaterial,
     material::bsdf::{BsdfSample, ConductorBsdf},
 };
 
@@ -27,12 +28,14 @@ pub enum MetalType {
 }
 
 /// 金属マテリアル。
-/// 完全鏡面反射のみを行う（マイクロファセットは後で実装予定）。
+/// roughnessパラメータに応じて完全鏡面反射またはマイクロファセット反射を行う。
 pub struct MetalMaterial {
     /// 金属の種類
     metal_type: MetalType,
     /// ノーマルマップパラメータ
     normal: NormalParameter,
+    /// 表面の粗さパラメータ
+    roughness: FloatParameter,
 }
 
 impl MetalMaterial {
@@ -41,8 +44,42 @@ impl MetalMaterial {
     /// # Arguments
     /// - `metal_type` - 金属の種類
     /// - `normal` - ノーマルマップパラメータ
-    pub fn new(metal_type: MetalType, normal: NormalParameter) -> Material {
-        Arc::new(Self { metal_type, normal })
+    /// - `roughness` - 表面の粗さパラメータ（0.0で完全鏡面反射）
+    pub fn new(
+        metal_type: MetalType,
+        normal: NormalParameter,
+        roughness: FloatParameter,
+    ) -> Material {
+        Arc::new(Self {
+            metal_type,
+            normal,
+            roughness,
+        })
+    }
+
+    /// 新しいMetalMaterialを作成する（roughnessパラメータ付き）。
+    ///
+    /// # Arguments
+    /// - `metal_type` - 金属の種類
+    /// - `normal` - ノーマルマップパラメータ
+    /// - `roughness` - 表面の粗さパラメータ
+    pub fn new_with_roughness(
+        metal_type: MetalType,
+        normal: NormalParameter,
+        roughness: FloatParameter,
+    ) -> Material {
+        Arc::new(Self {
+            metal_type,
+            normal,
+            roughness,
+        })
+    }
+
+    /// roughnessからalpha値を計算する。
+    /// pbrt-v4のissue #479に従い、より知覚的に均一なroughness^2を使用。
+    /// 参考: https://github.com/mmp/pbrt-v4/issues/479
+    fn roughness_to_alpha(roughness: f32) -> f32 {
+        roughness * roughness
     }
 
     /// 金属の屈折率（実部）を取得する。
@@ -105,8 +142,16 @@ impl BsdfSurfaceMaterial for MetalMaterial {
         // ベクトルをノーマルマップタンジェント空間に変換
         let wo_normalmap = &transform * wo;
 
+        // roughnessパラメータをサンプリングしてalpha値に変換
+        let roughness_value = self.roughness.sample(shading_point.uv);
+        let alpha = Self::roughness_to_alpha(roughness_value);
+
         // 導体BSDFサンプリング（ノーマルマップタンジェント空間で実行）
-        let conductor_bsdf = ConductorBsdf::new(eta, k);
+        let conductor_bsdf = if alpha == 0.0 {
+            ConductorBsdf::new(eta, k)
+        } else {
+            ConductorBsdf::new_microfacet(eta, k, alpha, alpha)
+        };
         let bsdf_result = match conductor_bsdf.sample(&wo_normalmap, uv) {
             Some(result) => result,
             None => {
@@ -139,7 +184,34 @@ impl BsdfSurfaceMaterial for MetalMaterial {
                     normal: normal_map,
                 }
             }
-            _ => unreachable!("Metal material should only produce specular samples"),
+            BsdfSample::Bsdf { f, wi, pdf } => {
+                let wi_shading = &transform_inv * &wi;
+
+                // 幾何学的制約チェック: wiとwoが幾何法線に対して同じ側にあるかチェック
+                let geometry_normal = shading_point.normal;
+                let wi_cos_geometric = geometry_normal.dot(wi_shading);
+                let wo_cos_geometric = geometry_normal.dot(wo);
+                let sample = if wi_cos_geometric.signum() != wo_cos_geometric.signum() {
+                    // 不透明マテリアルなので表面貫通サンプルは無効
+                    None
+                } else {
+                    // マイクロファセットの場合、PDFは既に計算済み
+                    if pdf > 0.0 {
+                        Some(NonSpecularDirectionSample {
+                            f,
+                            wi: wi_shading,
+                            pdf,
+                        })
+                    } else {
+                        None
+                    }
+                };
+
+                MaterialSample::NonSpecular {
+                    sample,
+                    normal: normal_map,
+                }
+            }
         }
     }
 
@@ -180,8 +252,16 @@ impl BsdfSurfaceMaterial for MetalMaterial {
             };
         }
 
+        // roughnessパラメータをサンプリングしてalpha値に変換
+        let roughness_value = self.roughness.sample(shading_point.uv);
+        let alpha = Self::roughness_to_alpha(roughness_value);
+
         // 導体BSDF評価（ノーマルマップタンジェント空間で実行）
-        let conductor_bsdf = ConductorBsdf::new(eta, k);
+        let conductor_bsdf = if alpha == 0.0 {
+            ConductorBsdf::new(eta, k)
+        } else {
+            ConductorBsdf::new_microfacet(eta, k, alpha, alpha)
+        };
         let f = conductor_bsdf.evaluate(&wo_normalmap, &wi_normalmap);
 
         MaterialEvaluationResult {
@@ -224,8 +304,16 @@ impl BsdfSurfaceMaterial for MetalMaterial {
         let wo_normalmap = &transform * wo;
         let wi_normalmap = &transform * wi;
 
+        // roughnessパラメータをサンプリングしてalpha値に変換
+        let roughness_value = self.roughness.sample(shading_point.uv);
+        let alpha = Self::roughness_to_alpha(roughness_value);
+
         // 導体BSDF PDF計算（ノーマルマップタンジェント空間で実行）
-        let conductor_bsdf = ConductorBsdf::new(eta, k);
+        let conductor_bsdf = if alpha == 0.0 {
+            ConductorBsdf::new(eta, k)
+        } else {
+            ConductorBsdf::new_microfacet(eta, k, alpha, alpha)
+        };
         conductor_bsdf.pdf(&wo_normalmap, &wi_normalmap)
     }
 
