@@ -31,13 +31,13 @@ pub trait BsdfSurfaceMaterial {
     ///
     /// # Arguments
     /// - `uv` - 2次元乱数サンプル
-    /// - `lambda` - サンプルされた波長
+    /// - `lambda` - サンプルされた波長（分散処理のため可変）
     /// - `wo` - 出射方向（シェーディング接空間）
     /// - `shading_point` - シェーディング点情報
     fn sample(
         &self,
         uv: glam::Vec2,
-        lambda: &SampledWavelengths,
+        lambda: &mut SampledWavelengths,
         wo: &Vector3<ShadingTangent>,
         shading_point: &SurfaceInteraction<ShadingTangent>,
     ) -> MaterialSample;

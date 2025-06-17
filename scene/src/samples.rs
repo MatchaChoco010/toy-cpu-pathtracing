@@ -17,6 +17,8 @@ pub struct MaterialEvaluationResult {
     pub normal: Normal<ShadingTangent>,
 }
 
+use crate::material::bsdf::BsdfSampleType;
+
 /// NonSpecular方向サンプリング結果。
 #[derive(Debug, Clone)]
 pub struct NonSpecularDirectionSample {
@@ -32,35 +34,66 @@ pub struct SpecularDirectionSample {
     pub wi: math::Vector3<ShadingTangent>,
 }
 
-/// マテリアルの方向サンプリング結果を表す列挙型。
+/// マテリアルの方向サンプリング結果を表す構造体。
 #[derive(Debug, Clone)]
-pub enum MaterialSample {
-    NonSpecular {
-        sample: Option<NonSpecularDirectionSample>,
-        normal: Normal<ShadingTangent>,
-    },
-    Specular {
-        sample: Option<SpecularDirectionSample>,
-        normal: Normal<ShadingTangent>,
-    },
+pub struct MaterialSample {
+    /// BSDF値
+    pub f: SampledSpectrum,
+    /// サンプルされた入射方向（シェーディング接空間）
+    pub wi: Vector3<ShadingTangent>,
+    /// 確率密度関数値
+    pub pdf: f32,
+    /// マテリアルサンプルのタイプ
+    pub sample_type: BsdfSampleType,
+    /// 選択されたレイヤーの法線マップ（シェーディング接空間）
+    pub normal: Normal<ShadingTangent>,
+    /// サンプリングが成功したかどうか
+    pub is_sampled: bool,
 }
 impl MaterialSample {
+    /// 新しいMaterialSampleを作成する（サンプリング成功）。
+    pub fn new(
+        f: SampledSpectrum,
+        wi: Vector3<ShadingTangent>,
+        pdf: f32,
+        sample_type: BsdfSampleType,
+        normal: Normal<ShadingTangent>,
+    ) -> Self {
+        Self {
+            f,
+            wi,
+            pdf,
+            sample_type,
+            normal,
+            is_sampled: true,
+        }
+    }
+
+    /// サンプリング失敗のMaterialSampleを作成する。
+    pub fn failed(normal: Normal<ShadingTangent>) -> Self {
+        Self {
+            f: SampledSpectrum::zero(),
+            wi: Vector3::new(0.0, 0.0, 1.0), // ダミー値
+            pdf: 0.0,
+            sample_type: BsdfSampleType::Diffuse, // ダミー値
+            normal,
+            is_sampled: false,
+        }
+    }
+
     /// Specularのサンプリングかどうか。
     pub fn is_specular(&self) -> bool {
-        matches!(self, MaterialSample::Specular { .. })
+        self.sample_type == BsdfSampleType::Specular
     }
 
     /// 非Specularのサンプリングかどうか。
     pub fn is_non_specular(&self) -> bool {
-        matches!(self, MaterialSample::NonSpecular { .. })
+        self.sample_type == BsdfSampleType::Diffuse || self.sample_type == BsdfSampleType::Glossy
     }
 
     /// サンプリングが成功したかどうか。
     pub fn is_sampled(&self) -> bool {
-        match self {
-            MaterialSample::NonSpecular { sample, .. } => sample.is_some(),
-            MaterialSample::Specular { sample, .. } => sample.is_some(),
-        }
+        self.is_sampled
     }
 }
 

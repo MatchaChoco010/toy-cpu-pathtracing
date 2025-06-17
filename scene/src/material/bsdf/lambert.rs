@@ -5,7 +5,7 @@ use std::f32::consts::PI;
 use math::{NormalMapTangent, Vector3};
 use spectrum::SampledSpectrum;
 
-use super::BsdfSample;
+use super::{BsdfSample, BsdfSampleType};
 
 /// Z軸方向を法線方向として、半球状のコサイン重点サンプリングを行う。
 fn sample_cosine_hemisphere(uv: glam::Vec2) -> Vector3<NormalMapTangent> {
@@ -19,7 +19,6 @@ fn sample_cosine_hemisphere(uv: glam::Vec2) -> Vector3<NormalMapTangent> {
 /// パラメータは外部から与えられ、SurfaceInteractionに依存しない。
 #[derive(Default)]
 pub struct NormalizedLambertBsdf;
-
 impl NormalizedLambertBsdf {
     /// 新しいNormalizedLambertBsdfを作成する。
     pub fn new() -> Self {
@@ -67,7 +66,7 @@ impl NormalizedLambertBsdf {
         // PDFを計算
         let pdf = wi_cos_n.abs() / PI;
 
-        Some(BsdfSample::Bsdf { f, pdf, wi })
+        Some(BsdfSample::new(f, wi, pdf, BsdfSampleType::Diffuse))
     }
 
     /// BSDF値を評価する。
