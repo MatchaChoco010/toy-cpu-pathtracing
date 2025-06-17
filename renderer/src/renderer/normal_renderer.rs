@@ -1,7 +1,7 @@
 //! 法線を出力するレンダラーを実装するモジュール。
 
 use color::{ColorSrgb, tone_map};
-use scene::{Intersection, MaterialSample, SceneId};
+use scene::{Intersection, SceneId};
 use spectrum::SampledWavelengths;
 
 use crate::{
@@ -43,7 +43,7 @@ impl<'a, Id: SceneId, F: Filter> Renderer for NormalRenderer<'a, Id, F> {
 
             // dummyのlambda
             let u = sampler.get_1d();
-            let lambda = SampledWavelengths::new_uniform(u);
+            let mut lambda = SampledWavelengths::new_uniform(u);
 
             let intersect = scene.intersect(&rs.ray, f32::MAX);
 
@@ -58,11 +58,8 @@ impl<'a, Id: SceneId, F: Filter> Renderer for NormalRenderer<'a, Id, F> {
 
                     if let Some(bsdf) = interaction.material.as_bsdf_material() {
                         let uv = sampler.get_2d();
-                        let material_sample = bsdf.sample(uv, &lambda, &wo, &shading_point);
-                        let normal = match material_sample {
-                            MaterialSample::NonSpecular { normal, .. } => normal,
-                            MaterialSample::Specular { normal, .. } => normal,
-                        };
+                        let material_sample = bsdf.sample(uv, &mut lambda, &wo, &shading_point);
+                        let normal = material_sample.normal;
                         let normal = render_to_tangent.inverse() * normal;
                         glam::Vec3::new(
                             normal.x() * 0.5 + 0.5,

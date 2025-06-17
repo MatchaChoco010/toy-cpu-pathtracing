@@ -1,0 +1,295 @@
+//! 誘電体BSDFの実装。
+
+use math::{NormalMapTangent, Vector3};
+use spectrum::{SampledSpectrum, SampledWavelengths};
+
+use super::{BsdfSample, BsdfSampleType};
+
+/// 誘電体のフレネル反射率を計算する。
+///
+/// # Arguments
+/// - `cos_theta_i` - 入射角のコサイン値
+/// - `eta_i` - 入射側の屈折率
+/// - `eta_t` - 透過側の屈折率
+pub fn fresnel_dielectric(cos_theta_i: f32, eta_i: f32, eta_t: f32) -> f32 {
+    let cos_theta_i = cos_theta_i.clamp(-1.0, 1.0);
+
+    // 媒質が入れ替わる場合の処理
+    let (cos_theta_i, eta_i, eta_t) = if cos_theta_i < 0.0 {
+        (-cos_theta_i, eta_t, eta_i)
+    } else {
+        (cos_theta_i, eta_i, eta_t)
+    };
+
+    // Snellの法則で透過角を計算
+    let sin_theta_i = (1.0 - cos_theta_i * cos_theta_i).max(0.0).sqrt();
+    let sin_theta_t = eta_i / eta_t * sin_theta_i;
+
+    // 全反射の場合
+    if sin_theta_t >= 1.0 {
+        return 1.0;
+    }
+
+    let cos_theta_t = (1.0 - sin_theta_t * sin_theta_t).max(0.0).sqrt();
+
+    // フレネル方程式
+    let r_parl = ((eta_t * cos_theta_i) - (eta_i * cos_theta_t))
+        / ((eta_t * cos_theta_i) + (eta_i * cos_theta_t));
+    let r_perp = ((eta_i * cos_theta_i) - (eta_t * cos_theta_t))
+        / ((eta_i * cos_theta_i) + (eta_t * cos_theta_t));
+
+    (r_parl * r_parl + r_perp * r_perp) * 0.5
+}
+
+/// 屈折方向を計算する。
+///
+/// # Arguments
+/// - `wi` - 入射方向
+/// - `n` - 法線方向
+/// - `eta` - 屈折率の比（透過側/入射側）
+///
+/// # Returns
+/// - `Some(wt)` - 屈折方向
+/// - `None` - 全反射の場合
+pub fn refract(
+    wi: &Vector3<NormalMapTangent>,
+    n: &Vector3<NormalMapTangent>,
+    eta: f32,
+) -> Option<Vector3<NormalMapTangent>> {
+    let cos_theta_i = n.dot(wi);
+    let sin2_theta_i = (1.0 - cos_theta_i * cos_theta_i).max(0.0);
+    let sin2_theta_t = sin2_theta_i / (eta * eta);
+
+    // 全反射チェック
+    if sin2_theta_t >= 1.0 {
+        return None;
+    }
+
+    let cos_theta_t = (1.0 - sin2_theta_t).sqrt();
+    let wt = *wi / (-eta) + *n * (cos_theta_i / eta - cos_theta_t);
+    Some(wt.normalize())
+}
+
+/// 誘電体の純粋なBSDF計算を行う構造体。
+/// 完全鏡面のみサポート。
+pub struct DielectricBsdf {
+    /// 屈折率（スペクトル依存）
+    eta: SampledSpectrum,
+    /// Thin filmフラグ
+    thin_film: bool,
+}
+impl DielectricBsdf {
+    /// 完全鏡面用のDielectricBsdfを作成する。
+    ///
+    /// # Arguments
+    /// - `eta` - 屈折率（スペクトル依存）
+    /// - `thin_film` - Thin filmフラグ
+    pub fn new(eta: SampledSpectrum, thin_film: bool) -> Self {
+        Self { eta, thin_film }
+    }
+
+    /// 屈折率がスペクトル全体で一定かどうかを判定する。
+    fn is_eta_constant(&self) -> bool {
+        use spectrum::N_SPECTRUM_SAMPLES;
+        let first_value = self.eta.value(0);
+        for i in 1..N_SPECTRUM_SAMPLES {
+            if (self.eta.value(i) - first_value).abs() > 1e-6 {
+                return false;
+            }
+        }
+        true
+    }
+
+    /// BSDF方向サンプリングを行う。
+    /// 完全鏡面反射・透過のみサポート。
+    ///
+    /// # Arguments
+    /// - `wo` - 出射方向（ノーマルマップ接空間）
+    /// - `uv` - ランダムサンプル
+    /// - `lambda` - サンプリング波長（分散処理用）
+    pub fn sample(
+        &self,
+        wo: &Vector3<NormalMapTangent>,
+        uv: glam::Vec2,
+        lambda: &mut SampledWavelengths,
+    ) -> Option<BsdfSample> {
+        let wo_cos_n = wo.z();
+        if wo_cos_n == 0.0 {
+            return None;
+        }
+
+        self.sample_perfect_specular(wo, uv, lambda)
+    }
+
+    /// Thin filmの累積反射・透過係数を計算する。
+    ///
+    /// # Arguments
+    /// - `fresnel` - 通常のフレネル反射率
+    ///
+    /// # Returns
+    /// - `(cumulative_reflection, cumulative_transmission)` - 累積反射率と累積透過率
+    fn calculate_thin_film_coefficients(&self, fresnel: f32) -> (f32, f32) {
+        if !self.thin_film {
+            return (fresnel, 1.0 - fresnel);
+        }
+
+        // Geometric seriesを使った累積反射率の計算
+        // R' = R + (T²R) / (1 - R²)
+        let r = fresnel;
+        let t = 1.0 - r;
+        let r_squared = r * r;
+
+        let cumulative_reflection = if r_squared >= 1.0 {
+            1.0 // 全反射の場合
+        } else {
+            r + (t * t * r) / (1.0 - r_squared)
+        };
+
+        let cumulative_transmission = 1.0 - cumulative_reflection;
+
+        (cumulative_reflection, cumulative_transmission)
+    }
+
+    /// 完全鏡面反射・透過サンプリング。
+    fn sample_perfect_specular(
+        &self,
+        wo: &Vector3<NormalMapTangent>,
+        uv: glam::Vec2,
+        lambda: &mut SampledWavelengths,
+    ) -> Option<BsdfSample> {
+        let wo_cos_n = wo.z();
+        let entering = wo_cos_n > 0.0;
+
+        // 法線方向
+        let n = if entering {
+            Vector3::new(0.0, 0.0, 1.0)
+        } else {
+            Vector3::new(0.0, 0.0, -1.0)
+        };
+
+        // 屈折率がスペクトル依存かチェック
+        let eta_is_constant = self.is_eta_constant();
+
+        // 屈折率を計算
+        let material_eta = self.eta.value(0); // 材質の屈折率
+        let eta = if entering {
+            material_eta // 空気(1.0) → 誘電体(n): eta = n
+        } else {
+            1.0 / material_eta // 誘電体(n) → 空気(1.0): eta = 1/n
+        };
+
+        // フレネル反射率を計算
+        let eta_i = if entering { 1.0 } else { material_eta };
+        let eta_t = if entering { material_eta } else { 1.0 };
+        let fresnel = fresnel_dielectric(wo_cos_n.abs(), eta_i, eta_t);
+
+        // Thin filmの場合は累積係数を計算
+        let (cumulative_reflection, cumulative_transmission) =
+            self.calculate_thin_film_coefficients(fresnel);
+
+        // ロシアンルーレット確率の計算（pbrt-v4準拠）
+        let total_probability = cumulative_reflection + cumulative_transmission;
+        let reflection_pdf = cumulative_reflection / total_probability;
+        let transmission_pdf = cumulative_transmission / total_probability;
+
+        // 反射か透過かをサンプリング
+        if uv.x < cumulative_reflection {
+            // 反射（thin film/通常誘電体ともに同じ鏡面反射方向）
+            let wi = Vector3::new(-wo.x(), -wo.y(), wo.z());
+            let f = SampledSpectrum::constant(cumulative_reflection / wo_cos_n.abs());
+            Some(BsdfSample::new(
+                f,
+                wi,
+                reflection_pdf,
+                BsdfSampleType::Specular,
+            ))
+        } else {
+            // 透過
+            if self.thin_film {
+                // Thin film: 透過方向は入射方向の反対（wi = -wo）
+                let wi = Vector3::new(-wo.x(), -wo.y(), -wo.z());
+                let wi_cos_n = wi.z();
+                if wi_cos_n == 0.0 {
+                    return None;
+                }
+
+                // Thin filmの場合、放射輝度のスケーリングは不要（同じ媒質に戻るため）
+                let f = SampledSpectrum::constant(cumulative_transmission / wi_cos_n.abs());
+                Some(BsdfSample::new(
+                    f,
+                    wi,
+                    transmission_pdf,
+                    BsdfSampleType::Specular,
+                ))
+            } else {
+                // 通常の誘電体: Snellの法則による屈折
+                if let Some(wt) = refract(wo, &n, eta) {
+                    let wt_cos_n = wt.z();
+                    if wt_cos_n == 0.0 {
+                        return None;
+                    }
+
+                    // 分散媒質の場合、最初の波長以外を終了
+                    if !eta_is_constant {
+                        lambda.terminate_secondary();
+                    }
+
+                    // 屈折率に応じてradiance調整（pbrt-v4準拠: eta^2）
+                    let radiance_scale = eta * eta;
+
+                    let f = SampledSpectrum::constant(
+                        cumulative_transmission * radiance_scale / wt_cos_n.abs(),
+                    );
+                    Some(BsdfSample::new(
+                        f,
+                        wt,
+                        transmission_pdf,
+                        BsdfSampleType::Specular,
+                    ))
+                } else {
+                    // 全反射の場合は反射（確率は1.0）
+                    let wi = Vector3::new(-wo.x(), -wo.y(), wo.z());
+                    let f = SampledSpectrum::constant(1.0 / wo_cos_n.abs());
+                    Some(BsdfSample::new(f, wi, 1.0, BsdfSampleType::Specular))
+                }
+            }
+        }
+    }
+
+    /// BSDF値を評価する。
+    /// 完全鏡面の場合は常に0を返す（デルタ関数のため）。
+    pub fn evaluate(
+        &self,
+        _wo: &Vector3<NormalMapTangent>,
+        _wi: &Vector3<NormalMapTangent>,
+    ) -> SampledSpectrum {
+        // 完全鏡面の場合、evaluate()は常に0を返す（デルタ関数のため）
+        SampledSpectrum::zero()
+    }
+
+    /// BSDF PDFを計算する。
+    /// 完全鏡面の場合は常に0を返す（デルタ関数のため）。
+    pub fn pdf(&self, _wo: &Vector3<NormalMapTangent>, _wi: &Vector3<NormalMapTangent>) -> f32 {
+        // 完全鏡面の場合、PDF()は常に0を返す（デルタ関数のため）
+        0.0
+    }
+
+    /// フレネル反射率を計算する。
+    /// Thin filmの場合は累積反射率を返す。
+    ///
+    /// # Arguments
+    /// - `cos_theta_i` - 入射角のコサイン値
+    pub fn fresnel(&self, cos_theta_i: f32) -> f32 {
+        let entering = cos_theta_i > 0.0;
+        let eta_i_scalar = if entering { 1.0 } else { self.eta.value(0) };
+        let eta_t_scalar = if entering { self.eta.value(0) } else { 1.0 };
+        let base_fresnel = fresnel_dielectric(cos_theta_i.abs(), eta_i_scalar, eta_t_scalar);
+
+        if self.thin_film {
+            let (cumulative_reflection, _) = self.calculate_thin_film_coefficients(base_fresnel);
+            cumulative_reflection
+        } else {
+            base_fresnel
+        }
+    }
+}

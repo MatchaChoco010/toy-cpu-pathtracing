@@ -145,38 +145,31 @@ impl RenderingStrategy for MisStrategy {
         sample_contribution: &mut SampledSpectrum,
         throughout: &mut SampledSpectrum,
     ) {
-        match material_sample {
-            MaterialSample::Specular { .. } => {
-                // Specularの場合はMISを適用せずエミッシブ寄与をそのまま蓄積
-                *sample_contribution += &*throughout * &bsdf_result.next_emissive_contribution;
-                *throughout *= &bsdf_result.throughput_modifier;
-            }
-            MaterialSample::NonSpecular {
-                sample: Some(non_specular_sample),
-                ..
-            } => {
-                // NonSpecularの場合はMISウエイトを計算
-                let next_hit_info = &bsdf_result.next_hit_info;
-                let light_sampler = scene.light_sampler(lambda);
-                let pdf_bsdf_dir = non_specular_sample.pdf;
-                let pdf_light_dir = scene.pdf_light_sample(
-                    &light_sampler,
-                    &current_hit_info.interaction,
-                    next_hit_info,
-                );
-                let mis_weight = balance_heuristic(pdf_bsdf_dir, pdf_light_dir);
+        if material_sample.is_specular() {
+            // Specularの場合はMISを適用せずエミッシブ寄与をそのまま蓄積
+            *sample_contribution += &*throughout * &bsdf_result.next_emissive_contribution;
+            *throughout *= &bsdf_result.throughput_modifier;
+        } else if material_sample.is_sampled() {
+            // NonSpecularの場合はMISウエイトを計算
+            let next_hit_info = &bsdf_result.next_hit_info;
+            let light_sampler = scene.light_sampler(lambda);
+            let pdf_bsdf_dir = material_sample.pdf;
+            let pdf_light_dir = scene.pdf_light_sample(
+                &light_sampler,
+                &current_hit_info.interaction,
+                next_hit_info,
+            );
+            let mis_weight = balance_heuristic(pdf_bsdf_dir, pdf_light_dir);
 
-                // エミッシブ寄与をMISウエイト付きで一時変数に蓄積
-                *sample_contribution +=
-                    &*throughout * &bsdf_result.next_emissive_contribution * mis_weight;
+            // エミッシブ寄与をMISウエイト付きで一時変数に蓄積
+            *sample_contribution +=
+                &*throughout * &bsdf_result.next_emissive_contribution * mis_weight;
 
-                // throughoutを更新（MISウエイト適用）
-                *throughout *= &bsdf_result.throughput_modifier * mis_weight;
-            }
-            MaterialSample::NonSpecular { sample: None, .. } => {
-                // サンプル失敗の場合はthroughputのみ更新
-                *throughout *= &bsdf_result.throughput_modifier;
-            }
+            // throughoutを更新（MISウエイト適用）
+            *throughout *= &bsdf_result.throughput_modifier * mis_weight;
+        } else {
+            // サンプル失敗の場合はthroughputのみ更新
+            *throughout *= &bsdf_result.throughput_modifier;
         }
     }
 }

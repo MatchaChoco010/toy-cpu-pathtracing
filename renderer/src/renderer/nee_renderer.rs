@@ -123,14 +123,11 @@ impl RenderingStrategy for NeeStrategy {
         sample_contribution: &mut SampledSpectrum,
         throughout: &mut SampledSpectrum,
     ) {
-        match material_sample {
-            MaterialSample::Specular { .. } => {
-                // Specularの場合はエミッシブ寄与を蓄積（NEEはSpecularに適用されない）
-                *sample_contribution += &*throughout * &bsdf_result.next_emissive_contribution;
-            }
-            MaterialSample::NonSpecular { .. } => {
-                // NonSpecularの場合はNEEで寄与を蓄積済みなので、エミッシブ寄与は追加しない
-            }
+        if material_sample.is_specular() {
+            // Specularの場合はエミッシブ寄与を蓄積（NEEはSpecularに適用されない）
+            *sample_contribution += &*throughout * &bsdf_result.next_emissive_contribution;
+        } else {
+            // NonSpecularの場合はNEEで寄与を蓄積済みなので、エミッシブ寄与は追加しない
         }
 
         // throughputを更新（MISウエイトなし）

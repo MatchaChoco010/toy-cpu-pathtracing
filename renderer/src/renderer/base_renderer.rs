@@ -117,20 +117,14 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy>
         render_to_tangent: &Transform<Render, ShadingTangent>,
         shading_point: &SurfaceInteraction<Render>,
     ) -> Option<BsdfSamplingResult<Id>> {
-        let (sample_wi, f_value, throughput_factor) = match material_sample {
-            MaterialSample::Specular {
-                sample: Some(sample),
-                ..
-            } => (sample.wi, &sample.f, 1.0),
-            MaterialSample::NonSpecular {
-                sample: Some(sample),
-                normal,
-            } => {
-                let cos_theta = normal.dot(sample.wi).abs();
-                (sample.wi, &sample.f, cos_theta / sample.pdf)
-            }
-            _ => return None,
-        };
+        if !material_sample.is_sampled() {
+            return None;
+        }
+
+        let cos_theta = material_sample.normal.dot(material_sample.wi).abs();
+        let sample_wi = material_sample.wi;
+        let f_value = &material_sample.f;
+        let throughput_factor = cos_theta / material_sample.pdf;
 
         // wiの方向にレイを飛ばす
         let wi_render = &render_to_tangent.inverse() * &sample_wi;
@@ -190,7 +184,7 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy> Render
 
             // このsample_indexでサンプルする波長をサンプリングする
             let u = sampler.get_1d();
-            let lambda = SampledWavelengths::new_uniform(u);
+            let mut lambda = SampledWavelengths::new_uniform(u);
 
             // カメラレイをサンプル
             let uv = sampler.get_2d_pixel();
@@ -232,7 +226,7 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy> Render
 
                 // マテリアルのサンプリングを行う
                 let uv = sampler.get_2d();
-                let material_sample = bsdf.sample(uv, &lambda, &wo, &shading_point);
+                let material_sample = bsdf.sample(uv, &mut lambda, &wo, &shading_point);
 
                 // サンプルしたマテリアルが非Specularな場合、NEEを評価する
                 if material_sample.is_non_specular() {

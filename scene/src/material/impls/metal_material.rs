@@ -7,9 +7,7 @@ use spectrum::{SampledWavelengths, presets};
 
 use crate::{
     BsdfSurfaceMaterial, FloatParameter, Material, MaterialEvaluationResult, MaterialSample,
-    NonSpecularDirectionSample, NormalParameter, SpecularDirectionSample, SurfaceInteraction,
-    SurfaceMaterial,
-    material::bsdf::{BsdfSample, ConductorBsdf},
+    NormalParameter, SurfaceInteraction, SurfaceMaterial, material::bsdf::ConductorBsdf,
 };
 
 /// 金属の種類を表す列挙型。
@@ -106,7 +104,6 @@ impl MetalMaterial {
         spectrum.sample(lambda)
     }
 }
-
 impl SurfaceMaterial for MetalMaterial {
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -116,12 +113,11 @@ impl SurfaceMaterial for MetalMaterial {
         Some(self)
     }
 }
-
 impl BsdfSurfaceMaterial for MetalMaterial {
     fn sample(
         &self,
         uv: glam::Vec2,
-        lambda: &SampledWavelengths,
+        lambda: &mut SampledWavelengths,
         wo: &Vector3<ShadingTangent>,
         shading_point: &SurfaceInteraction<ShadingTangent>,
     ) -> MaterialSample {
@@ -156,63 +152,30 @@ impl BsdfSurfaceMaterial for MetalMaterial {
             Some(result) => result,
             None => {
                 // BSDFサンプリング失敗の場合
-                return MaterialSample::Specular {
-                    sample: None,
-                    normal: normal_map,
-                };
+                return MaterialSample::failed(normal_map);
             }
         };
 
         // 結果をシェーディングタンジェント空間に変換して返す
-        match bsdf_result {
-            BsdfSample::Specular { f, wi } => {
-                let wi_shading = &transform_inv * &wi;
+        let wi_shading = &transform_inv * &bsdf_result.wi;
 
-                // 幾何学的制約チェック: wiとwoが幾何法線に対して同じ側にあるかチェック
-                let geometry_normal = shading_point.normal;
-                let wi_cos_geometric = geometry_normal.dot(wi_shading);
-                let wo_cos_geometric = geometry_normal.dot(wo);
-                let sample = if wi_cos_geometric.signum() != wo_cos_geometric.signum() {
-                    // 不透明マテリアルなので表面貫通サンプルは無効
-                    None
-                } else {
-                    Some(SpecularDirectionSample { f, wi: wi_shading })
-                };
+        // 幾何学的制約チェック: wiとwoが幾何法線に対して同じ側にあるかチェック
+        let geometry_normal = shading_point.normal;
+        let wi_cos_geometric = geometry_normal.dot(wi_shading);
+        let wo_cos_geometric = geometry_normal.dot(wo);
 
-                MaterialSample::Specular {
-                    sample,
-                    normal: normal_map,
-                }
-            }
-            BsdfSample::Bsdf { f, wi, pdf } => {
-                let wi_shading = &transform_inv * &wi;
-
-                // 幾何学的制約チェック: wiとwoが幾何法線に対して同じ側にあるかチェック
-                let geometry_normal = shading_point.normal;
-                let wi_cos_geometric = geometry_normal.dot(wi_shading);
-                let wo_cos_geometric = geometry_normal.dot(wo);
-                let sample = if wi_cos_geometric.signum() != wo_cos_geometric.signum() {
-                    // 不透明マテリアルなので表面貫通サンプルは無効
-                    None
-                } else {
-                    // マイクロファセットの場合、PDFは既に計算済み
-                    if pdf > 0.0 {
-                        Some(NonSpecularDirectionSample {
-                            f,
-                            wi: wi_shading,
-                            pdf,
-                        })
-                    } else {
-                        None
-                    }
-                };
-
-                MaterialSample::NonSpecular {
-                    sample,
-                    normal: normal_map,
-                }
-            }
+        if wi_cos_geometric.signum() != wo_cos_geometric.signum() {
+            // 不透明マテリアルなので表面貫通サンプルは無効
+            return MaterialSample::failed(normal_map);
         }
+
+        MaterialSample::new(
+            bsdf_result.f,
+            wi_shading,
+            bsdf_result.pdf,
+            bsdf_result.sample_type,
+            normal_map,
+        )
     }
 
     fn evaluate(

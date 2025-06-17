@@ -3,7 +3,7 @@
 use math::{NormalMapTangent, Vector3};
 use spectrum::SampledSpectrum;
 
-use super::BsdfSample;
+use super::{BsdfSample, BsdfSampleType};
 
 /// 簡単な複素数実装
 #[derive(Debug, Clone, Copy)]
@@ -126,7 +126,6 @@ pub struct ConductorBsdf {
     /// Y方向のroughness parameter (α_y)
     alpha_y: f32,
 }
-
 impl ConductorBsdf {
     /// 完全鏡面反射用のConductorBsdfを作成する。
     ///
@@ -352,7 +351,7 @@ impl ConductorBsdf {
         // BSDF値: F / |cos(theta_i)|
         let f = fresnel / wi_cos_n.abs();
 
-        Some(BsdfSample::Specular { f, wi })
+        Some(BsdfSample::new(f, wi, 1.0, BsdfSampleType::Specular))
     }
 
     /// マイクロファセットサンプリング（Torrance-Sparrow model）。
@@ -376,7 +375,7 @@ impl ConductorBsdf {
         let f = self.evaluate_torrance_sparrow(wo, &wi, &wm);
         let pdf = self.pdf_microfacet(wo, &wi);
 
-        Some(BsdfSample::Bsdf { f, wi, pdf })
+        Some(BsdfSample::new(f, wi, pdf, BsdfSampleType::Glossy))
     }
 
     /// Torrance-Sparrow BRDF を評価する。
