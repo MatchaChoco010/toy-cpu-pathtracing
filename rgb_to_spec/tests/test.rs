@@ -172,7 +172,7 @@ fn evaluate_spectrum<G: ColorGamut, E: Eotf>(
             value(lambda, &cs) * cie_data::cie_value_z(lambda) * cie_data::cie_value_d65(lambda);
     }
 
-    let rgb = G::new().xyz_to_rgb() * xyz;
+    let rgb = (G::new().xyz_to_rgb() * xyz).max(glam::Vec3::ZERO);
 
     let linear_color = ColorImpl::<G, NoneToneMap, Linear>::new(rgb.x, rgb.y, rgb.z);
     linear_color.apply_eotf()
