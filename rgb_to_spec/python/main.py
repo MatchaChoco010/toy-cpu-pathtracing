@@ -14,7 +14,7 @@ FIRST_BATCH = 65536
 GREEN_LOSS_SCALE = 5
 DARK_LOSS_SCALE = 2
 
-SECOND_EPOCHS = 15000
+SECOND_EPOCHS = 20000
 SECOND_LR = 0.001
 
 TABLE_SIZE = 64
@@ -192,6 +192,7 @@ def train_space(cs_name, out_file):
         { "params": mlp.parameters(), "lr": FIRST_LR },
         { "params": log_scale, "lr": FIRST_LR * 10 },
     ])
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(opt, FIRST_EPOCHS)
 
     for i in range(1, FIRST_EPOCHS + 1):
         rand_idx  = torch.randint(0, N_POOL, (FIRST_BATCH,))
@@ -204,15 +205,20 @@ def train_space(cs_name, out_file):
         input_dark = rand_dark_pool[rand_dark_idx]
 
 
+        skipped = False
+
         with autocast(DEVICE, dtype=torch.float16):
             pred_rgb = rgb_from_coeff(decode(mlp(input_rgb)))
             rgb_loss = (pred_rgb - input_rgb).pow(2).mean()
             reg_loss = log_scale.exp().pow(2).sum() * 1e-5
 
         mlp.zero_grad(set_to_none=True)
+
+        scale = scaler.get_scale()
         scaler.scale(rgb_loss + reg_loss).backward()
         scaler.step(opt)
         scaler.update()
+        skipped = skipped or scale > scaler.get_scale()
 
 
         with autocast(DEVICE, dtype=torch.float16):
@@ -221,9 +227,12 @@ def train_space(cs_name, out_file):
             reg_loss = log_scale.exp().pow(2).sum() * 1e-5
 
         mlp.zero_grad(set_to_none=True)
+
+        scale = scaler.get_scale()
         scaler.scale(green_loss + reg_loss).backward()
         scaler.step(opt)
         scaler.update()
+        skipped = skipped or scale > scaler.get_scale()
 
 
         with autocast(DEVICE, dtype=torch.float16):
@@ -232,9 +241,16 @@ def train_space(cs_name, out_file):
             reg_loss = log_scale.exp().pow(2).sum() * 1e-5
 
         mlp.zero_grad(set_to_none=True)
+
+        scale = scaler.get_scale()
         scaler.scale(dark_loss + reg_loss).backward()
         scaler.step(opt)
         scaler.update()
+        skipped = skipped or scale > scaler.get_scale()
+
+
+        if not skipped:
+            scheduler.step()
 
 
         delta = delta_e(pred_rgb, input_rgb, m_rgb2xyz, white_xyz)
