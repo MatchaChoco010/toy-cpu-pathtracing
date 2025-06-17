@@ -77,7 +77,6 @@ impl std::ops::Div for Complex {
 }
 
 /// 複素屈折率を用いたFresnel反射率の計算。
-/// pbrt-v4のFrComplex関数に相当。
 ///
 /// # Arguments
 /// - `cos_theta_i` - 入射角のコサイン値
@@ -122,30 +121,223 @@ pub struct ConductorBsdf {
     eta: SampledSpectrum,
     /// 屈折率の虚部（消散係数、スペクトル依存）
     k: SampledSpectrum,
+    /// X方向のroughness parameter (α_x)
+    alpha_x: f32,
+    /// Y方向のroughness parameter (α_y)
+    alpha_y: f32,
 }
 
 impl ConductorBsdf {
-    /// 新しいConductorBsdfを作成する。
+    /// 完全鏡面反射用のConductorBsdfを作成する。
     ///
     /// # Arguments
     /// - `eta` - 屈折率の実部（スペクトル依存）
     /// - `k` - 屈折率の虚部（消散係数、スペクトル依存）
     pub fn new(eta: SampledSpectrum, k: SampledSpectrum) -> Self {
-        Self { eta, k }
+        Self {
+            eta,
+            k,
+            alpha_x: 0.0,
+            alpha_y: 0.0,
+        }
+    }
+
+    /// マイクロファセット用のConductorBsdfを作成する。
+    ///
+    /// # Arguments
+    /// - `eta` - 屈折率の実部（スペクトル依存）
+    /// - `k` - 屈折率の虚部（消散係数、スペクトル依存）
+    /// - `alpha_x` - X方向のroughness parameter
+    /// - `alpha_y` - Y方向のroughness parameter
+    pub fn new_microfacet(
+        eta: SampledSpectrum,
+        k: SampledSpectrum,
+        alpha_x: f32,
+        alpha_y: f32,
+    ) -> Self {
+        Self {
+            eta,
+            k,
+            alpha_x,
+            alpha_y,
+        }
+    }
+
+    /// 表面が事実上滑らかかどうかを判定する。
+    fn effectively_smooth(&self) -> bool {
+        self.alpha_x.max(self.alpha_y) < 1e-3
+    }
+
+    /// Trowbridge-Reitz分布関数 D(ωm)を計算する。
+    fn microfacet_distribution(&self, wm: &Vector3<NormalMapTangent>) -> f32 {
+        let tan2_theta = Self::tan2_theta(wm);
+        if tan2_theta.is_infinite() {
+            return 0.0;
+        }
+
+        let cos4_theta = Self::cos2_theta(wm).powi(2);
+        let e = tan2_theta
+            * (Self::cos_phi(wm).powi(2) / self.alpha_x.powi(2)
+                + Self::sin_phi(wm).powi(2) / self.alpha_y.powi(2));
+
+        1.0 / (std::f32::consts::PI * self.alpha_x * self.alpha_y * cos4_theta * (1.0 + e).powi(2))
+    }
+
+    /// Lambda関数を計算する。
+    fn lambda(&self, w: &Vector3<NormalMapTangent>) -> f32 {
+        let tan2_theta = Self::tan2_theta(w);
+        if tan2_theta.is_infinite() {
+            return 0.0;
+        }
+
+        let alpha2 =
+            (Self::cos_phi(w) * self.alpha_x).powi(2) + (Self::sin_phi(w) * self.alpha_y).powi(2);
+        ((1.0 + alpha2 * tan2_theta).sqrt() - 1.0) / 2.0
+    }
+
+    /// 単方向マスキング関数 G1(ω)を計算する。
+    fn masking_g1(&self, w: &Vector3<NormalMapTangent>) -> f32 {
+        1.0 / (1.0 + self.lambda(w))
+    }
+
+    /// 双方向マスキング・シャドウイング関数 G(ωo, ωi)を計算する。
+    fn masking_shadowing_g(
+        &self,
+        wo: &Vector3<NormalMapTangent>,
+        wi: &Vector3<NormalMapTangent>,
+    ) -> f32 {
+        1.0 / (1.0 + self.lambda(wo) + self.lambda(wi))
+    }
+
+    /// 可視法線分布 D_ω(ωm)を計算する。
+    fn visible_normal_distribution(
+        &self,
+        w: &Vector3<NormalMapTangent>,
+        wm: &Vector3<NormalMapTangent>,
+    ) -> f32 {
+        let cos_theta_w = w.z().abs();
+        if cos_theta_w == 0.0 {
+            return 0.0;
+        }
+        self.masking_g1(w) / cos_theta_w * self.microfacet_distribution(wm) * w.dot(wm).abs()
+    }
+
+    // 球面座標系ヘルパー関数群
+    fn cos2_theta(w: &Vector3<NormalMapTangent>) -> f32 {
+        w.z() * w.z()
+    }
+
+    fn tan2_theta(w: &Vector3<NormalMapTangent>) -> f32 {
+        let cos2 = Self::cos2_theta(w);
+        if cos2 == 0.0 {
+            f32::INFINITY
+        } else {
+            (1.0 - cos2) / cos2
+        }
+    }
+
+    fn cos_phi(w: &Vector3<NormalMapTangent>) -> f32 {
+        let sin_theta = (1.0 - Self::cos2_theta(w)).max(0.0).sqrt();
+        if sin_theta == 0.0 {
+            1.0
+        } else {
+            (w.x() / sin_theta).clamp(-1.0, 1.0)
+        }
+    }
+
+    fn sin_phi(w: &Vector3<NormalMapTangent>) -> f32 {
+        let sin_theta = (1.0 - Self::cos2_theta(w)).max(0.0).sqrt();
+        if sin_theta == 0.0 {
+            0.0
+        } else {
+            (w.y() / sin_theta).clamp(-1.0, 1.0)
+        }
+    }
+
+    /// 可視法線をサンプリングする。
+    fn sample_visible_normal(
+        &self,
+        w: &Vector3<NormalMapTangent>,
+        u: glam::Vec2,
+    ) -> Vector3<NormalMapTangent> {
+        // wを半球構成に変換
+        let mut wh: Vector3<NormalMapTangent> =
+            Vector3::new(self.alpha_x * w.x(), self.alpha_y * w.y(), w.z()).normalize();
+        if wh.z() < 0.0 {
+            wh = -wh;
+        }
+
+        // 可視法線サンプリング用の直交基底を見つける
+        let t1 = if wh.z() < 0.99999 {
+            Vector3::new(0.0, 0.0, 1.0).cross(wh).normalize()
+        } else {
+            Vector3::new(1.0, 0.0, 0.0)
+        };
+        let t2 = wh.cross(t1);
+
+        // 単位円盤上に均等分布点を生成
+        let p = Self::sample_uniform_disk_polar(u);
+
+        // 半球投影を可視法線サンプリング用にワープ
+        let h = (1.0 - p.x * p.x).max(0.0).sqrt();
+        let lerp_factor = (1.0 + wh.z()) / 2.0;
+        let p_y = h * (1.0 - lerp_factor) + p.y * lerp_factor;
+
+        // 半球に再投影し、法線を楕円体構成に変換
+        let pz = (1.0 - p.x * p.x - p_y * p_y).max(0.0).sqrt();
+        let nh = t1 * p.x + t2 * p_y + wh * pz;
+
+        Vector3::new(
+            self.alpha_x * nh.x(),
+            self.alpha_y * nh.y(),
+            (1e-6_f32).max(nh.z()),
+        )
+        .normalize()
+    }
+
+    /// 極座標を使った単位円盤のサンプリング。
+    fn sample_uniform_disk_polar(u: glam::Vec2) -> glam::Vec2 {
+        let r = u.x.sqrt();
+        let theta = 2.0 * std::f32::consts::PI * u.y;
+        glam::Vec2::new(r * theta.cos(), r * theta.sin())
+    }
+
+    /// ハーフベクトルを計算する。
+    fn half_vector(
+        wo: &Vector3<NormalMapTangent>,
+        wi: &Vector3<NormalMapTangent>,
+    ) -> Option<Vector3<NormalMapTangent>> {
+        let wm = *wo + *wi;
+        if wm.length_squared() == 0.0 {
+            None
+        } else {
+            Some(wm.normalize())
+        }
     }
 
     /// BSDF方向サンプリングを行う。
-    /// 完全鏡面の場合のみを実装（マイクロファセットは後で実装）。
+    /// 表面の粗さに応じて完全鏡面またはマイクロファセットサンプリングを使用。
     ///
     /// # Arguments
     /// - `wo` - 出射方向（ノーマルマップ接空間）
-    /// - `_uv` - ランダムサンプル（完全鏡面なので未使用）
-    pub fn sample(&self, wo: &Vector3<NormalMapTangent>, _uv: glam::Vec2) -> Option<BsdfSample> {
+    /// - `uv` - ランダムサンプル
+    pub fn sample(&self, wo: &Vector3<NormalMapTangent>, uv: glam::Vec2) -> Option<BsdfSample> {
         let wo_cos_n = wo.z();
         if wo_cos_n == 0.0 {
             return None;
         }
 
+        if self.effectively_smooth() {
+            // 完全鏡面反射
+            self.sample_perfect_specular(wo)
+        } else {
+            // マイクロファセットサンプリング
+            self.sample_microfacet(wo, uv)
+        }
+    }
+
+    /// 完全鏡面反射サンプリング。
+    fn sample_perfect_specular(&self, wo: &Vector3<NormalMapTangent>) -> Option<BsdfSample> {
         // 完全鏡面反射: wi = (-wo.x, -wo.y, wo.z)
         let wi = Vector3::new(-wo.x(), -wo.y(), wo.z());
         let wi_cos_n = wi.z();
@@ -163,22 +355,152 @@ impl ConductorBsdf {
         Some(BsdfSample::Specular { f, wi })
     }
 
+    /// マイクロファセットサンプリング（Torrance-Sparrow model）。
+    fn sample_microfacet(
+        &self,
+        wo: &Vector3<NormalMapTangent>,
+        uv: glam::Vec2,
+    ) -> Option<BsdfSample> {
+        // 可視法線をサンプリング
+        let wm = self.sample_visible_normal(wo, uv);
+
+        // 鏡面反射方向を計算
+        let wi = Self::reflect(wo, &wm);
+
+        // 同じ半球にあるかチェック
+        if !Self::same_hemisphere(wo, &wi) {
+            return None;
+        }
+
+        // Torrance-Sparrow BRDF値とPDFを計算
+        let f = self.evaluate_torrance_sparrow(wo, &wi, &wm);
+        let pdf = self.pdf_microfacet(wo, &wi);
+
+        Some(BsdfSample::Bsdf { f, wi, pdf })
+    }
+
+    /// Torrance-Sparrow BRDF を評価する。
+    fn evaluate_torrance_sparrow(
+        &self,
+        wo: &Vector3<NormalMapTangent>,
+        wi: &Vector3<NormalMapTangent>,
+        wm: &Vector3<NormalMapTangent>,
+    ) -> SampledSpectrum {
+        let cos_theta_o = wo.z().abs();
+        let cos_theta_i = wi.z().abs();
+
+        if cos_theta_o == 0.0 || cos_theta_i == 0.0 {
+            return SampledSpectrum::zero();
+        }
+
+        // Fresnel項: F(ωo·ωm)
+        let fresnel = fresnel_complex((wo.dot(wm)).abs(), &self.eta, &self.k);
+
+        // 分布項: D(ωm)
+        let distribution = self.microfacet_distribution(wm);
+
+        // マスキング・シャドウイング項: G(ωo, ωi)
+        let masking_shadowing = self.masking_shadowing_g(wo, wi);
+
+        // Torrance-Sparrow BRDF: D(ωm) * F(ωo·ωm) * G(ωo, ωi) / (4 * cos θi * cos θo)
+        fresnel * distribution * masking_shadowing / (4.0 * cos_theta_i * cos_theta_o)
+    }
+
+    /// 反射ベクトルを計算する。
+    fn reflect(
+        wo: &Vector3<NormalMapTangent>,
+        wm: &Vector3<NormalMapTangent>,
+    ) -> Vector3<NormalMapTangent> {
+        *wm * (2.0 * wo.dot(wm)) - *wo
+    }
+
+    /// 二つのベクトルが同じ半球にあるかチェック。
+    fn same_hemisphere(wo: &Vector3<NormalMapTangent>, wi: &Vector3<NormalMapTangent>) -> bool {
+        wo.z() * wi.z() > 0.0
+    }
+
     /// BSDF値を評価する。
-    /// 完全鏡面の場合は常に0を返す（デルタ関数のため）。
+    /// 完全鏡面の場合は0、マイクロファセットの場合はTorrance-Sparrow BRDFを返す。
     pub fn evaluate(
         &self,
-        _wo: &Vector3<NormalMapTangent>,
-        _wi: &Vector3<NormalMapTangent>,
+        wo: &Vector3<NormalMapTangent>,
+        wi: &Vector3<NormalMapTangent>,
     ) -> SampledSpectrum {
-        // 完全鏡面反射の場合、evaluate()は常に0を返す
-        SampledSpectrum::zero()
+        if self.effectively_smooth() {
+            // 完全鏡面反射の場合、evaluate()は常に0を返す（デルタ関数のため）
+            SampledSpectrum::zero()
+        } else {
+            // マイクロファセットの場合、Torrance-Sparrow BRDFを評価
+            self.evaluate_microfacet(wo, wi)
+        }
+    }
+
+    /// マイクロファセットBRDFを評価する。
+    fn evaluate_microfacet(
+        &self,
+        wo: &Vector3<NormalMapTangent>,
+        wi: &Vector3<NormalMapTangent>,
+    ) -> SampledSpectrum {
+        let cos_theta_o = wo.z().abs();
+        let cos_theta_i = wi.z().abs();
+
+        if cos_theta_o == 0.0 || cos_theta_i == 0.0 {
+            return SampledSpectrum::zero();
+        }
+
+        // 同じ半球にあるかチェック
+        if !Self::same_hemisphere(wo, wi) {
+            return SampledSpectrum::zero();
+        }
+
+        // ハーフベクトルを計算
+        let wm = match Self::half_vector(wo, wi) {
+            Some(wm) => wm,
+            None => return SampledSpectrum::zero(),
+        };
+
+        self.evaluate_torrance_sparrow(wo, wi, &wm)
     }
 
     /// BSDF PDFを計算する。
-    /// 完全鏡面の場合は常に0を返す（デルタ関数のため）。
-    pub fn pdf(&self, _wo: &Vector3<NormalMapTangent>, _wi: &Vector3<NormalMapTangent>) -> f32 {
-        // 完全鏡面反射の場合、PDF()は常に0を返す
-        0.0
+    /// 完全鏡面の場合は0、マイクロファセットの場合はTorrance-Sparrow PDFを返す。
+    pub fn pdf(&self, wo: &Vector3<NormalMapTangent>, wi: &Vector3<NormalMapTangent>) -> f32 {
+        if self.effectively_smooth() {
+            // 完全鏡面反射の場合、PDF()は常に0を返す（デルタ関数のため）
+            0.0
+        } else {
+            // マイクロファセットの場合、Torrance-Sparrow PDFを計算
+            self.pdf_microfacet(wo, wi)
+        }
+    }
+
+    /// マイクロファセットPDFを計算する。
+    fn pdf_microfacet(
+        &self,
+        wo: &Vector3<NormalMapTangent>,
+        wi: &Vector3<NormalMapTangent>,
+    ) -> f32 {
+        // 同じ半球にあるかチェック
+        if !Self::same_hemisphere(wo, wi) {
+            return 0.0;
+        }
+
+        // ハーフベクトルを計算
+        let wm = match Self::half_vector(wo, wi) {
+            Some(wm) => wm,
+            None => return 0.0,
+        };
+
+        // 可視法線分布のPDF
+        let visible_normal_pdf = self.visible_normal_distribution(wo, &wm);
+
+        // ヤコビアン変換: dωm/dωi = 1/(4|ωo·ωm|)
+        let jacobian = 4.0 * (wo.dot(wm)).abs();
+        if jacobian == 0.0 {
+            return 0.0;
+        }
+
+        visible_normal_pdf / jacobian
     }
 
     /// Fresnel反射率を計算する。
