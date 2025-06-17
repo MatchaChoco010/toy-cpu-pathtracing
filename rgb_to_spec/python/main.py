@@ -12,7 +12,7 @@ FIRST_LR = 0.001
 N_POOL = 10_000_000
 FIRST_BATCH = 65536
 GREEN_LOSS_SCALE = 5
-DARK_LOSS_SCALE = 1
+DARK_LOSS_SCALE = 2
 
 SECOND_EPOCHS = 15000
 SECOND_LR = 0.001
@@ -106,13 +106,23 @@ def delta_e(rgb_pred, rgb_ref, m_rgb_to_xyz, white_xyz):
 # -------------------------------------
 # 乱数の事前準備
 # -------------------------------------
+
+# ランダムなRGB値を生成
 rand_rgb_pool = torch.rand((N_POOL, 3), device=DEVICE, dtype=DTYPE)
+
+# 純緑が苦手なので学習データを個別に追加
 rand_green_pool = torch.stack([
     torch.zeros_like(rand_rgb_pool[:, 0]),
     torch.rand_like(rand_rgb_pool[:, 1]),
     torch.zeros_like(rand_rgb_pool[:, 2])
 ], dim=-1).to(DEVICE, dtype=DTYPE)
-rand_dark_pool = torch.rand((N_POOL, 3), device=DEVICE, dtype=DTYPE) * 0.2
+
+# 暗くてかつRGBの数値のいずれかが0のパターンが苦手なのでデータを個別に追加
+num_zeros = torch.randint(0, 3, (N_POOL,), device=DEVICE)
+rand_indices = torch.argsort(torch.rand((N_POOL, 3), device=DEVICE), dim=1)
+mask = (rand_indices >= num_zeros.unsqueeze(1)).to(DTYPE)
+rand_dark_pool = torch.rand((N_POOL, 3), device=DEVICE, dtype=DTYPE) * 0.3 * mask
+
 
 # -------------------------------------
 # 最適化ループ
@@ -186,32 +196,56 @@ def train_space(cs_name, out_file):
     for i in range(1, FIRST_EPOCHS + 1):
         rand_idx  = torch.randint(0, N_POOL, (FIRST_BATCH,))
         input_rgb = rand_rgb_pool[rand_idx]
-        input_green = rand_green_pool[rand_idx]
-        input_dark = rand_dark_pool[rand_idx]
 
-        mlp.zero_grad(set_to_none=True)
+        rand_green_idx  = torch.randint(0, N_POOL, (FIRST_BATCH,))
+        input_green = rand_green_pool[rand_green_idx]
+
+        rand_dark_idx = torch.randint(0, N_POOL, (FIRST_BATCH,))
+        input_dark = rand_dark_pool[rand_dark_idx]
+
 
         with autocast(DEVICE, dtype=torch.float16):
             pred_rgb = rgb_from_coeff(decode(mlp(input_rgb)))
-            pred_green = rgb_from_coeff(decode(mlp(input_green)))
-            pred_dark = rgb_from_coeff(decode(mlp(input_dark)))
-
             rgb_loss = (pred_rgb - input_rgb).pow(2).mean()
-            green_loss = (pred_green - input_green).pow(2).mean()
-            dark_loss = (pred_dark - input_dark).pow(2).mean()
-            reg = log_scale.exp().pow(2).sum() * 1e-5
-            loss = rgb_loss + green_loss + dark_loss + reg
+            reg_loss = log_scale.exp().pow(2).sum() * 1e-5
 
-        scaler.scale(loss).backward()
+        mlp.zero_grad(set_to_none=True)
+        scaler.scale(rgb_loss + reg_loss).backward()
         scaler.step(opt)
         scaler.update()
+
+
+        with autocast(DEVICE, dtype=torch.float16):
+            pred_green = rgb_from_coeff(decode(mlp(input_green)))
+            green_loss = (pred_green - input_green).pow(2).mean() * GREEN_LOSS_SCALE
+            reg_loss = log_scale.exp().pow(2).sum() * 1e-5
+
+        mlp.zero_grad(set_to_none=True)
+        scaler.scale(green_loss + reg_loss).backward()
+        scaler.step(opt)
+        scaler.update()
+
+
+        with autocast(DEVICE, dtype=torch.float16):
+            pred_dark = rgb_from_coeff(decode(mlp(input_dark)))
+            dark_loss = (pred_dark - input_dark).pow(2).mean() * DARK_LOSS_SCALE
+            reg_loss = log_scale.exp().pow(2).sum() * 1e-5
+
+        mlp.zero_grad(set_to_none=True)
+        scaler.scale(dark_loss + reg_loss).backward()
+        scaler.step(opt)
+        scaler.update()
+
 
         delta = delta_e(pred_rgb, input_rgb, m_rgb2xyz, white_xyz)
         delta_green = delta_e(pred_green, input_green, m_rgb2xyz, white_xyz)
         delta_dark = delta_e(pred_dark, input_dark, m_rgb2xyz, white_xyz)
+        delta_max = torch.max(torch.cat([delta, delta_green, delta_dark]))
+
+        loss = rgb_loss + green_loss + dark_loss + reg_loss
 
         if i % 1000 == 0 or i == 1 or i == FIRST_EPOCHS:
-            print(f"[{cs_name}] MLP epoch {i:5d}/{FIRST_EPOCHS}  loss={loss.item():.8f}, ΔE_mean={delta.mean().item():.4f}, ΔE_green_mean={delta_green.mean().item():.4f}, ΔE_dark_mean={delta_dark.mean().item():.4f}, ΔE_max={delta.max().item():.4f}")
+            print(f"[{cs_name}] MLP epoch {i:5d}/{FIRST_EPOCHS}  loss={loss.item():.8f}, ΔE_mean={delta.mean().item():.4f}, ΔE_green_mean={delta_green.mean().item():.4f}, ΔE_dark_mean={delta_dark.mean().item():.4f}, ΔE_max={delta_max.item():.4f}")
 
     # --- 最適化 --------------------------------
     coeff_raw = torch.nn.Parameter(mlp(rgb_target.to(torch.float32)))
