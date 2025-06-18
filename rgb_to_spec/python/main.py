@@ -3,23 +3,22 @@ import time
 
 import colour
 import torch
-from torch.amp import GradScaler, autocast
+from torch.optim.lr_scheduler import CosineAnnealingLR
 
-scaler = GradScaler(enabled=True)
-
-FIRST_EPOCHS = 30000
-FIRST_LR = 0.001
+FIRST_EPOCHS = 100000
+FIRST_LR = 0.0001
 N_POOL = 10_000_000
-FIRST_BATCH = 65536
-GREEN_LOSS_SCALE = 5
-DARK_LOSS_SCALE = 2
+FIRST_BATCH = 16384
+RGB_LOSS_SCALE = 1
+GREEN_LOSS_SCALE = 3
+DARK_LOSS_SCALE = 1
 
-SECOND_EPOCHS = 20000
+SECOND_EPOCHS = 30000
 SECOND_LR = 0.001
 
 TABLE_SIZE = 64
 DEVICE = "cuda"
-DTYPE = torch.float16
+DTYPE = torch.float32
 
 SCALE_A = 100.0
 SCALE_B = 100.0
@@ -71,11 +70,11 @@ z_nodes = smoothstep(smoothstep(idx_float / (TABLE_SIZE - 1)))
 # colour-science の色域キーと出力ファイル名
 SPACES = {
     "sRGB":             "../tables//srgb_table.bin",
-    # "P3-D65":           "../tables/dcip3d65_table.bin",
-    # "Adobe RGB (1998)": "../tables/adobergb_table.bin",
-    # "ITU-R BT.2020":    "../tables/rec2020_table.bin",
-    # "ACEScg":           "../tables/acescg_table.bin",
-    # "ACES2065-1":       "../tables/aces2065_1_table.bin",
+    "P3-D65":           "../tables/dcip3d65_table.bin",
+    "Adobe RGB (1998)": "../tables/adobergb_table.bin",
+    "ITU-R BT.2020":    "../tables/rec2020_table.bin",
+    "ACEScg":           "../tables/acescg_table.bin",
+    "ACES2065-1":       "../tables/aces2065_1_table.bin",
 }
 
 # -------------------------------------
@@ -172,7 +171,10 @@ def train_space(cs_name, out_file):
         Z = (spec * z_bar * d65_norm).sum(-1) * step
         return torch.stack([X, Y, Z], -1)
 
-    def rgb_from_coeff(c): return torch.matmul(spectrum_xyz(c), m_xyz2rgb.T)
+    def rgb_from_coeff(c):
+        rgb = torch.matmul(spectrum_xyz(c), m_xyz2rgb.T)
+        rgb = torch.max(rgb, torch.zeros_like(rgb))
+        return rgb
 
     # --- 初期値決定用NN --------------------------------
     mlp = torch.nn.Sequential(
@@ -192,7 +194,7 @@ def train_space(cs_name, out_file):
         { "params": mlp.parameters(), "lr": FIRST_LR },
         { "params": log_scale, "lr": FIRST_LR * 10 },
     ])
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(opt, FIRST_EPOCHS)
+    scheduler = CosineAnnealingLR(opt, FIRST_EPOCHS)
 
     for i in range(1, FIRST_EPOCHS + 1):
         rand_idx  = torch.randint(0, N_POOL, (FIRST_BATCH,))
@@ -205,52 +207,34 @@ def train_space(cs_name, out_file):
         input_dark = rand_dark_pool[rand_dark_idx]
 
 
-        skipped = False
-
-        with autocast(DEVICE, dtype=torch.float16):
-            pred_rgb = rgb_from_coeff(decode(mlp(input_rgb)))
-            rgb_loss = (pred_rgb - input_rgb).pow(2).mean()
-            reg_loss = log_scale.exp().pow(2).sum() * 1e-5
+        pred_rgb = rgb_from_coeff(decode(mlp(input_rgb)))
+        rgb_loss = (pred_rgb - input_rgb).pow(2).mean() * RGB_LOSS_SCALE
+        reg_loss = log_scale.exp().pow(2).sum() * 1e-5
 
         mlp.zero_grad(set_to_none=True)
-
-        scale = scaler.get_scale()
-        scaler.scale(rgb_loss + reg_loss).backward()
-        scaler.step(opt)
-        scaler.update()
-        skipped = skipped or scale > scaler.get_scale()
+        (rgb_loss + reg_loss).backward()
+        opt.step()
 
 
-        with autocast(DEVICE, dtype=torch.float16):
-            pred_green = rgb_from_coeff(decode(mlp(input_green)))
-            green_loss = (pred_green - input_green).pow(2).mean() * GREEN_LOSS_SCALE
-            reg_loss = log_scale.exp().pow(2).sum() * 1e-5
+        pred_green = rgb_from_coeff(decode(mlp(input_green)))
+        green_loss = (pred_green - input_green).pow(2).mean() * GREEN_LOSS_SCALE
+        reg_loss = log_scale.exp().pow(2).sum() * 1e-5
 
         mlp.zero_grad(set_to_none=True)
-
-        scale = scaler.get_scale()
-        scaler.scale(green_loss + reg_loss).backward()
-        scaler.step(opt)
-        scaler.update()
-        skipped = skipped or scale > scaler.get_scale()
+        (green_loss + reg_loss).backward()
+        opt.step()
 
 
-        with autocast(DEVICE, dtype=torch.float16):
-            pred_dark = rgb_from_coeff(decode(mlp(input_dark)))
-            dark_loss = (pred_dark - input_dark).pow(2).mean() * DARK_LOSS_SCALE
-            reg_loss = log_scale.exp().pow(2).sum() * 1e-5
+        pred_dark = rgb_from_coeff(decode(mlp(input_dark)))
+        dark_loss = (pred_dark - input_dark).pow(2).mean() * DARK_LOSS_SCALE
+        reg_loss = log_scale.exp().pow(2).sum() * 1e-5
 
         mlp.zero_grad(set_to_none=True)
-
-        scale = scaler.get_scale()
-        scaler.scale(dark_loss + reg_loss).backward()
-        scaler.step(opt)
-        scaler.update()
-        skipped = skipped or scale > scaler.get_scale()
+        (dark_loss + reg_loss).backward()
+        opt.step()
 
 
-        if not skipped:
-            scheduler.step()
+        scheduler.step()
 
 
         delta = delta_e(pred_rgb, input_rgb, m_rgb2xyz, white_xyz)
@@ -266,19 +250,18 @@ def train_space(cs_name, out_file):
     # --- 最適化 --------------------------------
     coeff_raw = torch.nn.Parameter(mlp(rgb_target.to(torch.float32)))
     opt = torch.optim.Adam([coeff_raw], lr=SECOND_LR)
+    scheduler = CosineAnnealingLR(opt, SECOND_EPOCHS)
 
     for epoch in range(1, SECOND_EPOCHS + 1):
         opt.zero_grad(set_to_none=True)
 
-        with autocast(DEVICE, dtype=torch.float16):
-            rgb_pred = rgb_from_coeff(decode(coeff_raw))
-            loss = (rgb_pred - rgb_target).pow(2).mean()
-
-        scaler.scale(loss).backward()
-        scaler.step(opt)
-        scaler.update()
-
+        rgb_pred = rgb_from_coeff(decode(coeff_raw))
         delta = delta_e(rgb_pred, rgb_target, m_rgb2xyz, white_xyz)
+        loss = delta.mean()
+
+        loss.backward()
+        opt.step()
+        scheduler.step()
 
         if epoch % 1000 == 0 or epoch == 1 or epoch == SECOND_EPOCHS:
             print(f"[{cs_name}] OPT epoch {epoch:5d}/{SECOND_EPOCHS}  ΔE_mean={delta.mean().item():.4f}, ΔE_max={delta.max().item():.4f}")

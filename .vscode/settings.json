@@ -4,7 +4,11 @@
     "adobergb",
     "bitangent",
     "bsdf",
+    "cbrt",
     "Clippy",
+    "CMFS",
+    "coeff",
+    "COLOURSPACES",
     "copysign",
     "dcip",
     "Eotf",
@@ -15,6 +19,9 @@
     "ipetkov",
     "lasf",
     "lerp",
+    "linalg",
+    "meshgrid",
+    "MSDS",
     "nixos",
     "nixpkgs",
     "normalmap",
@@ -31,6 +38,8 @@
     "sobol",
     "Srgb",
     "tobj",
-    "uvec"
+    "tofile",
+    "uvec",
+    "whitepoint"
   ]
 }
