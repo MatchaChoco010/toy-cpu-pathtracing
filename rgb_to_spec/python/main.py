@@ -5,16 +5,16 @@ import colour
 import torch
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
-FIRST_EPOCHS = 100000
+FIRST_EPOCHS = 60000
 FIRST_LR = 0.0001
 N_POOL = 10_000_000
 FIRST_BATCH = 16384
-RGB_LOSS_SCALE = 1
+RGB_LOSS_SCALE = 2
 GREEN_LOSS_SCALE = 3
-DARK_LOSS_SCALE = 1
+DARK_LOSS_SCALE = 3
 
 SECOND_EPOCHS = 30000
-SECOND_LR = 0.001
+SECOND_LR = 0.0001
 
 TABLE_SIZE = 64
 DEVICE = "cuda"
@@ -209,28 +209,25 @@ def train_space(cs_name, out_file):
 
         pred_rgb = rgb_from_coeff(decode(mlp(input_rgb)))
         rgb_loss = (pred_rgb - input_rgb).pow(2).mean() * RGB_LOSS_SCALE
-        reg_loss = log_scale.exp().pow(2).sum() * 1e-5
 
         mlp.zero_grad(set_to_none=True)
-        (rgb_loss + reg_loss).backward()
+        rgb_loss.backward()
         opt.step()
 
 
         pred_green = rgb_from_coeff(decode(mlp(input_green)))
         green_loss = (pred_green - input_green).pow(2).mean() * GREEN_LOSS_SCALE
-        reg_loss = log_scale.exp().pow(2).sum() * 1e-5
 
         mlp.zero_grad(set_to_none=True)
-        (green_loss + reg_loss).backward()
+        green_loss.backward()
         opt.step()
 
 
         pred_dark = rgb_from_coeff(decode(mlp(input_dark)))
         dark_loss = (pred_dark - input_dark).pow(2).mean() * DARK_LOSS_SCALE
-        reg_loss = log_scale.exp().pow(2).sum() * 1e-5
 
         mlp.zero_grad(set_to_none=True)
-        (dark_loss + reg_loss).backward()
+        dark_loss.backward()
         opt.step()
 
 
@@ -242,7 +239,7 @@ def train_space(cs_name, out_file):
         delta_dark = delta_e(pred_dark, input_dark, m_rgb2xyz, white_xyz)
         delta_max = torch.max(torch.cat([delta, delta_green, delta_dark]))
 
-        loss = rgb_loss + green_loss + dark_loss + reg_loss
+        loss = rgb_loss + green_loss + dark_loss
 
         if i % 1000 == 0 or i == 1 or i == FIRST_EPOCHS:
             print(f"[{cs_name}] MLP epoch {i:5d}/{FIRST_EPOCHS}  loss={loss.item():.8f}, ΔE_mean={delta.mean().item():.4f}, ΔE_green_mean={delta_green.mean().item():.4f}, ΔE_dark_mean={delta_dark.mean().item():.4f}, ΔE_max={delta_max.item():.4f}")
@@ -257,7 +254,7 @@ def train_space(cs_name, out_file):
 
         rgb_pred = rgb_from_coeff(decode(coeff_raw))
         delta = delta_e(rgb_pred, rgb_target, m_rgb2xyz, white_xyz)
-        loss = delta.mean()
+        loss = delta.pow(2).mean()
 
         loss.backward()
         opt.step()

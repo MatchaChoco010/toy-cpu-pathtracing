@@ -276,6 +276,48 @@ fn color_match_test<G: ColorGamut, E: Eotf>(data: &[u8]) {
         error_3,
         256 / 16 * 256 / 16 * 256 / 16
     );
+
+    let max_cs = (0..=(255 / 16))
+        .into_par_iter()
+        .map(|r| {
+            (0..=(255 / 16))
+                .map(|g| {
+                    (0..=(255 / 16))
+                        .map(|b| {
+                            let r = r * 16;
+                            let g = g * 16;
+                            let b = b * 16;
+                            let color = ColorImpl::<G, NoneToneMap, E>::new(
+                                r as f32 / 255.0,
+                                g as f32 / 255.0,
+                                b as f32 / 255.0,
+                            );
+                            let table = RgbToSpectrumTable::load_table_from_binary(data);
+                            let cs = table.get(&color);
+                            cs
+                        })
+                        .collect::<Vec<_>>()
+                        .into_iter()
+                        .fold(glam::Vec3::ZERO, |acc, cs| {
+                            glam::vec3(acc.x.max(cs[0]), acc.y.max(cs[1]), acc.z.max(cs[2]))
+                        })
+                })
+                .collect::<Vec<_>>()
+                .into_iter()
+                .fold(glam::Vec3::ZERO, |acc, cs| {
+                    glam::vec3(acc.x.max(cs.x), acc.y.max(cs.y), acc.z.max(cs.z))
+                })
+        })
+        .collect::<Vec<_>>()
+        .into_iter()
+        .fold(glam::Vec3::ZERO, |acc, cs| {
+            glam::vec3(acc.x.max(cs.x), acc.y.max(cs.y), acc.z.max(cs.z))
+        });
+
+    println!(
+        "Maximum coefficients: a: {:.6}, b: {:.6}, c: {:.6}",
+        max_cs.x, max_cs.y, max_cs.z
+    );
 }
 
 #[test]
