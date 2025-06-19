@@ -107,7 +107,7 @@ fn run_render_and_compare(
 }
 
 #[test]
-fn test_pt_random_regression() {
+fn regression_test_pt_random() {
     run_render_and_compare(
         0,
         "pt",
@@ -120,7 +120,7 @@ fn test_pt_random_regression() {
 }
 
 #[test]
-fn test_pt_sobol_regression() {
+fn regression_test_pt_sobol() {
     run_render_and_compare(
         0,
         "pt",
@@ -133,7 +133,7 @@ fn test_pt_sobol_regression() {
 }
 
 #[test]
-fn test_nee_random_regression() {
+fn regression_test_nee_random() {
     run_render_and_compare(
         0,
         "nee",
@@ -146,7 +146,7 @@ fn test_nee_random_regression() {
 }
 
 #[test]
-fn test_nee_sobol_regression() {
+fn regression_test_nee_sobol() {
     run_render_and_compare(
         0,
         "nee",
@@ -159,7 +159,7 @@ fn test_nee_sobol_regression() {
 }
 
 #[test]
-fn test_mis_random_regression() {
+fn regression_test_mis_random() {
     run_render_and_compare(
         0,
         "mis",
@@ -172,7 +172,7 @@ fn test_mis_random_regression() {
 }
 
 #[test]
-fn test_mis_sobol_regression() {
+fn regression_test_mis_sobol() {
     run_render_and_compare(
         0,
         "mis",
@@ -186,7 +186,7 @@ fn test_mis_sobol_regression() {
 
 // Scene 3 (Normal mapped textured bunny) regression tests
 #[test]
-fn test_scene3_pt_random_regression() {
+fn regression_test_scene3_pt_random() {
     run_render_and_compare(
         3,
         "pt",
@@ -199,7 +199,7 @@ fn test_scene3_pt_random_regression() {
 }
 
 #[test]
-fn test_scene3_pt_sobol_regression() {
+fn regression_test_scene3_pt_sobol() {
     run_render_and_compare(
         3,
         "pt",
@@ -212,7 +212,7 @@ fn test_scene3_pt_sobol_regression() {
 }
 
 #[test]
-fn test_scene3_nee_random_regression() {
+fn regression_test_scene3_nee_random() {
     run_render_and_compare(
         3,
         "nee",
@@ -225,7 +225,7 @@ fn test_scene3_nee_random_regression() {
 }
 
 #[test]
-fn test_scene3_nee_sobol_regression() {
+fn regression_test_scene3_nee_sobol() {
     run_render_and_compare(
         3,
         "nee",
@@ -238,7 +238,7 @@ fn test_scene3_nee_sobol_regression() {
 }
 
 #[test]
-fn test_scene3_mis_random_regression() {
+fn regression_test_scene3_mis_random() {
     run_render_and_compare(
         3,
         "mis",
@@ -251,7 +251,7 @@ fn test_scene3_mis_random_regression() {
 }
 
 #[test]
-fn test_scene3_mis_sobol_regression() {
+fn regression_test_scene3_mis_sobol() {
     run_render_and_compare(
         3,
         "mis",
@@ -259,6 +259,164 @@ fn test_scene3_mis_sobol_regression() {
         512,
         "output.test_scene3_mis_sobol.png",
         "test_references/reference_scene3_mis_sobol.png",
+        0.05,
+    );
+}
+
+// Scene 8 (SF11 glass bunny) regression tests
+#[test]
+fn regression_test_scene8_pt_random() {
+    run_render_and_compare(
+        8,
+        "pt",
+        "random",
+        512,
+        "output.test_scene8_pt_random.png",
+        "test_references/reference_scene8_pt_random.png",
+        0.07,
+    );
+}
+
+#[test]
+fn regression_test_scene8_pt_sobol() {
+    run_render_and_compare(
+        8,
+        "pt",
+        "sobol",
+        512,
+        "output.test_scene8_pt_sobol.png",
+        "test_references/reference_scene8_pt_sobol.png",
+        0.08,
+    );
+}
+
+#[test]
+fn regression_test_scene8_nee_random() {
+    run_render_and_compare(
+        8,
+        "nee",
+        "random",
+        512,
+        "output.test_scene8_nee_random.png",
+        "test_references/reference_scene8_nee_random.png",
+        0.07,
+    );
+}
+
+#[test]
+fn regression_test_scene8_nee_sobol() {
+    run_render_and_compare(
+        8,
+        "nee",
+        "sobol",
+        512,
+        "output.test_scene8_nee_sobol.png",
+        "test_references/reference_scene8_nee_sobol.png",
+        0.07,
+    );
+}
+
+#[test]
+fn regression_test_scene8_mis_random() {
+    run_render_and_compare(
+        8,
+        "mis",
+        "random",
+        512,
+        "output.test_scene8_mis_random.png",
+        "test_references/reference_scene8_mis_random.png",
+        0.07,
+    );
+}
+
+#[test]
+fn regression_test_scene8_mis_sobol() {
+    run_render_and_compare(
+        8,
+        "mis",
+        "sobol",
+        512,
+        "output.test_scene8_mis_sobol.png",
+        "test_references/reference_scene8_mis_sobol.png",
+        0.07,
+    );
+}
+
+// Scene 9 (thin film plastic bunny) regression tests
+#[test]
+fn regression_test_scene9_pt_random() {
+    run_render_and_compare(
+        9,
+        "pt",
+        "random",
+        512,
+        "output.test_scene9_pt_random.png",
+        "test_references/reference_scene9_pt_random.png",
+        0.05,
+    );
+}
+
+#[test]
+fn regression_test_scene9_pt_sobol() {
+    run_render_and_compare(
+        9,
+        "pt",
+        "sobol",
+        512,
+        "output.test_scene9_pt_sobol.png",
+        "test_references/reference_scene9_pt_sobol.png",
+        0.05,
+    );
+}
+
+#[test]
+fn regression_test_scene9_nee_random() {
+    run_render_and_compare(
+        9,
+        "nee",
+        "random",
+        512,
+        "output.test_scene9_nee_random.png",
+        "test_references/reference_scene9_nee_random.png",
+        0.05,
+    );
+}
+
+#[test]
+fn regression_test_scene9_nee_sobol() {
+    run_render_and_compare(
+        9,
+        "nee",
+        "sobol",
+        512,
+        "output.test_scene9_nee_sobol.png",
+        "test_references/reference_scene9_nee_sobol.png",
+        0.05,
+    );
+}
+
+#[test]
+fn regression_test_scene9_mis_random() {
+    run_render_and_compare(
+        9,
+        "mis",
+        "random",
+        512,
+        "output.test_scene9_mis_random.png",
+        "test_references/reference_scene9_mis_random.png",
+        0.05,
+    );
+}
+
+#[test]
+fn regression_test_scene9_mis_sobol() {
+    run_render_and_compare(
+        9,
+        "mis",
+        "sobol",
+        512,
+        "output.test_scene9_mis_sobol.png",
+        "test_references/reference_scene9_mis_sobol.png",
         0.05,
     );
 }
