@@ -237,7 +237,7 @@ impl DielectricBsdf {
                     lambda.terminate_secondary();
 
                     // 屈折率に応じてradiance調整
-                    let radiance_scale = eta * eta;
+                    let radiance_scale = 1.0 / (eta * eta);
 
                     let f = SampledSpectrum::constant(t * radiance_scale / wt_cos_n.abs());
                     Some(BsdfSample::new(
