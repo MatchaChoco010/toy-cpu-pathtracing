@@ -18,7 +18,7 @@ pub fn load_scene_8<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
         surface_material: GlassMaterial::new(
-            GlassType::Bk7,
+            GlassType::Sf11,
             NormalParameter::none(),
             false, // 通常のガラス（thin filmではない）
         ),

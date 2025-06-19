@@ -86,7 +86,13 @@ impl BsdfSurfaceMaterial for PlasticMaterial {
         shading_point: &SurfaceInteraction<ShadingTangent>,
     ) -> MaterialSample {
         // プラスチックの光学特性を取得
-        let eta = self.get_eta(lambda);
+        let eta = self.get_eta(lambda).value(0); // 単一波長での屈折率を使用
+        let eta = if eta == 0.0 {
+            // 屈折率が0の場合は無効な値なので、デフォルトの1.0を使用
+            1.0
+        } else {
+            eta
+        };
 
         // 法線マップから法線を取得（ない場合はデフォルトのZ+法線）
         let normal_map = self
@@ -144,7 +150,13 @@ impl BsdfSurfaceMaterial for PlasticMaterial {
         shading_point: &SurfaceInteraction<ShadingTangent>,
     ) -> MaterialEvaluationResult {
         // プラスチックの光学特性を取得
-        let eta = self.get_eta(lambda);
+        let eta = self.get_eta(lambda).value(0); // 単一波長での屈折率を使用
+        let eta = if eta == 0.0 {
+            // 屈折率が0の場合は無効な値なので、デフォルトの1.0を使用
+            1.0
+        } else {
+            eta
+        };
 
         // 法線マップから法線を取得（ない場合はデフォルトのZ+法線）
         let normal_map = self
@@ -178,7 +190,13 @@ impl BsdfSurfaceMaterial for PlasticMaterial {
         shading_point: &SurfaceInteraction<ShadingTangent>,
     ) -> f32 {
         // プラスチックの光学特性を取得
-        let eta = self.get_eta(lambda);
+        let eta = self.get_eta(lambda).value(0); // 単一波長での屈折率を使用
+        let eta = if eta == 0.0 {
+            // 屈折率が0の場合は無効な値なので、デフォルトの1.0を使用
+            1.0
+        } else {
+            eta
+        };
 
         // 法線マップから法線を取得（ない場合はデフォルトのZ+法線）
         let normal_map = self
