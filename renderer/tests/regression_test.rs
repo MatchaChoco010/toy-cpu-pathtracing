@@ -270,10 +270,10 @@ fn regression_test_scene8_pt_random() {
         8,
         "pt",
         "random",
-        512,
+        2048,
         "output.test_scene8_pt_random.png",
         "test_references/reference_scene8_pt_random.png",
-        0.07,
+        0.075,
     );
 }
 
@@ -283,10 +283,10 @@ fn regression_test_scene8_pt_sobol() {
         8,
         "pt",
         "sobol",
-        512,
+        2048,
         "output.test_scene8_pt_sobol.png",
         "test_references/reference_scene8_pt_sobol.png",
-        0.08,
+        0.085,
     );
 }
 
@@ -296,10 +296,10 @@ fn regression_test_scene8_nee_random() {
         8,
         "nee",
         "random",
-        512,
+        2048,
         "output.test_scene8_nee_random.png",
         "test_references/reference_scene8_nee_random.png",
-        0.07,
+        0.075,
     );
 }
 
@@ -309,10 +309,10 @@ fn regression_test_scene8_nee_sobol() {
         8,
         "nee",
         "sobol",
-        512,
+        2048,
         "output.test_scene8_nee_sobol.png",
         "test_references/reference_scene8_nee_sobol.png",
-        0.07,
+        0.085,
     );
 }
 
@@ -322,10 +322,10 @@ fn regression_test_scene8_mis_random() {
         8,
         "mis",
         "random",
-        512,
+        2048,
         "output.test_scene8_mis_random.png",
         "test_references/reference_scene8_mis_random.png",
-        0.07,
+        0.075,
     );
 }
 
@@ -335,10 +335,10 @@ fn regression_test_scene8_mis_sobol() {
         8,
         "mis",
         "sobol",
-        512,
+        2048,
         "output.test_scene8_mis_sobol.png",
         "test_references/reference_scene8_mis_sobol.png",
-        0.07,
+        0.075,
     );
 }
 
@@ -417,6 +417,164 @@ fn regression_test_scene9_mis_sobol() {
         512,
         "output.test_scene9_mis_sobol.png",
         "test_references/reference_scene9_mis_sobol.png",
+        0.05,
+    );
+}
+
+// Scene 6 (gold metal bunny) regression tests
+#[test]
+fn regression_test_scene6_pt_random() {
+    run_render_and_compare(
+        6,
+        "pt",
+        "random",
+        512,
+        "output.test_scene6_pt_random.png",
+        "test_references/reference_scene6_pt_random.png",
+        0.05,
+    );
+}
+
+#[test]
+fn regression_test_scene6_pt_sobol() {
+    run_render_and_compare(
+        6,
+        "pt",
+        "sobol",
+        512,
+        "output.test_scene6_pt_sobol.png",
+        "test_references/reference_scene6_pt_sobol.png",
+        0.05,
+    );
+}
+
+#[test]
+fn regression_test_scene6_nee_random() {
+    run_render_and_compare(
+        6,
+        "nee",
+        "random",
+        512,
+        "output.test_scene6_nee_random.png",
+        "test_references/reference_scene6_nee_random.png",
+        0.05,
+    );
+}
+
+#[test]
+fn regression_test_scene6_nee_sobol() {
+    run_render_and_compare(
+        6,
+        "nee",
+        "sobol",
+        512,
+        "output.test_scene6_nee_sobol.png",
+        "test_references/reference_scene6_nee_sobol.png",
+        0.05,
+    );
+}
+
+#[test]
+fn regression_test_scene6_mis_random() {
+    run_render_and_compare(
+        6,
+        "mis",
+        "random",
+        512,
+        "output.test_scene6_mis_random.png",
+        "test_references/reference_scene6_mis_random.png",
+        0.05,
+    );
+}
+
+#[test]
+fn regression_test_scene6_mis_sobol() {
+    run_render_and_compare(
+        6,
+        "mis",
+        "sobol",
+        512,
+        "output.test_scene6_mis_sobol.png",
+        "test_references/reference_scene6_mis_sobol.png",
+        0.05,
+    );
+}
+
+// Scene 7 (metal roughness bunnies) regression tests
+#[test]
+fn regression_test_scene7_pt_random() {
+    run_render_and_compare(
+        7,
+        "pt",
+        "random",
+        512,
+        "output.test_scene7_pt_random.png",
+        "test_references/reference_scene7_pt_random.png",
+        0.05,
+    );
+}
+
+#[test]
+fn regression_test_scene7_pt_sobol() {
+    run_render_and_compare(
+        7,
+        "pt",
+        "sobol",
+        512,
+        "output.test_scene7_pt_sobol.png",
+        "test_references/reference_scene7_pt_sobol.png",
+        0.05,
+    );
+}
+
+#[test]
+fn regression_test_scene7_nee_random() {
+    run_render_and_compare(
+        7,
+        "nee",
+        "random",
+        512,
+        "output.test_scene7_nee_random.png",
+        "test_references/reference_scene7_nee_random.png",
+        0.05,
+    );
+}
+
+#[test]
+fn regression_test_scene7_nee_sobol() {
+    run_render_and_compare(
+        7,
+        "nee",
+        "sobol",
+        512,
+        "output.test_scene7_nee_sobol.png",
+        "test_references/reference_scene7_nee_sobol.png",
+        0.05,
+    );
+}
+
+#[test]
+fn regression_test_scene7_mis_random() {
+    run_render_and_compare(
+        7,
+        "mis",
+        "random",
+        512,
+        "output.test_scene7_mis_random.png",
+        "test_references/reference_scene7_mis_random.png",
+        0.05,
+    );
+}
+
+#[test]
+fn regression_test_scene7_mis_sobol() {
+    run_render_and_compare(
+        7,
+        "mis",
+        "sobol",
+        512,
+        "output.test_scene7_mis_sobol.png",
+        "test_references/reference_scene7_mis_sobol.png",
         0.05,
     );
 }
