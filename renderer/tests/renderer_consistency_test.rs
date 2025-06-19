@@ -317,7 +317,7 @@ fn test_renderer_consistency(scene: u32, renderer1: &str, renderer2: &str) -> Re
 }
 
 #[test]
-fn test_pt_vs_nee_consistency_scene3() {
+fn consistency_test_pt_vs_nee_scene3() {
     println!("Testing PT vs NEE consistency for Scene 3 (normal mapped textured bunny)...");
 
     if let Err(e) = test_renderer_consistency(3, "pt", "nee") {
@@ -326,7 +326,7 @@ fn test_pt_vs_nee_consistency_scene3() {
 }
 
 #[test]
-fn test_pt_vs_mis_consistency_scene3() {
+fn consistency_test_pt_vs_mis_scene3() {
     println!("Testing PT vs MIS consistency for Scene 3 (normal mapped textured bunny)...");
 
     if let Err(e) = test_renderer_consistency(3, "pt", "mis") {
@@ -335,7 +335,7 @@ fn test_pt_vs_mis_consistency_scene3() {
 }
 
 #[test]
-fn test_pt_vs_nee_consistency_scene5() {
+fn consistency_test_pt_vs_nee_scene5() {
     println!("Testing PT vs NEE consistency for Scene 5 (current normal map settings)...");
 
     if let Err(e) = test_renderer_consistency(5, "pt", "nee") {
@@ -344,7 +344,7 @@ fn test_pt_vs_nee_consistency_scene5() {
 }
 
 #[test]
-fn test_pt_vs_mis_consistency_scene5() {
+fn consistency_test_pt_vs_mis_scene5() {
     println!("Testing PT vs MIS consistency for Scene 5 (current normal map settings)...");
 
     if let Err(e) = test_renderer_consistency(5, "pt", "mis") {
