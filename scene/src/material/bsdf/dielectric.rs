@@ -72,6 +72,8 @@ pub fn refract(
 pub struct DielectricBsdf {
     /// 屈折率
     eta: f32,
+    /// 入射側かどうかのフラグ
+    entering: bool,
     /// Thin filmフラグ
     thin_film: bool,
 }
@@ -81,8 +83,12 @@ impl DielectricBsdf {
     /// # Arguments
     /// - `eta` - 屈折率（スペクトル依存）
     /// - `thin_film` - Thin filmフラグ
-    pub fn new(eta: f32, thin_film: bool) -> Self {
-        Self { eta, thin_film }
+    pub fn new(eta: f32, entering: bool, thin_film: bool) -> Self {
+        Self {
+            eta,
+            entering,
+            thin_film,
+        }
     }
 
     /// BSDF方向サンプリングを行う。
@@ -143,17 +149,16 @@ impl DielectricBsdf {
         lambda: &mut SampledWavelengths,
     ) -> Option<BsdfSample> {
         let wo_cos_n = wo.z();
-        let entering = wo_cos_n > 0.0;
 
         // 法線方向
-        let n = if entering {
+        let n = if self.entering {
             Vector3::new(0.0, 0.0, 1.0)
         } else {
             Vector3::new(0.0, 0.0, -1.0)
         };
 
         // 屈折率を計算
-        let eta = if entering {
+        let eta = if self.entering {
             self.eta // 空気(1.0) → 誘電体(n): eta = n
         } else {
             1.0 / self.eta // 誘電体(n) → 空気(1.0): eta = 1/n
@@ -277,8 +282,7 @@ impl DielectricBsdf {
     /// # Arguments
     /// - `cos_theta_i` - 入射角のコサイン値
     pub fn fresnel(&self, cos_theta_i: f32) -> f32 {
-        let entering = cos_theta_i > 0.0;
-        let eta = if entering {
+        let eta = if self.entering {
             self.eta // 空気(1.0) → 誘電体(n): eta = n
         } else {
             1.0 / self.eta // 誘電体(n) → 空気(1.0): eta = 1/n
