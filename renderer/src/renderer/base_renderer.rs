@@ -105,7 +105,6 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy>
         // ToneMapを適用する。
         let rgb = rgb.apply_tone_map(tone_map);
         // ガンマ補正のEOTFを適用する。
-
         rgb.apply_eotf::<eotf::GammaSrgb>()
     }
 

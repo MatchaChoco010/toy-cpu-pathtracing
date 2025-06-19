@@ -247,6 +247,24 @@ impl SampledSpectrum {
         let sum: f32 = self.values.iter().sum();
         sum / N_SPECTRUM_SAMPLES as f32
     }
+
+    /// NaNやInfinityの値をチェックして警告を出力する。
+    pub fn eprint_nan_inf(&self, label: &str) {
+        for (i, &value) in self.values.iter().enumerate() {
+            if value.is_nan() {
+                eprintln!(
+                    "[{label}] Warning: SampledSpectrum value at index {} is NaN.",
+                    i
+                );
+            }
+            if value.is_infinite() {
+                eprintln!(
+                    "[{label}] Warning: SampledSpectrum value at index {} is infinite.",
+                    i
+                );
+            }
+        }
+    }
 }
 
 /// スペクトルをサンプルした波長の列を保持する構造体。
@@ -268,7 +286,7 @@ impl SampledWavelengths {
     pub fn new_uniform_range(u: f32, lambda_min: f32, lambda_max: f32) -> Self {
         let mut result = Self {
             lambda: [0.0; N_SPECTRUM_SAMPLES],
-            pdf: [N_SPECTRUM_SAMPLES as f32 / (lambda_max - lambda_min); N_SPECTRUM_SAMPLES],
+            pdf: [1.0 / (lambda_max - lambda_min); N_SPECTRUM_SAMPLES],
         };
 
         // 最初のサンプルを乱数uに基づいて配置する

@@ -43,6 +43,8 @@ impl DenselySampledSpectrum {
 
     /// SampledSpectrumを足し合わせる。
     pub fn add_sample(&mut self, lambda: &SampledWavelengths, s: SampledSpectrum) {
+        s.eprint_nan_inf("DenselySampledSpectrum::add_sample");
+
         let count = if lambda.is_secondary_terminated() {
             1
         } else {
@@ -56,7 +58,7 @@ impl DenselySampledSpectrum {
             } else {
                 i
             };
-            self.values[i] += s.value(index) / lambda.pdf().value(index);
+            self.values[i] += s.value(index) / lambda.pdf().value(index) / count as f32;
             self.max_value = self.max_value.max(self.values[i]);
         }
     }
