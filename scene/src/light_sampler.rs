@@ -22,9 +22,9 @@ pub struct LightSampler<'a, Id: SceneId> {
 }
 impl<'a, Id: SceneId> LightSampler<'a, Id> {
     /// 光源をサンプリングする。
-    /// ライトがない場合はNoneを返す。
+    /// ライトがない場合やサンプルする波長でのライトの重みが0の場合はNoneを返す。
     pub fn sample_light(&self, u: f32) -> Option<LightSample<Id>> {
-        if self.sample_table.is_empty() {
+        if self.sample_table.is_empty() || self.sample_weight_sum == 0.0 {
             return None;
         }
 
