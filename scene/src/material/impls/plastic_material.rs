@@ -108,7 +108,8 @@ impl BsdfSurfaceMaterial for PlasticMaterial {
         let wo_normalmap = &transform * wo;
 
         // 誘電体BSDFサンプリング（ノーマルマップタンジェント空間で実行）
-        let dielectric_bsdf = DielectricBsdf::new(eta, self.thin_film);
+        let entering = shading_point.normal.dot(wo) > 0.0;
+        let dielectric_bsdf = DielectricBsdf::new(eta, entering, self.thin_film);
         let bsdf_result = match dielectric_bsdf.sample(&wo_normalmap, uv, lambda) {
             Some(result) => result,
             None => {
@@ -172,7 +173,8 @@ impl BsdfSurfaceMaterial for PlasticMaterial {
         let wi_normalmap = &transform * wi;
 
         // 誘電体BSDF評価（ノーマルマップタンジェント空間で実行）
-        let dielectric_bsdf = DielectricBsdf::new(eta, self.thin_film);
+        let entering = shading_point.normal.dot(wo) > 0.0;
+        let dielectric_bsdf = DielectricBsdf::new(eta, entering, self.thin_film);
         let f = dielectric_bsdf.evaluate(&wo_normalmap, &wi_normalmap);
 
         MaterialEvaluationResult {
@@ -212,7 +214,8 @@ impl BsdfSurfaceMaterial for PlasticMaterial {
         let wi_normalmap = &transform * wi;
 
         // 誘電体BSDF PDF計算（ノーマルマップタンジェント空間で実行）
-        let dielectric_bsdf = DielectricBsdf::new(eta, self.thin_film);
+        let entering = shading_point.normal.dot(wo) > 0.0;
+        let dielectric_bsdf = DielectricBsdf::new(eta, entering, self.thin_film);
         dielectric_bsdf.pdf(&wo_normalmap, &wi_normalmap)
     }
 
