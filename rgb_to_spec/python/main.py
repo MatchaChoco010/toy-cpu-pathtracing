@@ -60,10 +60,10 @@ z_nodes = smoothstep(smoothstep(idx_float / (TABLE_SIZE - 1)))
 
 # colour-science の色域キーと出力ファイル名
 SPACES = {
-    # "sRGB":             "../tables//srgb_table.bin",
-    # "P3-D65":           "../tables/dcip3d65_table.bin",
-    # "Adobe RGB (1998)": "../tables/adobergb_table.bin",
-    # "ITU-R BT.2020":    "../tables/rec2020_table.bin",
+    "sRGB":             "../tables//srgb_table.bin",
+    "P3-D65":           "../tables/dcip3d65_table.bin",
+    "Adobe RGB (1998)": "../tables/adobergb_table.bin",
+    "ITU-R BT.2020":    "../tables/rec2020_table.bin",
     "ACEScg":           "../tables/acescg_table.bin",
     "ACES2065-1":       "../tables/aces2065_1_table.bin",
 }
@@ -77,19 +77,27 @@ SCALES = {
 }
 LOSS_SCALE = {
     "sRGB":             (2, 3, 3),
-    "P3-D65":           (2, 4, 3),
-    "Adobe RGB (1998)": (2, 4, 3),
-    "ITU-R BT.2020":    (2, 6, 3),
-    "ACEScg":           (2, 6, 3),
-    "ACES2065-1":       (2, 3, 3),
+    "P3-D65":           (2, 6, 3),
+    "Adobe RGB (1998)": (2, 6, 3),
+    "ITU-R BT.2020":    (2, 8, 3),
+    "ACEScg":           (2, 8, 3),
+    "ACES2065-1":       (2, 12, 3),
 }
 LR = {
     "sRGB":             (1e-4, 1e-4),
-    "P3-D65":           (1e-3, 1e-4),
+    "P3-D65":           (1e-4, 1e-4),
     "Adobe RGB (1998)": (1e-4, 1e-4),
     "ITU-R BT.2020":    (1e-4, 1e-4),
     "ACEScg":           (1e-4, 1e-4),
     "ACES2065-1":       (1e-5, 1e-5),
+}
+GREEN_REPEAT = {
+    "sRGB":             1,
+    "P3-D65":           3,
+    "Adobe RGB (1998)": 3,
+    "ITU-R BT.2020":    4,
+    "ACEScg":           5,
+    "ACES2065-1":       6,
 }
 
 # -------------------------------------
@@ -144,6 +152,7 @@ rand_dark_pool = torch.rand((N_POOL, 3), device=DEVICE, dtype=DTYPE) * 0.3 * mas
 def train_space(cs_name, out_file):
     FIRST_LR, SECOND_LR = LR[cs_name]
     RGB_LOSS_SCALE, GREEN_LOSS_SCALE, DARK_LOSS_SCALE = LOSS_SCALE[cs_name]
+    GREEN_REPEAT_COUNT = GREEN_REPEAT[cs_name]
 
     # --- カラースペース設定 -----------------------
     cs        = colour.RGB_COLOURSPACES[cs_name]
@@ -220,13 +229,6 @@ def train_space(cs_name, out_file):
         rand_idx  = torch.randint(0, N_POOL, (FIRST_BATCH,))
         input_rgb = rand_rgb_pool[rand_idx]
 
-        rand_green_idx  = torch.randint(0, N_POOL, (FIRST_BATCH,))
-        input_green = rand_green_pool[rand_green_idx]
-
-        rand_dark_idx = torch.randint(0, N_POOL, (FIRST_BATCH,))
-        input_dark = rand_dark_pool[rand_dark_idx]
-
-
         pred_rgb = rgb_from_coeff(decode(mlp(input_rgb)))
         rgb_loss = (pred_rgb - input_rgb).pow(2).mean() * RGB_LOSS_SCALE
 
@@ -234,14 +236,29 @@ def train_space(cs_name, out_file):
         rgb_loss.backward()
         opt.step()
 
+        delta_rgb = delta_e(pred_rgb, input_rgb, m_rgb2xyz, white_xyz)
 
-        pred_green = rgb_from_coeff(decode(mlp(input_green)))
-        green_loss = (pred_green - input_green).pow(2).mean() * GREEN_LOSS_SCALE
 
-        mlp.zero_grad(set_to_none=True)
-        green_loss.backward()
-        opt.step()
+        delta_green_list = []
+        for _ in range(GREEN_REPEAT_COUNT):
+            rand_green_idx  = torch.randint(0, N_POOL, (FIRST_BATCH,))
+            input_green = rand_green_pool[rand_green_idx]
 
+            pred_green = rgb_from_coeff(decode(mlp(input_green)))
+            green_loss = (pred_green - input_green).pow(2).mean() * GREEN_LOSS_SCALE
+
+            mlp.zero_grad(set_to_none=True)
+            green_loss.backward()
+            opt.step()
+
+            delta_green = delta_e(pred_green, input_green, m_rgb2xyz, white_xyz)
+            delta_green_list.append(delta_green)
+
+        delta_green = torch.cat(delta_green_list, dim=0)
+
+
+        rand_dark_idx = torch.randint(0, N_POOL, (FIRST_BATCH,))
+        input_dark = rand_dark_pool[rand_dark_idx]
 
         pred_dark = rgb_from_coeff(decode(mlp(input_dark)))
         dark_loss = (pred_dark - input_dark).pow(2).mean() * DARK_LOSS_SCALE
@@ -250,24 +267,22 @@ def train_space(cs_name, out_file):
         dark_loss.backward()
         opt.step()
 
+        delta_dark = delta_e(pred_dark, input_dark, m_rgb2xyz, white_xyz)
+
 
         scheduler.step()
 
 
-        delta = delta_e(pred_rgb, input_rgb, m_rgb2xyz, white_xyz)
-        delta_green = delta_e(pred_green, input_green, m_rgb2xyz, white_xyz)
-        delta_dark = delta_e(pred_dark, input_dark, m_rgb2xyz, white_xyz)
-        delta_max = torch.max(torch.cat([delta, delta_green, delta_dark]))
-
+        delta_max = torch.max(torch.cat([delta_rgb, delta_green, delta_dark]))
         loss = rgb_loss + green_loss + dark_loss
 
         if i % 1000 == 0 or i == 1 or i == FIRST_EPOCHS:
-            print(f"[{cs_name}] MLP epoch {i:5d}/{FIRST_EPOCHS}  loss={loss.item():.8f}, ΔE_mean={delta.mean().item():.4f}, ΔE_green_mean={delta_green.mean().item():.4f}, ΔE_dark_mean={delta_dark.mean().item():.4f}, ΔE_max={delta_max.item():.4f}")
+            print(f"[{cs_name}] MLP epoch {i:5d}/{FIRST_EPOCHS}  loss={loss.item():.8f}, ΔE_rgb_mean={delta_rgb.mean().item():.4f}, ΔE_green_mean={delta_green.mean().item():.4f}, ΔE_dark_mean={delta_dark.mean().item():.4f}, ΔE_max={delta_max.item():.4f}")
 
     # --- 最適化 --------------------------------
     coeff_raw = torch.nn.Parameter(mlp(rgb_target.to(torch.float32)))
     opt = torch.optim.Adam([coeff_raw], lr=SECOND_LR)
-    scheduler = CosineAnnealingLR(opt, SECOND_EPOCHS)
+    scheduler = CosineAnnealingLR(opt, SECOND_EPOCHS, eta_min=SECOND_LR / 10)
 
     for epoch in range(1, SECOND_EPOCHS + 1):
         opt.zero_grad(set_to_none=True)
