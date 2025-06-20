@@ -248,6 +248,12 @@ impl SampledSpectrum {
         sum / N_SPECTRUM_SAMPLES as f32
     }
 
+    /// 定数かどうかを判定する
+    pub fn is_constant(&self) -> bool {
+        let first_value = self.values[0];
+        self.values.iter().all(|&v| v == first_value)
+    }
+
     /// NaNやInfinityの値をチェックして警告を出力する。
     pub fn eprint_nan_inf(&self, label: &str) {
         for (i, &value) in self.values.iter().enumerate() {

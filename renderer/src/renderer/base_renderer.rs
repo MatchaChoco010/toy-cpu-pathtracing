@@ -77,6 +77,10 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy>
         sampler: &mut S,
     ) -> bool {
         let p_russian_roulette = throughout.max_value();
+        if p_russian_roulette >= 1.0 {
+            // ロシアンルーレットの確率が1.0以上の場合は常に継続
+            return true;
+        }
         let u = sampler.get_1d();
         if u < p_russian_roulette {
             *throughout /= p_russian_roulette;
@@ -211,8 +215,8 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy> Render
             // パストレーシングのメインループ
             'depth_loop: for _ in 1..=self.max_depth {
                 // マテリアルのBSDFを取得
-                let bsdf = match hit_info.interaction.material.as_bsdf_material() {
-                    Some(bsdf) => bsdf,
+                let bsdf_material = match hit_info.interaction.material.as_bsdf_material() {
+                    Some(bsdf_material) => bsdf_material,
                     None => break 'depth_loop,
                 };
 
@@ -225,7 +229,7 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy> Render
 
                 // マテリアルのサンプリングを行う
                 let uv = sampler.get_2d();
-                let material_sample = bsdf.sample(uv, &mut lambda, &wo, &shading_point);
+                let material_sample = bsdf_material.sample(uv, &mut lambda, &wo, &shading_point);
 
                 // サンプルしたマテリアルが非Specularな場合、NEEを評価する
                 if material_sample.is_non_specular() {

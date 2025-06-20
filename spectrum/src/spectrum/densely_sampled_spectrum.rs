@@ -5,7 +5,7 @@ use std::sync::Arc;
 use util_macros::impl_assign_ops;
 
 use crate::{
-    SampledSpectrum, SampledWavelengths,
+    N_SPECTRUM_SAMPLES, SampledSpectrum, SampledWavelengths,
     spectrum::{LAMBDA_MAX, LAMBDA_MIN, Spectrum, SpectrumTrait},
 };
 
@@ -48,7 +48,7 @@ impl DenselySampledSpectrum {
         let count = if lambda.is_secondary_terminated() {
             1
         } else {
-            crate::N_SPECTRUM_SAMPLES
+            N_SPECTRUM_SAMPLES
         };
         for index in 0..count {
             let l = lambda.lambda(index);
@@ -58,7 +58,8 @@ impl DenselySampledSpectrum {
             } else {
                 i
             };
-            self.values[i] += s.value(index) / lambda.pdf().value(index) / count as f32;
+            self.values[i] +=
+                s.value(index) / lambda.pdf().value(index) / N_SPECTRUM_SAMPLES as f32;
             self.max_value = self.max_value.max(self.values[i]);
         }
     }
