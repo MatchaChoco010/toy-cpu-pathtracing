@@ -21,7 +21,7 @@ pub fn load_scene_11<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut
             GlassType::Sf11,
             NormalParameter::none(),
             false,
-            FloatParameter::constant(0.1), // roughness = 0.1
+            FloatParameter::constant(0.2), // roughness = 0.2
         ),
         transform: Transform::identity(),
     });
