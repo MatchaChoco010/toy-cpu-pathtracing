@@ -136,7 +136,7 @@ impl TrowbridgeReitzDistribution {
     /// pbrt-v4のTrowbridge-Reitz分布用の実装
     fn lambda(&self, w: &Vector3<NormalMapTangent>) -> f32 {
         let abs_tan_theta = tan2_theta(w).sqrt().abs();
-        if abs_tan_theta.is_infinite() {
+        if abs_tan_theta.is_infinite() || abs_tan_theta.is_nan() {
             return 0.0;
         }
 
@@ -260,7 +260,12 @@ pub fn refract(
 
     let cos_theta_t = (1.0 - sin2_theta_t).max(0.0).sqrt();
     let wt = -*wi / eta + n * (cos_theta_i / eta - cos_theta_t);
-    Some(wt.normalize())
+    let wt_length_sq = wt.length_squared();
+    if wt_length_sq < 1e-12 {
+        None
+    } else {
+        Some(wt / wt_length_sq.sqrt())
+    }
 }
 
 /// 誘電体のBSDF計算を行う構造体。
@@ -431,7 +436,11 @@ impl DielectricBsdf {
         }
 
         // PDF計算
-        let pdf = distrib.pdf(wo, wm) / (4.0 * wo.dot(wm).abs()) * r / total_prob;
+        let cos_theta_dot = wo.dot(wm).abs();
+        if cos_theta_dot < 1e-6 {
+            return None;
+        }
+        let pdf = distrib.pdf(wo, wm) / (4.0 * cos_theta_dot) * r / total_prob;
 
         // BRDF値計算（pbrt-v4 rough conductor BRDFと同様）
         let d = distrib.d(wm);
@@ -465,6 +474,9 @@ impl DielectricBsdf {
 
         // Jacobian計算（pbrt-v4 Equation 9.36）
         let denom = (wi.dot(wm) + wo.dot(wm) / eta).powi(2);
+        if denom < 1e-6 {
+            return None;
+        }
         let dwm_dwi = wi.dot(wm).abs() / denom;
 
         // PDF計算
@@ -478,6 +490,10 @@ impl DielectricBsdf {
 
         let numerator = d * t * g * wi.dot(wm).abs() * wo.dot(wm).abs();
         let denominator = denom * cos_theta_i * cos_theta_o;
+
+        if denominator < 1e-6 {
+            return None;
+        }
 
         let mut ft = numerator / denominator;
 
@@ -579,6 +595,9 @@ impl DielectricBsdf {
             if uv.x < pr / (pr + pt) {
                 // 反射（thin film/通常誘電体ともに同じ鏡面反射方向）
                 let wi = Vector3::new(-wo.x(), -wo.y(), wo.z());
+                if wo_cos_n.abs() < 1e-6 {
+                    return None;
+                }
                 let f = SampledSpectrum::constant(pr / wo_cos_n.abs());
                 Some(BsdfSample::new(
                     f,
@@ -611,6 +630,9 @@ impl DielectricBsdf {
             if uv.x < pr / (pr + pt) {
                 // 反射（thin film/通常誘電体ともに同じ鏡面反射方向）
                 let wi = Vector3::new(-wo.x(), -wo.y(), wo.z());
+                if wo_cos_n.abs() < 1e-6 {
+                    return None;
+                }
                 let f = SampledSpectrum::constant(pr / wo_cos_n.abs());
                 Some(BsdfSample::new(
                     f,
