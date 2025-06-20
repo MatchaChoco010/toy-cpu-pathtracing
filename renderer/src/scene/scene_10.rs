@@ -1,26 +1,26 @@
-//! シーン8: Cornell box with glass bunny
+//! シーン9: Cornell box with thin film plastic bunny
 
 use color::{ColorSrgb, tone_map::NoneToneMap};
 use math::{Point3, Transform, Vector3};
 use scene::{
-    CreatePrimitiveDesc, EmissiveMaterial, FloatParameter, GlassMaterial, GlassType,
-    LambertMaterial, NormalParameter, Scene, SceneId, SpectrumParameter,
+    CreatePrimitiveDesc, EmissiveMaterial, FloatParameter, LambertMaterial, NormalParameter,
+    PlasticMaterial, Scene, SceneId, SpectrumParameter,
 };
 use spectrum::{RgbAlbedoSpectrum, presets};
 
 use crate::{camera::Camera, filter::Filter};
 
-pub fn load_scene_8<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut Camera<F>) {
-    // scene 3と同じコーネルボックスで、うさぎをガラスのマテリアルにするシーン
+pub fn load_scene_10<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut Camera<F>) {
+    // scene 3と同じコーネルボックスで、うさぎをThin Filmなプラスチックのマテリアルにするシーン
 
-    // Sf11ガラスのマテリアルでバニー
+    // Thin Filmプラスチックのマテリアルでバニー
     let geom = scene.load_obj("./renderer/assets/bunny.obj");
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: GlassMaterial::new(
-            GlassType::Sf11,
+        surface_material: PlasticMaterial::new(
+            1.8,
             NormalParameter::none(),
-            false, // 通常のガラス（thin filmではない）
+            true, // Thin Film効果を有効
         ),
         transform: Transform::identity(),
     });
