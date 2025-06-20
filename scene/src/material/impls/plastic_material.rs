@@ -6,12 +6,12 @@ use math::{Normal, ShadingTangent, Transform, Vector3};
 use spectrum::SampledWavelengths;
 
 use crate::{
-    BsdfSurfaceMaterial, Material, MaterialEvaluationResult, MaterialSample, NormalParameter,
-    SurfaceInteraction, SurfaceMaterial, material::bsdf::DielectricBsdf,
+    BsdfSurfaceMaterial, FloatParameter, Material, MaterialEvaluationResult, MaterialSample,
+    NormalParameter, SurfaceInteraction, SurfaceMaterial, material::bsdf::DielectricBsdf,
 };
 
 /// プラスチックマテリアル。
-/// 定数屈折率の誘電体マテリアル。
+/// roughnessパラメータに応じて完全鏡面反射・透過またはマイクロファセット反射・透過を行う定数屈折率の誘電体マテリアル。
 pub struct PlasticMaterial {
     /// 屈折率（定数値）
     eta: f32,
@@ -19,9 +19,11 @@ pub struct PlasticMaterial {
     normal: NormalParameter,
     /// Thin Filmフラグ
     thin_film: bool,
+    /// 表面の粗さパラメータ
+    roughness: FloatParameter,
 }
 impl PlasticMaterial {
-    /// 新しいPlasticMaterialを作成する。
+    /// 新しいPlasticMaterialを作成する（完全鏡面）。
     ///
     /// # Arguments
     /// - `eta` - 屈折率（定数値）
@@ -32,6 +34,28 @@ impl PlasticMaterial {
             eta,
             normal,
             thin_film,
+            roughness: FloatParameter::constant(0.0),
+        })
+    }
+
+    /// 新しいPlasticMaterialを作成する（roughnessパラメータ付き）。
+    ///
+    /// # Arguments
+    /// - `eta` - 屈折率（定数値）
+    /// - `normal` - ノーマルマップパラメータ
+    /// - `thin_film` - Thin Filmフラグ
+    /// - `roughness` - 表面の粗さパラメータ（0.0で完全鏡面）
+    pub fn new_with_roughness(
+        eta: f32,
+        normal: NormalParameter,
+        thin_film: bool,
+        roughness: FloatParameter,
+    ) -> Material {
+        Arc::new(Self {
+            eta,
+            normal,
+            thin_film,
+            roughness,
         })
     }
 
@@ -113,10 +137,16 @@ impl BsdfSurfaceMaterial for PlasticMaterial {
         // ベクトルをノーマルマップタンジェント空間に変換
         let wo_normalmap = &transform * wo;
 
+        // roughnessパラメータをサンプリング
+        let roughness_value = self.roughness.sample(shading_point.uv);
+
         // 誘電体BSDFサンプリング（ノーマルマップタンジェント空間で実行）
         let entering = shading_point.normal.dot(wo) > 0.0;
-        let dielectric_bsdf = DielectricBsdf::new(eta, entering, self.thin_film);
-        let bsdf_result = match dielectric_bsdf.sample(&wo_normalmap, uv) {
+        let dielectric_bsdf =
+            DielectricBsdf::new_with_roughness(eta, entering, self.thin_film, roughness_value);
+        // ucとして追加のランダム値を生成（uvから派生）
+        let uc = (uv.x * 73.0 + uv.y * 37.0).fract();
+        let bsdf_result = match dielectric_bsdf.sample(&wo_normalmap, uv, uc) {
             Some(result) => result,
             None => {
                 // BSDFサンプリング失敗の場合
