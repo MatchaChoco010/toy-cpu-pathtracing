@@ -276,28 +276,15 @@ pub struct DielectricBsdf {
     microfacet_distribution: Option<TrowbridgeReitzDistribution>,
 }
 impl DielectricBsdf {
-    /// 完全鏡面用のDielectricBsdfを作成する。
-    ///
-    /// # Arguments
-    /// - `eta` - 屈折率（スペクトル依存）
-    /// - `thin_film` - Thin filmフラグ
-    pub fn new(eta: f32, entering: bool, thin_film: bool) -> Self {
-        Self {
-            eta,
-            entering,
-            thin_film,
-            microfacet_distribution: None,
-        }
-    }
-
-    /// マイクロファセット用のDielectricBsdfを作成する。
+    /// DielectricBsdfを作成する。
+    /// roughnessが0に限りなく近い場合は完全鏡面、それ以外はマイクロファセット。
     ///
     /// # Arguments
     /// - `eta` - 屈折率
     /// - `entering` - 入射方向が面の外側に向いているかどうか
     /// - `thin_film` - Thin filmフラグ
     /// - `roughness` - 表面粗さパラメータ（0.0で完全鏡面）
-    pub fn new_with_roughness(eta: f32, entering: bool, thin_film: bool, roughness: f32) -> Self {
+    pub fn new(eta: f32, entering: bool, thin_film: bool, roughness: f32) -> Self {
         let microfacet_distribution = if roughness > 1e-3 {
             Some(TrowbridgeReitzDistribution::isotropic(roughness))
         } else {
