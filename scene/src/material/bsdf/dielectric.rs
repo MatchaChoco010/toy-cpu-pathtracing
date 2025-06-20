@@ -56,12 +56,70 @@ fn same_hemisphere(w1: &Vector3<NormalMapTangent>, w2: &Vector3<NormalMapTangent
     w1.z() * w2.z() > 0.0
 }
 
+/// 誘電体のフレネル反射率を計算する。
+///
+/// # Arguments
+/// - `cos_theta_i` - 入射角のコサイン値
+/// - `eta` - 屈折率の比（透過側/入射側）
+pub fn fresnel_dielectric(cos_theta_i: f32, eta: f32) -> f32 {
+    // Snellの法則で透過角を計算
+    let sin2_theta_i = 1.0 - cos_theta_i * cos_theta_i;
+    let sin2_theta_t = sin2_theta_i / (eta * eta);
+
+    // 全反射の場合
+    if sin2_theta_t >= 1.0 {
+        return 1.0;
+    }
+
+    let cos_theta_t = (1.0 - sin2_theta_t).max(0.0).sqrt();
+
+    // フレネル方程式
+    let r_parl = (eta * cos_theta_i - cos_theta_t) / (eta * cos_theta_i + cos_theta_t);
+    let r_perp = (cos_theta_i - eta * cos_theta_t) / (cos_theta_i + eta * cos_theta_t);
+
+    (r_parl * r_parl + r_perp * r_perp) * 0.5
+}
+
+/// 屈折方向を計算する。
+///
+/// # Arguments
+/// - `wi` - 入射方向
+/// - `n` - 法線方向
+/// - `eta` - 屈折率の比（透過側/入射側）
+///
+/// # Returns
+/// - `Some(wt)` - 屈折方向
+/// - `None` - 全反射の場合
+pub fn refract(
+    wi: &Vector3<NormalMapTangent>,
+    n: &Vector3<NormalMapTangent>,
+    eta: f32,
+) -> Option<Vector3<NormalMapTangent>> {
+    let cos_theta_i = n.dot(wi);
+    let sin2_theta_i = (1.0 - cos_theta_i * cos_theta_i).max(0.0);
+    let sin2_theta_t = sin2_theta_i / (eta * eta);
+
+    // 全反射チェック
+    if sin2_theta_t >= 1.0 {
+        return None;
+    }
+
+    let cos_theta_t = (1.0 - sin2_theta_t).max(0.0).sqrt();
+    let wt = -*wi / eta + n * (cos_theta_i / eta - cos_theta_t);
+    let wt_length_sq = wt.length_squared();
+    if wt_length_sq < 1e-12 {
+        None
+    } else {
+        Some(wt / wt_length_sq.sqrt())
+    }
+}
+
 #[inline]
 fn reflect(
     wo: &Vector3<NormalMapTangent>,
     n: &Vector3<NormalMapTangent>,
 ) -> Vector3<NormalMapTangent> {
-    *wo - *n * 2.0 * wo.dot(n)
+    *n * 2.0 * wo.dot(n) - *wo
 }
 
 /// 均等分布円盤サンプリング (Polar座標版)
@@ -133,24 +191,19 @@ impl TrowbridgeReitzDistribution {
     }
 
     /// Λ(ω)関数を計算 (Smith's approximation用)
-    /// pbrt-v4のTrowbridge-Reitz分布用の実装
+    /// pbrt-v4 Equation (9.20)に基づく
     fn lambda(&self, w: &Vector3<NormalMapTangent>) -> f32 {
-        let abs_tan_theta = tan2_theta(w).sqrt().abs();
-        if abs_tan_theta.is_infinite() || abs_tan_theta.is_nan() {
+        let tan2_theta = tan2_theta(w);
+        if tan2_theta.is_infinite() {
             return 0.0;
         }
 
         let cos_phi = cos_phi(w);
         let sin_phi = sin_phi(w);
-        let alpha = (cos_phi * self.alpha_x).powi(2) + (sin_phi * self.alpha_y).powi(2);
-        let alpha = alpha.sqrt();
+        let alpha2 = (cos_phi * self.alpha_x) * (cos_phi * self.alpha_x)
+            + (sin_phi * self.alpha_y) * (sin_phi * self.alpha_y);
 
-        let a = 1.0 / (alpha * abs_tan_theta);
-        if a >= 1.6 {
-            0.0
-        } else {
-            (1.0 - 1.259 * a + 0.396 * a * a) / (3.535 * a + 2.181 * a * a)
-        }
+        ((1.0 + alpha2 * tan2_theta).sqrt() - 1.0) / 2.0
     }
 
     /// 可視法線分布D_ω(ωm)を計算
@@ -166,13 +219,13 @@ impl TrowbridgeReitzDistribution {
         w: &Vector3<NormalMapTangent>,
         u: glam::Vec2,
     ) -> Vector3<NormalMapTangent> {
-        // Transform w to hemispherical configuration
+        // 半球構成への変換
         let wh: Vector3<NormalMapTangent> =
             Vector3::new(self.alpha_x * w.x(), self.alpha_y * w.y(), w.z()).normalize();
 
         let wh = if wh.z() < 0.0 { -wh } else { wh };
 
-        // Find orthonormal basis for visible normal sampling
+        // 可視法線サンプリング用の直交基底を構築
         let t1: Vector3<NormalMapTangent> = if wh.z() < 0.99999 {
             Vector3::new(0.0, 0.0, 1.0).cross(wh).normalize()
         } else {
@@ -180,16 +233,17 @@ impl TrowbridgeReitzDistribution {
         };
         let t2 = wh.cross(t1);
 
-        // Generate uniformly distributed points on the unit disk
-        let p = sample_uniform_disk_polar(u);
+        // 単位円板上の一様分布点を生成
+        let mut p = sample_uniform_disk_polar(u);
 
-        // Warp hemispherical projection for visible normal sampling
+        // pbrt-v4準拠の半球射影変形
         let h = (1.0 - p.x * p.x).sqrt();
-        let py = ((1.0 + wh.z()) / 2.0).max(h) * (1.0 - u.y) + h * u.y;
+        let lerp_t = (1.0 + wh.z()) / 2.0;
+        p.y = h * (1.0 - lerp_t) + lerp_t * p.y;
 
-        // Reproject to hemisphere and transform normal to ellipsoid configuration
-        let pz = (1.0 - p.x * p.x - py * py).max(0.0).sqrt();
-        let nh = t1 * p.x + t2 * py + wh * pz;
+        // 半球への再射影と楕円体構成への変換
+        let pz = (1.0 - p.x * p.x - p.y * p.y).max(0.0).sqrt();
+        let nh = t1 * p.x + t2 * p.y + wh * pz;
 
         Vector3::<NormalMapTangent>::new(
             self.alpha_x * nh.x(),
@@ -207,64 +261,6 @@ impl TrowbridgeReitzDistribution {
     /// 事実上滑らかとみなせるかどうかを判定
     pub fn effectively_smooth(&self) -> bool {
         self.alpha_x.max(self.alpha_y) < 1e-3
-    }
-}
-
-/// 誘電体のフレネル反射率を計算する。
-///
-/// # Arguments
-/// - `cos_theta_i` - 入射角のコサイン値
-/// - `eta` - 屈折率の比（透過側/入射側）
-pub fn fresnel_dielectric(cos_theta_i: f32, eta: f32) -> f32 {
-    // Snellの法則で透過角を計算
-    let sin2_theta_i = 1.0 - cos_theta_i * cos_theta_i;
-    let sin2_theta_t = sin2_theta_i / (eta * eta);
-
-    // 全反射の場合
-    if sin2_theta_t >= 1.0 {
-        return 1.0;
-    }
-
-    let cos_theta_t = (1.0 - sin2_theta_t).max(0.0).sqrt();
-
-    // フレネル方程式
-    let r_parl = (eta * cos_theta_i - cos_theta_t) / (eta * cos_theta_i + cos_theta_t);
-    let r_perp = (cos_theta_i - eta * cos_theta_t) / (cos_theta_i + eta * cos_theta_t);
-
-    (r_parl * r_parl + r_perp * r_perp) * 0.5
-}
-
-/// 屈折方向を計算する。
-///
-/// # Arguments
-/// - `wi` - 入射方向
-/// - `n` - 法線方向
-/// - `eta` - 屈折率の比（透過側/入射側）
-///
-/// # Returns
-/// - `Some(wt)` - 屈折方向
-/// - `None` - 全反射の場合
-pub fn refract(
-    wi: &Vector3<NormalMapTangent>,
-    n: &Vector3<NormalMapTangent>,
-    eta: f32,
-) -> Option<Vector3<NormalMapTangent>> {
-    let cos_theta_i = n.dot(wi);
-    let sin2_theta_i = (1.0 - cos_theta_i * cos_theta_i).max(0.0);
-    let sin2_theta_t = sin2_theta_i / (eta * eta);
-
-    // 全反射チェック
-    if sin2_theta_t >= 1.0 {
-        return None;
-    }
-
-    let cos_theta_t = (1.0 - sin2_theta_t).max(0.0).sqrt();
-    let wt = -*wi / eta + n * (cos_theta_i / eta - cos_theta_t);
-    let wt_length_sq = wt.length_squared();
-    if wt_length_sq < 1e-12 {
-        None
-    } else {
-        Some(wt / wt_length_sq.sqrt())
     }
 }
 
@@ -291,7 +287,7 @@ impl DielectricBsdf {
     /// - `roughness` - 表面粗さパラメータ（0.0で完全鏡面）
     pub fn new(eta: f32, entering: bool, thin_film: bool, roughness: f32) -> Self {
         let distribution = TrowbridgeReitzDistribution::isotropic(roughness);
-        let microfacet_distribution = if distribution.effectively_smooth() {
+        let microfacet_distribution = if eta == 1.0 || distribution.effectively_smooth() {
             None
         } else {
             Some(distribution)
@@ -377,7 +373,7 @@ impl DielectricBsdf {
         Some(wm)
     }
 
-    /// Rough dielectric BSDFのサンプリングを行う（pbrt-v4に基づく）
+    /// Rough dielectric BSDFのサンプリングを行う
     fn sample_rough_dielectric(
         &self,
         wo: &Vector3<NormalMapTangent>,
@@ -397,7 +393,8 @@ impl DielectricBsdf {
         let eta = eta_t / eta_i;
 
         // フレネル反射率を計算
-        let fresnel = fresnel_dielectric(wo.dot(wm).abs(), eta);
+        let wo_dot_wm = wo.dot(wm);
+        let fresnel = fresnel_dielectric(wo_dot_wm.abs(), eta);
         let r = fresnel;
         let t = 1.0 - r;
 
@@ -442,7 +439,7 @@ impl DielectricBsdf {
         }
         let pdf = distrib.pdf(wo, wm) / (4.0 * cos_theta_dot) * r / total_prob;
 
-        // BRDF値計算（pbrt-v4 rough conductor BRDFと同様）
+        // BRDF値計算
         let d = distrib.d(wm);
         let g = distrib.g(wo, &wi);
         let f_value = d * g * r / (4.0 * abs_cos_theta(&wi) * abs_cos_theta(wo));
@@ -463,42 +460,30 @@ impl DielectricBsdf {
         distrib: &TrowbridgeReitzDistribution,
         t: f32,
         total_prob: f32,
-        eta: f32,
+        etap: f32,
     ) -> Option<BsdfSample> {
-        // 屈折方向を計算
-        let wi = refract(wo, wm, eta)?;
+        let wm = if self.entering { wm } else { &-*wm };
+        let wi = refract(wo, wm, etap)?;
 
-        if same_hemisphere(wo, &wi) {
+        if same_hemisphere(wo, &wi) || wi.z().abs() == 0.0 {
             return None;
         }
 
-        // Jacobian計算（pbrt-v4 Equation 9.36）
-        let denom = (wi.dot(wm) + wo.dot(wm) / eta).powi(2);
-        if denom < 1e-6 {
-            return None;
-        }
+        let denom = (wi.dot(wm) + wo.dot(wm) / etap).powi(2);
         let dwm_dwi = wi.dot(wm).abs() / denom;
 
         // PDF計算
         let pdf = distrib.pdf(wo, wm) * dwm_dwi * t / total_prob;
 
-        // BTDF値計算（pbrt-v4 Equation 9.40）
+        // pbrt-v4準拠のBTDF値計算
         let d = distrib.d(wm);
         let g = distrib.g(wo, &wi);
         let cos_theta_i = abs_cos_theta(&wi);
         let cos_theta_o = abs_cos_theta(wo);
 
-        let numerator = d * t * g * wi.dot(wm).abs() * wo.dot(wm).abs();
-        let denominator = denom * cos_theta_i * cos_theta_o;
-
-        if denominator < 1e-6 {
-            return None;
-        }
-
-        let mut ft = numerator / denominator;
-
-        // Transport mode補正（radiance mode時はη²で割る）
-        ft /= eta * eta;
+        let mut ft =
+            t * d * g * (wi.dot(wm) * wo.dot(wm) / (denom * cos_theta_i * cos_theta_o)).abs();
+        ft /= etap * etap;
 
         Some(BsdfSample::new(
             SampledSpectrum::constant(ft),
@@ -687,7 +672,7 @@ impl DielectricBsdf {
         }
     }
 
-    /// Rough dielectric BSDFの評価を行う（pbrt-v4に基づく）
+    /// Rough dielectric BSDFの評価を行う
     fn evaluate_rough_dielectric(
         &self,
         wo: &Vector3<NormalMapTangent>,
@@ -743,7 +728,7 @@ impl DielectricBsdf {
         }
     }
 
-    /// Rough dielectric BSDFのPDFを計算する（pbrt-v4に基づく）
+    /// Rough dielectric BSDFのPDFを計算する
     fn pdf_rough_dielectric(
         &self,
         wo: &Vector3<NormalMapTangent>,
@@ -800,28 +785,6 @@ impl DielectricBsdf {
             let dwm_dwi = wi.dot(wm).abs() / denom;
 
             distrib.pdf(wo, &wm) * dwm_dwi * t / (r + t)
-        }
-    }
-
-    /// フレネル反射率を計算する。
-    /// Thin filmの場合は累積反射率を返す。
-    ///
-    /// # Arguments
-    /// - `cos_theta_i` - 入射角のコサイン値
-    pub fn fresnel(&self, cos_theta_i: f32) -> f32 {
-        let (eta_i, eta_t) = if cos_theta_i >= 0.0 {
-            (1.0, self.eta) // 空気(1.0) → 誘電体(n): eta = n
-        } else {
-            (self.eta, 1.0) // 誘電体(n) → 空気(1.0): eta = 1/n
-        };
-        let etap = eta_t / eta_i;
-        let base_fresnel = fresnel_dielectric(cos_theta_i.abs(), etap);
-
-        if self.thin_film {
-            let (cumulative_reflection, _) = self.calculate_thin_film_coefficients(base_fresnel);
-            cumulative_reflection
-        } else {
-            base_fresnel
         }
     }
 }
