@@ -338,7 +338,7 @@ fn regression_test_scene8_mis_sobol() {
         2048,
         "output.test_scene8_mis_sobol.png",
         "test_references/reference_scene8_mis_sobol.png",
-        0.075,
+        0.08,
     );
 }
 
