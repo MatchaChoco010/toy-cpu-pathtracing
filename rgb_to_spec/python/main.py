@@ -20,9 +20,6 @@ TABLE_SIZE = 64
 DEVICE = "cuda"
 DTYPE = torch.float32
 
-SCALE_A = 100.0
-SCALE_B = 100.0
-SCALE_C = 10.0
 
 # -------------------------------------
 # 波長軸の設定とCIEのX, Y, Zの軸、正規化d65光源を取得
@@ -75,6 +72,14 @@ SPACES = {
     "ITU-R BT.2020":    "../tables/rec2020_table.bin",
     "ACEScg":           "../tables/acescg_table.bin",
     "ACES2065-1":       "../tables/aces2065_1_table.bin",
+}
+SCALES = {
+    "sRGB":             (200.0, 200.0, 20.0),
+    "P3-D65":           (1500.0, 1000.0, 100.0),
+    "Adobe RGB (1998)": (1500.0, 1500.0, 100.0),
+    "ITU-R BT.2020":    (4000.0, 3500.0, 500.0),
+    "ACEScg":           (4000.0, 3000.0, 500.0),
+    "ACES2065-1":       (8000.0, 6000.0, 1000.0),
 }
 
 # -------------------------------------
@@ -151,6 +156,8 @@ def train_space(cs_name, out_file):
     # --- 係数スケール ---------------------------
     init_scale = torch.ones((3, ), device=DEVICE, dtype=torch.float32)
     log_scale = torch.nn.Parameter(init_scale.log())
+
+    SCALE_A, SCALE_B, SCALE_C = SCALES[cs_name]
 
     def decode(raw):
         scale_a = log_scale.exp()[0] * SCALE_A
