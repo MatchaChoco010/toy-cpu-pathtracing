@@ -1,7 +1,7 @@
 //! 誘電体BSDFの実装。
 
 use math::{NormalMapTangent, Vector3};
-use spectrum::{SampledSpectrum, SampledWavelengths};
+use spectrum::SampledSpectrum;
 
 use super::{BsdfSample, BsdfSampleType};
 
@@ -11,15 +11,6 @@ use super::{BsdfSample, BsdfSampleType};
 /// - `cos_theta_i` - 入射角のコサイン値
 /// - `eta` - 屈折率の比（透過側/入射側）
 pub fn fresnel_dielectric(cos_theta_i: f32, eta: f32) -> f32 {
-    let cos_theta_i = cos_theta_i.clamp(-1.0, 1.0);
-
-    // 媒質が入れ替わる場合の処理
-    let (cos_theta_i, eta) = if cos_theta_i < 0.0 {
-        (-cos_theta_i, 1.0 / eta)
-    } else {
-        (cos_theta_i, eta)
-    };
-
     // Snellの法則で透過角を計算
     let sin2_theta_i = 1.0 - cos_theta_i * cos_theta_i;
     let sin2_theta_t = sin2_theta_i / (eta * eta);
@@ -63,7 +54,7 @@ pub fn refract(
     }
 
     let cos_theta_t = (1.0 - sin2_theta_t).max(0.0).sqrt();
-    let wt = -*wi / eta + *n * (cos_theta_i / eta - cos_theta_t);
+    let wt = -*wi / eta + n * (cos_theta_i / eta - cos_theta_t);
     Some(wt.normalize())
 }
 
@@ -72,7 +63,7 @@ pub fn refract(
 pub struct DielectricBsdf {
     /// 屈折率
     eta: f32,
-    /// 入射側かどうかのフラグ
+    /// 入射方向が面の外側に向いているかどうか
     entering: bool,
     /// Thin filmフラグ
     thin_film: bool,
@@ -97,19 +88,13 @@ impl DielectricBsdf {
     /// # Arguments
     /// - `wo` - 出射方向（ノーマルマップ接空間）
     /// - `uv` - ランダムサンプル
-    /// - `lambda` - サンプリング波長（分散処理用）
-    pub fn sample(
-        &self,
-        wo: &Vector3<NormalMapTangent>,
-        uv: glam::Vec2,
-        lambda: &mut SampledWavelengths,
-    ) -> Option<BsdfSample> {
+    pub fn sample(&self, wo: &Vector3<NormalMapTangent>, uv: glam::Vec2) -> Option<BsdfSample> {
         let wo_cos_n = wo.z();
         if wo_cos_n == 0.0 {
             return None;
         }
 
-        self.sample_perfect_specular(wo, uv, lambda)
+        self.sample_perfect_specular(wo, uv)
     }
 
     /// Thin filmの累積反射・透過係数を計算する。
@@ -120,10 +105,6 @@ impl DielectricBsdf {
     /// # Returns
     /// - `(cumulative_reflection, cumulative_transmission)` - 累積反射率と累積透過率
     fn calculate_thin_film_coefficients(&self, fresnel: f32) -> (f32, f32) {
-        if !self.thin_film {
-            return (fresnel, 1.0 - fresnel);
-        }
-
         // Geometric seriesを使った累積反射率の計算
         // R' = R + (T²R) / (1 - R²)
         let r = fresnel;
@@ -146,7 +127,6 @@ impl DielectricBsdf {
         &self,
         wo: &Vector3<NormalMapTangent>,
         uv: glam::Vec2,
-        lambda: &mut SampledWavelengths,
     ) -> Option<BsdfSample> {
         let wo_cos_n = wo.z();
 
@@ -158,30 +138,25 @@ impl DielectricBsdf {
         };
 
         // 屈折率を計算
-        let eta = if self.entering {
-            self.eta // 空気(1.0) → 誘電体(n): eta = n
+        let (eta_i, eta_t) = if self.entering {
+            (1.0, self.eta) // 空気(1.0) → 誘電体(n): eta = n
         } else {
-            1.0 / self.eta // 誘電体(n) → 空気(1.0): eta = 1/n
+            (self.eta, 1.0) // 誘電体(n) → 空気(1.0): eta = 1/n
         };
+        let etap = eta_t / eta_i;
 
         // フレネル反射率を計算
-        let fresnel = fresnel_dielectric(wo_cos_n.abs(), eta);
+        let fresnel = fresnel_dielectric(wo_cos_n.abs(), etap);
 
         if self.thin_film {
             // Thin filmの場合は累積係数を計算
-            let (mut r, mut t) = self.calculate_thin_film_coefficients(fresnel);
-            if r < 1.0 {
-                r += t * t * r / (1.0 - r * r);
-                t = 1.0 - r;
-            }
-            let pr = r;
-            let pt = t;
+            let (pr, pt) = self.calculate_thin_film_coefficients(fresnel);
 
             // 反射か透過かをサンプリング
             if uv.x < pr / (pr + pt) {
                 // 反射（thin film/通常誘電体ともに同じ鏡面反射方向）
                 let wi = Vector3::new(-wo.x(), -wo.y(), wo.z());
-                let f = SampledSpectrum::constant(r / wo_cos_n.abs());
+                let f = SampledSpectrum::constant(pr / wo_cos_n.abs());
                 Some(BsdfSample::new(
                     f,
                     wi,
@@ -197,7 +172,7 @@ impl DielectricBsdf {
                 }
 
                 // Thin filmの場合、放射輝度のスケーリングは不要（同じ媒質に戻るため）
-                let f = SampledSpectrum::constant(t / wi_cos_n.abs());
+                let f = SampledSpectrum::constant(pt / wi_cos_n.abs());
                 Some(BsdfSample::new(
                     f,
                     wi,
@@ -206,24 +181,14 @@ impl DielectricBsdf {
                 ))
             }
         } else {
-            let mut r = fresnel;
-            let mut t = 1.0 - r;
-            if r < 1.0 {
-                r += t * t * r / (1.0 - r * r);
-                t = 1.0 - r;
-            }
-            let pr = r;
-            let pt = t;
-
-            if pt == 0.0 && pr == 0.0 {
-                return None;
-            }
+            let pr = fresnel;
+            let pt = 1.0 - pr;
 
             // 反射か透過かをサンプリング
             if uv.x < pr / (pr + pt) {
                 // 反射（thin film/通常誘電体ともに同じ鏡面反射方向）
                 let wi = Vector3::new(-wo.x(), -wo.y(), wo.z());
-                let f = SampledSpectrum::constant(r / wo_cos_n.abs());
+                let f = SampledSpectrum::constant(pr / wo_cos_n.abs());
                 Some(BsdfSample::new(
                     f,
                     wi,
@@ -232,19 +197,14 @@ impl DielectricBsdf {
                 ))
             } else {
                 // 通常の誘電体: Snellの法則による屈折
-                if let Some(wt) = refract(wo, &n, eta) {
-                    let wt_cos_n = wt.z();
+                if let Some(wt) = refract(wo, &n, etap) {
+                    // let wt_cos_n = wt.z();
+                    let wt_cos_n = n.dot(&wt);
                     if wt_cos_n == 0.0 {
                         return None;
                     }
 
-                    // 分散媒質の場合、最初の波長以外を終了
-                    lambda.terminate_secondary();
-
-                    // 屈折率に応じてradiance調整
-                    let radiance_scale = 1.0 / (eta * eta);
-
-                    let f = SampledSpectrum::constant(t * radiance_scale / wt_cos_n.abs());
+                    let f = SampledSpectrum::constant(pt / etap.powi(2) / wt_cos_n.abs());
                     Some(BsdfSample::new(
                         f,
                         wt,
@@ -282,12 +242,13 @@ impl DielectricBsdf {
     /// # Arguments
     /// - `cos_theta_i` - 入射角のコサイン値
     pub fn fresnel(&self, cos_theta_i: f32) -> f32 {
-        let eta = if self.entering {
-            self.eta // 空気(1.0) → 誘電体(n): eta = n
+        let (eta_i, eta_t) = if cos_theta_i >= 0.0 {
+            (1.0, self.eta) // 空気(1.0) → 誘電体(n): eta = n
         } else {
-            1.0 / self.eta // 誘電体(n) → 空気(1.0): eta = 1/n
+            (self.eta, 1.0) // 誘電体(n) → 空気(1.0): eta = 1/n
         };
-        let base_fresnel = fresnel_dielectric(cos_theta_i.abs(), eta);
+        let etap = eta_t / eta_i;
+        let base_fresnel = fresnel_dielectric(cos_theta_i.abs(), etap);
 
         if self.thin_film {
             let (cumulative_reflection, _) = self.calculate_thin_film_coefficients(base_fresnel);

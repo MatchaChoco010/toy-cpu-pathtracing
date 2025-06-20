@@ -86,8 +86,14 @@ impl BsdfSurfaceMaterial for GlassMaterial {
         wo: &Vector3<ShadingTangent>,
         shading_point: &SurfaceInteraction<ShadingTangent>,
     ) -> MaterialSample {
+        let eta = self.get_eta(lambda);
+        // 屈折率が波長依存の場合は最初の波長以外を打ち切る
+        if !eta.is_constant() {
+            lambda.terminate_secondary();
+        }
+
         // ガラスの光学特性を取得
-        let eta = self.get_eta(lambda).value(0); // 単一波長での屈折率を使用
+        let eta = eta.value(0); // 単一波長での屈折率を使用
         let eta = if eta == 0.0 {
             // 屈折率が0の場合は無効な値なので、デフォルトの1.0を使用
             1.0
@@ -111,7 +117,7 @@ impl BsdfSurfaceMaterial for GlassMaterial {
         // 誘電体BSDFサンプリング（ノーマルマップタンジェント空間で実行）
         let entering = shading_point.normal.dot(wo) > 0.0;
         let dielectric_bsdf = DielectricBsdf::new(eta, entering, self.thin_film);
-        let bsdf_result = match dielectric_bsdf.sample(&wo_normalmap, uv, lambda) {
+        let bsdf_result = match dielectric_bsdf.sample(&wo_normalmap, uv) {
             Some(result) => result,
             None => {
                 // BSDFサンプリング失敗の場合
@@ -121,19 +127,6 @@ impl BsdfSurfaceMaterial for GlassMaterial {
 
         // 結果をシェーディングタンジェント空間に変換して返す
         let wi_shading = &transform_inv * &bsdf_result.wi;
-
-        // 幾何学的制約チェック（誘電体なので反射と透過両方が可能）
-        let geometry_normal = shading_point.normal;
-        let wi_cos_geometric = geometry_normal.dot(wi_shading);
-        let wo_cos_geometric = geometry_normal.dot(wo);
-
-        // 反射の場合は同じ側、透過の場合は反対側
-        let is_reflection = wi_cos_geometric.signum() == wo_cos_geometric.signum();
-        let is_transmission = wi_cos_geometric.signum() != wo_cos_geometric.signum();
-
-        if !(is_reflection || is_transmission) {
-            return MaterialSample::failed(normal_map);
-        }
 
         MaterialSample::new(
             bsdf_result.f,
