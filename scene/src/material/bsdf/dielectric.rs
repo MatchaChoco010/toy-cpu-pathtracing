@@ -174,11 +174,11 @@ impl TrowbridgeReitzDistribution {
 
         // Find orthonormal basis for visible normal sampling
         let t1: Vector3<NormalMapTangent> = if wh.z() < 0.99999 {
-            Vector3::new(0.0, 0.0, 1.0).cross(&wh).normalize()
+            Vector3::new(0.0, 0.0, 1.0).cross(wh).normalize()
         } else {
             Vector3::new(1.0, 0.0, 0.0)
         };
-        let t2 = wh.cross(&t1);
+        let t2 = wh.cross(t1);
 
         // Generate uniformly distributed points on the unit disk
         let p = sample_uniform_disk_polar(u);
@@ -285,10 +285,11 @@ impl DielectricBsdf {
     /// - `thin_film` - Thin filmフラグ
     /// - `roughness` - 表面粗さパラメータ（0.0で完全鏡面）
     pub fn new(eta: f32, entering: bool, thin_film: bool, roughness: f32) -> Self {
-        let microfacet_distribution = if roughness > 1e-3 {
-            Some(TrowbridgeReitzDistribution::isotropic(roughness))
-        } else {
+        let distribution = TrowbridgeReitzDistribution::isotropic(roughness);
+        let microfacet_distribution = if distribution.effectively_smooth() {
             None
+        } else {
+            Some(distribution)
         };
 
         Self {
@@ -391,7 +392,7 @@ impl DielectricBsdf {
         let eta = eta_t / eta_i;
 
         // フレネル反射率を計算
-        let fresnel = fresnel_dielectric(wo.dot(&wm).abs(), eta);
+        let fresnel = fresnel_dielectric(wo.dot(wm).abs(), eta);
         let r = fresnel;
         let t = 1.0 - r;
 
@@ -405,14 +406,12 @@ impl DielectricBsdf {
                 // Thin film透過
                 self.sample_rough_transmission_thin_film(wo, &wm, distrib, pt, pr + pt, eta)
             }
+        } else if uc < r / (r + t) {
+            // 反射
+            self.sample_rough_reflection(wo, &wm, distrib, r, r + t)
         } else {
-            if uc < r / (r + t) {
-                // 反射
-                self.sample_rough_reflection(wo, &wm, distrib, r, r + t)
-            } else {
-                // 透過
-                self.sample_rough_transmission(wo, &wm, distrib, t, r + t, eta)
-            }
+            // 透過
+            self.sample_rough_transmission(wo, &wm, distrib, t, r + t, eta)
         }
     }
 
@@ -623,7 +622,7 @@ impl DielectricBsdf {
                 // 通常の誘電体: Snellの法則による屈折
                 if let Some(wt) = refract(wo, &n, etap) {
                     // let wt_cos_n = wt.z();
-                    let wt_cos_n = n.dot(&wt);
+                    let wt_cos_n = n.dot(wt);
                     if wt_cos_n == 0.0 {
                         return None;
                     }
@@ -691,7 +690,7 @@ impl DielectricBsdf {
         };
 
         // フレネル反射率を計算
-        let fresnel = fresnel_dielectric(wo.dot(&wm).abs(), eta);
+        let fresnel = fresnel_dielectric(wo.dot(wm).abs(), eta);
 
         // 反射か透過かを判定
         let reflect = cos_theta_i * cos_theta_o > 0.0;
@@ -706,11 +705,11 @@ impl DielectricBsdf {
             // 透過BTDF（pbrt-v4 Equation 9.40）
             let etap = if cos_theta_o > 0.0 { eta } else { 1.0 / eta };
 
-            let denom = (wi.dot(&wm) + wo.dot(&wm) / etap).powi(2);
+            let denom = (wi.dot(wm) + wo.dot(wm) / etap).powi(2);
             let d = distrib.d(&wm);
             let g = distrib.g(wo, wi);
 
-            let numerator = d * (1.0 - fresnel) * g * wi.dot(&wm).abs() * wo.dot(&wm).abs();
+            let numerator = d * (1.0 - fresnel) * g * wi.dot(wm).abs() * wo.dot(wm).abs();
             let denominator = denom * abs_cos_theta(wi) * abs_cos_theta(wo);
 
             let mut ft = numerator / denominator;
@@ -747,7 +746,7 @@ impl DielectricBsdf {
         };
 
         // フレネル反射率を計算
-        let fresnel = fresnel_dielectric(wo.dot(&wm).abs(), eta);
+        let fresnel = fresnel_dielectric(wo.dot(wm).abs(), eta);
 
         // 反射か透過かを判定
         let reflect = cos_theta_i * cos_theta_o > 0.0;
@@ -768,19 +767,17 @@ impl DielectricBsdf {
 
         if reflect {
             // 反射PDF
-            distrib.pdf(wo, &wm) / (4.0 * wo.dot(&wm).abs()) * r / (r + t)
+            distrib.pdf(wo, &wm) / (4.0 * wo.dot(wm).abs()) * r / (r + t)
+        } else if self.thin_film {
+            // Thin film透過PDF
+            t / (r + t)
         } else {
-            if self.thin_film {
-                // Thin film透過PDF
-                t / (r + t)
-            } else {
-                // 通常の透過PDF（pbrt-v4 Equation 9.37）
-                let etap = if cos_theta_o > 0.0 { eta } else { 1.0 / eta };
-                let denom = (wi.dot(&wm) + wo.dot(&wm) / etap).powi(2);
-                let dwm_dwi = wi.dot(&wm).abs() / denom;
+            // 通常の透過PDF（pbrt-v4 Equation 9.37）
+            let etap = if cos_theta_o > 0.0 { eta } else { 1.0 / eta };
+            let denom = (wi.dot(wm) + wo.dot(wm) / etap).powi(2);
+            let dwm_dwi = wi.dot(wm).abs() / denom;
 
-                distrib.pdf(wo, &wm) * dwm_dwi * t / (r + t)
-            }
+            distrib.pdf(wo, &wm) * dwm_dwi * t / (r + t)
         }
     }
 

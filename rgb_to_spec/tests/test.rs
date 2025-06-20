@@ -293,8 +293,8 @@ fn color_match_test<G: ColorGamut, E: Eotf>(data: &[u8]) {
                                 b as f32 / 255.0,
                             );
                             let table = RgbToSpectrumTable::load_table_from_binary(data);
-                            let cs = table.get(&color);
-                            cs
+
+                            table.get(&color)
                         })
                         .collect::<Vec<_>>()
                         .into_iter()
