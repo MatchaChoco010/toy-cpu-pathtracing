@@ -6,15 +6,9 @@ import torch
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
 FIRST_EPOCHS = 60000
-FIRST_LR = 0.0001
+SECOND_EPOCHS = 30000
 N_POOL = 10_000_000
 FIRST_BATCH = 16384
-RGB_LOSS_SCALE = 2
-GREEN_LOSS_SCALE = 3
-DARK_LOSS_SCALE = 3
-
-SECOND_EPOCHS = 30000
-SECOND_LR = 0.0001
 
 TABLE_SIZE = 64
 DEVICE = "cuda"
@@ -66,10 +60,10 @@ z_nodes = smoothstep(smoothstep(idx_float / (TABLE_SIZE - 1)))
 
 # colour-science の色域キーと出力ファイル名
 SPACES = {
-    "sRGB":             "../tables//srgb_table.bin",
-    "P3-D65":           "../tables/dcip3d65_table.bin",
-    "Adobe RGB (1998)": "../tables/adobergb_table.bin",
-    "ITU-R BT.2020":    "../tables/rec2020_table.bin",
+    # "sRGB":             "../tables//srgb_table.bin",
+    # "P3-D65":           "../tables/dcip3d65_table.bin",
+    # "Adobe RGB (1998)": "../tables/adobergb_table.bin",
+    # "ITU-R BT.2020":    "../tables/rec2020_table.bin",
     "ACEScg":           "../tables/acescg_table.bin",
     "ACES2065-1":       "../tables/aces2065_1_table.bin",
 }
@@ -80,6 +74,22 @@ SCALES = {
     "ITU-R BT.2020":    (4000.0, 3500.0, 500.0),
     "ACEScg":           (4000.0, 3000.0, 500.0),
     "ACES2065-1":       (8000.0, 6000.0, 1000.0),
+}
+LOSS_SCALE = {
+    "sRGB":             (2, 3, 3),
+    "P3-D65":           (2, 4, 3),
+    "Adobe RGB (1998)": (2, 4, 3),
+    "ITU-R BT.2020":    (2, 6, 3),
+    "ACEScg":           (2, 6, 3),
+    "ACES2065-1":       (2, 3, 3),
+}
+LR = {
+    "sRGB":             (1e-4, 1e-4),
+    "P3-D65":           (1e-3, 1e-4),
+    "Adobe RGB (1998)": (1e-4, 1e-4),
+    "ITU-R BT.2020":    (1e-4, 1e-4),
+    "ACEScg":           (1e-4, 1e-4),
+    "ACES2065-1":       (1e-5, 1e-5),
 }
 
 # -------------------------------------
@@ -132,6 +142,9 @@ rand_dark_pool = torch.rand((N_POOL, 3), device=DEVICE, dtype=DTYPE) * 0.3 * mas
 # 最適化ループ
 # -------------------------------------
 def train_space(cs_name, out_file):
+    FIRST_LR, SECOND_LR = LR[cs_name]
+    RGB_LOSS_SCALE, GREEN_LOSS_SCALE, DARK_LOSS_SCALE = LOSS_SCALE[cs_name]
+
     # --- カラースペース設定 -----------------------
     cs        = colour.RGB_COLOURSPACES[cs_name]
     m_xyz2rgb = torch.as_tensor(cs.matrix_XYZ_to_RGB, device=DEVICE, dtype=DTYPE)
@@ -201,7 +214,7 @@ def train_space(cs_name, out_file):
         { "params": mlp.parameters(), "lr": FIRST_LR },
         { "params": log_scale, "lr": FIRST_LR * 10 },
     ])
-    scheduler = CosineAnnealingLR(opt, FIRST_EPOCHS)
+    scheduler = CosineAnnealingLR(opt, FIRST_EPOCHS, eta_min=FIRST_LR / 10)
 
     for i in range(1, FIRST_EPOCHS + 1):
         rand_idx  = torch.randint(0, N_POOL, (FIRST_BATCH,))
