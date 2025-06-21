@@ -5,16 +5,20 @@ use std::sync::Arc;
 use math::{Normal, ShadingTangent, Transform, Vector3};
 use spectrum::SampledWavelengths;
 
+use crate::SpectrumParameter;
 use crate::{
     BsdfSurfaceMaterial, FloatParameter, Material, MaterialEvaluationResult, MaterialSample,
     NormalParameter, SurfaceInteraction, SurfaceMaterial, material::bsdf::DielectricBsdf,
 };
+use spectrum::ConstantSpectrum;
 
 /// プラスチックマテリアル。
 /// roughnessパラメータに応じて完全鏡面反射・透過またはマイクロファセット反射・透過を行う定数屈折率の誘電体マテリアル。
 pub struct PlasticMaterial {
     /// 屈折率（定数値）
     eta: f32,
+    /// 色
+    color: SpectrumParameter,
     /// ノーマルマップパラメータ
     normal: NormalParameter,
     /// Thin Filmフラグ
@@ -33,12 +37,14 @@ impl PlasticMaterial {
     /// - `roughness` - 表面の粗さパラメータ（0.0で完全鏡面）
     pub fn new(
         eta: f32,
+        color: SpectrumParameter,
         normal: NormalParameter,
         thin_film: bool,
         roughness: FloatParameter,
     ) -> Material {
         Arc::new(Self {
             eta,
+            color,
             normal,
             thin_film,
             roughness,
@@ -56,35 +62,45 @@ impl PlasticMaterial {
         thin_film: bool,
         roughness: FloatParameter,
     ) -> Material {
-        Self::new(1.5, normal, thin_film, roughness)
+        Self::new(
+            1.5,
+            SpectrumParameter::Constant(ConstantSpectrum::new(1.0)),
+            normal,
+            thin_film,
+            roughness,
+        )
     }
 
     /// アクリル用のPlasticMaterialを作成する（屈折率 1.49）。
     ///
     /// # Arguments
+    /// - `color` - 色パラメータ
     /// - `normal` - ノーマルマップパラメータ
     /// - `thin_film` - Thin Filmフラグ
     /// - `roughness` - 表面の粗さパラメータ（0.0で完全鏡面）
     pub fn new_acrylic(
+        color: SpectrumParameter,
         normal: NormalParameter,
         thin_film: bool,
         roughness: FloatParameter,
     ) -> Material {
-        Self::new(1.49, normal, thin_film, roughness)
+        Self::new(1.49, color, normal, thin_film, roughness)
     }
 
     /// ポリカーボネート用のPlasticMaterialを作成する（屈折率 1.58）。
     ///
     /// # Arguments
+    /// - `color` - 色パラメータ
     /// - `normal` - ノーマルマップパラメータ
     /// - `thin_film` - Thin Filmフラグ
     /// - `roughness` - 表面の粗さパラメータ（0.0で完全鏡面）
     pub fn new_polycarbonate(
+        color: SpectrumParameter,
         normal: NormalParameter,
         thin_film: bool,
         roughness: FloatParameter,
     ) -> Material {
-        Self::new(1.58, normal, thin_film, roughness)
+        Self::new(1.58, color, normal, thin_film, roughness)
     }
 
     /// 定数屈折率をスペクトラムに変換する。
@@ -146,13 +162,19 @@ impl BsdfSurfaceMaterial for PlasticMaterial {
         let dielectric_bsdf = DielectricBsdf::new(eta, entering, self.thin_film, roughness_value);
         // ucとして追加のランダム値を生成（uvから派生）
         let uc = (uv.x * 73.0 + uv.y * 37.0).fract();
-        let bsdf_result = match dielectric_bsdf.sample(&wo_normalmap, uv, uc) {
+        let mut bsdf_result = match dielectric_bsdf.sample(&wo_normalmap, uv, uc) {
             Some(result) => result,
             None => {
                 // BSDFサンプリング失敗の場合
                 return MaterialSample::failed(normal_map);
             }
         };
+
+        // 透過の場合、カラーフィルタを適用
+        if bsdf_result.wi.z() < 0.0 {
+            let color_spectrum = self.color.sample(uv).sample(lambda);
+            bsdf_result.f *= color_spectrum;
+        }
 
         // 結果をシェーディングタンジェント空間に変換して返す
         let wi_shading = &transform_inv * &bsdf_result.wi;
@@ -201,7 +223,13 @@ impl BsdfSurfaceMaterial for PlasticMaterial {
         // 誘電体BSDF評価（ノーマルマップタンジェント空間で実行）
         let entering = shading_point.normal.dot(wo) > 0.0;
         let dielectric_bsdf = DielectricBsdf::new(eta, entering, self.thin_film, roughness_value);
-        let f = dielectric_bsdf.evaluate(&wo_normalmap, &wi_normalmap);
+        let mut f = dielectric_bsdf.evaluate(&wo_normalmap, &wi_normalmap);
+
+        // 透過の場合、カラーフィルタを適用
+        if wi_normalmap.z() < 0.0 {
+            let color_spectrum = self.color.sample(shading_point.uv).sample(lambda);
+            f *= color_spectrum;
+        }
 
         MaterialEvaluationResult {
             f,
