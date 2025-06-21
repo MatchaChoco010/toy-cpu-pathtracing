@@ -24,7 +24,7 @@ pub fn load_scene_13<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut
             SpectrumParameter::constant(color_spectrum),
             NormalParameter::none(),
             false,
-            FloatParameter::constant(0.05),
+            FloatParameter::constant(0.0),
         ),
         transform: Transform::identity(),
     });
