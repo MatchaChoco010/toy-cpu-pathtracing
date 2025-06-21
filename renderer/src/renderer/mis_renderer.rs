@@ -148,7 +148,6 @@ impl RenderingStrategy for MisStrategy {
         if material_sample.is_specular() {
             // Specularの場合はMISを適用せずエミッシブ寄与をそのまま蓄積
             *sample_contribution += &*throughout * &bsdf_result.next_emissive_contribution;
-            *throughout *= &bsdf_result.throughput_modifier;
         } else if material_sample.is_sampled() {
             // NonSpecularの場合はMISウエイトを計算
             let next_hit_info = &bsdf_result.next_hit_info;
@@ -164,13 +163,8 @@ impl RenderingStrategy for MisStrategy {
             // エミッシブ寄与をMISウエイト付きで一時変数に蓄積
             *sample_contribution +=
                 &*throughout * &bsdf_result.next_emissive_contribution * mis_weight;
-
-            // throughoutを更新（MISウエイト適用）
-            *throughout *= &bsdf_result.throughput_modifier * mis_weight;
-        } else {
-            // サンプル失敗の場合はthroughputのみ更新
-            *throughout *= &bsdf_result.throughput_modifier;
         }
+        *throughout *= &bsdf_result.throughput_modifier;
     }
 }
 
