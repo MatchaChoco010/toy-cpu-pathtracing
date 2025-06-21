@@ -11,9 +11,9 @@ use spectrum::{RgbAlbedoSpectrum, presets};
 use crate::{camera::Camera, filter::Filter};
 
 pub fn load_scene_13<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut Camera<F>) {
-    // scene 10をベースに、色付きのThin Filmプラスチックのマテリアルでバニーを作成
+    // scene 10をベースに、色付きのプラスチックのマテリアルでバニーを作成
 
-    // 青色のThin Filmプラスチックのマテリアルでバニー
+    // 青色のプラスチックのマテリアルでバニー
     let geom = scene.load_obj("./renderer/assets/bunny.obj");
     let color_spectrum =
         RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.4, 0.9, 1.0));

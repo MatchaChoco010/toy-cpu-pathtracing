@@ -6,7 +6,7 @@ use image::{ImageFormat, Rgb, RgbImage};
 use rayon::prelude::*;
 
 use color::Color;
-use math::{Render, ShadingTangent, Transform};
+use math::{Render, VertexNormalTangent, Transform};
 use scene::{Intersection, MaterialSample, Scene, SceneId};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
@@ -47,7 +47,7 @@ pub trait RenderingStrategy: Clone + Send + Sync {
         scene: &Scene<Id>,
         lambda: &SampledWavelengths,
         sampler: &mut S,
-        render_to_tangent: &Transform<Render, ShadingTangent>,
+        render_to_tangent: &Transform<Render, VertexNormalTangent>,
         current_hit_info: &Intersection<Id, Render>,
         sample_contribution: &mut SampledSpectrum,
         throughout: &SampledSpectrum,

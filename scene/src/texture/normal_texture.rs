@@ -4,7 +4,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use glam::Vec2;
-use math::{Normal, ShadingTangent};
+use math::{Normal, VertexNormalTangent};
 
 use super::{
     loader::{ImageData, load_rgb_image},
@@ -37,7 +37,7 @@ impl NormalTexture {
     }
 
     /// UV座標でノーマルマップをサンプリングし、接空間ノーマルを取得する。
-    pub fn sample_normal(&self, uv: Vec2) -> Normal<ShadingTangent> {
+    pub fn sample_normal(&self, uv: Vec2) -> Normal<VertexNormalTangent> {
         let rgb = self.sample(uv);
 
         // RGB [0,1] を [-1,1] の範囲に変換

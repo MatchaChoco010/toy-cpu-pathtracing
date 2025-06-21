@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use math::{Normal, ShadingTangent, Transform, Vector3};
+use math::{Normal, VertexNormalTangent, Transform, Vector3};
 use spectrum::SampledWavelengths;
 
 use crate::{
@@ -49,8 +49,8 @@ impl BsdfSurfaceMaterial for LambertMaterial {
         &self,
         uv: glam::Vec2,
         lambda: &mut SampledWavelengths,
-        wo: &Vector3<ShadingTangent>,
-        shading_point: &SurfaceInteraction<ShadingTangent>,
+        wo: &Vector3<VertexNormalTangent>,
+        shading_point: &SurfaceInteraction<VertexNormalTangent>,
     ) -> MaterialSample {
         let albedo = self.albedo.sample(shading_point.uv).sample(lambda);
 
@@ -101,9 +101,9 @@ impl BsdfSurfaceMaterial for LambertMaterial {
     fn evaluate(
         &self,
         lambda: &SampledWavelengths,
-        wo: &Vector3<ShadingTangent>,
-        wi: &Vector3<ShadingTangent>,
-        shading_point: &SurfaceInteraction<ShadingTangent>,
+        wo: &Vector3<VertexNormalTangent>,
+        wi: &Vector3<VertexNormalTangent>,
+        shading_point: &SurfaceInteraction<VertexNormalTangent>,
     ) -> MaterialEvaluationResult {
         let albedo = self.albedo.sample(shading_point.uv).sample(lambda);
 
@@ -146,9 +146,9 @@ impl BsdfSurfaceMaterial for LambertMaterial {
     fn pdf(
         &self,
         _lambda: &SampledWavelengths,
-        wo: &Vector3<ShadingTangent>,
-        wi: &Vector3<ShadingTangent>,
-        shading_point: &SurfaceInteraction<ShadingTangent>,
+        wo: &Vector3<VertexNormalTangent>,
+        wi: &Vector3<VertexNormalTangent>,
+        shading_point: &SurfaceInteraction<VertexNormalTangent>,
     ) -> f32 {
         // 法線マップから法線を取得（ない場合はデフォルトのZ+法線）
         let normal_map = self

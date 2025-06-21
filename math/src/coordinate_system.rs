@@ -36,13 +36,13 @@ impl CoordinateSystem for GeometryTangent {}
 /// シェーディング計算時に行うシェーディング点の基本タンジェント空間の座標系。
 /// Z軸がシェーディング法線に揃うような座標系。
 #[derive(Debug, Clone, Copy)]
-pub struct ShadingTangent;
-impl CoordinateSystem for ShadingTangent {}
+pub struct VertexNormalTangent;
+impl CoordinateSystem for VertexNormalTangent {}
 
 /// ノーマルマップタンジェント座標系を表す構造体。
 ///
 /// ノーマルマップによってシェーディング法線が変更された後のタンジェント空間の座標系。
 /// Z軸がノーマルマップで変更された法線に揃うような座標系。
 #[derive(Debug, Clone, Copy)]
-pub struct NormalMapTangent;
-impl CoordinateSystem for NormalMapTangent {}
+pub struct ShadingNormalTangent;
+impl CoordinateSystem for ShadingNormalTangent {}

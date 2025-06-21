@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use math::{Normal, ShadingTangent, Transform, Vector3};
+use math::{Normal, VertexNormalTangent, Transform, Vector3};
 use spectrum::{SampledWavelengths, presets};
 
 use crate::{
@@ -93,8 +93,8 @@ impl BsdfSurfaceMaterial for GlassMaterial {
         &self,
         uv: glam::Vec2,
         lambda: &mut SampledWavelengths,
-        wo: &Vector3<ShadingTangent>,
-        shading_point: &SurfaceInteraction<ShadingTangent>,
+        wo: &Vector3<VertexNormalTangent>,
+        shading_point: &SurfaceInteraction<VertexNormalTangent>,
     ) -> MaterialSample {
         let eta = self.get_eta(lambda);
         // 屈折率が波長依存の場合は最初の波長以外を打ち切る
@@ -155,9 +155,9 @@ impl BsdfSurfaceMaterial for GlassMaterial {
     fn evaluate(
         &self,
         lambda: &SampledWavelengths,
-        wo: &Vector3<ShadingTangent>,
-        wi: &Vector3<ShadingTangent>,
-        shading_point: &SurfaceInteraction<ShadingTangent>,
+        wo: &Vector3<VertexNormalTangent>,
+        wi: &Vector3<VertexNormalTangent>,
+        shading_point: &SurfaceInteraction<VertexNormalTangent>,
     ) -> MaterialEvaluationResult {
         // ガラスの光学特性を取得
         let eta = self.get_eta(lambda).value(0); // 単一波長での屈折率を使用
@@ -199,9 +199,9 @@ impl BsdfSurfaceMaterial for GlassMaterial {
     fn pdf(
         &self,
         lambda: &SampledWavelengths,
-        wo: &Vector3<ShadingTangent>,
-        wi: &Vector3<ShadingTangent>,
-        shading_point: &SurfaceInteraction<ShadingTangent>,
+        wo: &Vector3<VertexNormalTangent>,
+        wi: &Vector3<VertexNormalTangent>,
+        shading_point: &SurfaceInteraction<VertexNormalTangent>,
     ) -> f32 {
         // ガラスの光学特性を取得
         let eta = self.get_eta(lambda).value(0); // 単一波長での屈折率を使用
