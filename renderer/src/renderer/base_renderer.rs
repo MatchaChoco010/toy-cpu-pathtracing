@@ -1,7 +1,7 @@
 //! 全レンダラーの基底となるベースレンダラーの実装。
 
 use color::{ColorSrgb, eotf, tone_map::ToneMap};
-use math::{Ray, Render, VertexNormalTangent, Transform};
+use math::{Ray, Render, Transform, VertexNormalTangent};
 use scene::{Intersection, MaterialSample, SceneId, SurfaceInteraction};
 use spectrum::{DenselySampledSpectrum, SampledSpectrum, SampledWavelengths, SpectrumTrait};
 
@@ -57,7 +57,7 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy>
     ) -> Option<SampledSpectrum> {
         let emissive_material = interaction.material.as_emissive_material()?;
 
-        // Render座標系からヒットした光源上の点のShadingTangent座標系に変換
+        // Render座標系からヒットした光源上の点のVertexNormalTangent座標系に変換
         let render_to_tangent = interaction.shading_transform();
 
         // ヒットした光源面からの出射方向を計算
@@ -220,11 +220,11 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy> Render
                     None => break 'depth_loop,
                 };
 
-                // Render座標系からヒットしたシェーディングポイントのShadingTangent座標系に変換
+                // Render座標系からヒットしたシェーディングポイントのVertexNormalTangent座標系に変換
                 let render_to_tangent = hit_info.interaction.shading_transform();
                 let wo = &render_to_tangent * hit_info.wo;
 
-                // ShadingTangent座標系でのシェーディング点の情報を計算
+                // VertexNormalTangent座標系でのシェーディング点の情報を計算
                 let shading_point = &render_to_tangent * &hit_info.interaction;
 
                 // マテリアルのサンプリングを行う

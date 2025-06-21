@@ -1,7 +1,7 @@
 //! 純粋なパストレーサーによるレンダラーを実装するモジュール。
 
 use color::{ColorSrgb, tone_map::ToneMap};
-use math::{Render, VertexNormalTangent, Transform};
+use math::{Render, Transform, VertexNormalTangent};
 use scene::{Intersection, MaterialSample, SceneId};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 

@@ -6,7 +6,7 @@ use image::{ImageFormat, Rgb, RgbImage};
 use rayon::prelude::*;
 
 use color::Color;
-use math::{Render, VertexNormalTangent, Transform};
+use math::{Render, Transform, VertexNormalTangent};
 use scene::{Intersection, MaterialSample, Scene, SceneId};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 

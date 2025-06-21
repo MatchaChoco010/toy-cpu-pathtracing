@@ -414,7 +414,10 @@ impl ConductorBsdf {
     }
 
     /// 二つのベクトルが同じ半球にあるかチェック。
-    fn same_hemisphere(wo: &Vector3<ShadingNormalTangent>, wi: &Vector3<ShadingNormalTangent>) -> bool {
+    fn same_hemisphere(
+        wo: &Vector3<ShadingNormalTangent>,
+        wi: &Vector3<ShadingNormalTangent>,
+    ) -> bool {
         wo.z() * wi.z() > 0.0
     }
 
@@ -463,7 +466,11 @@ impl ConductorBsdf {
 
     /// BSDF PDFを計算する。
     /// 完全鏡面の場合は0、マイクロファセットの場合はTorrance-Sparrow PDFを返す。
-    pub fn pdf(&self, wo: &Vector3<ShadingNormalTangent>, wi: &Vector3<ShadingNormalTangent>) -> f32 {
+    pub fn pdf(
+        &self,
+        wo: &Vector3<ShadingNormalTangent>,
+        wi: &Vector3<ShadingNormalTangent>,
+    ) -> f32 {
         if self.effectively_smooth() {
             // 完全鏡面反射の場合、PDF()は常に0を返す（デルタ関数のため）
             0.0

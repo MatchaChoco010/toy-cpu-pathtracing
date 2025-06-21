@@ -102,7 +102,11 @@ impl NormalizedLambertBsdf {
     /// # Arguments
     /// - `wo` - 出射方向（ノーマルマップ接空間）
     /// - `wi` - 入射方向（ノーマルマップ接空間）
-    pub fn pdf(&self, wo: &Vector3<ShadingNormalTangent>, wi: &Vector3<ShadingNormalTangent>) -> f32 {
+    pub fn pdf(
+        &self,
+        wo: &Vector3<ShadingNormalTangent>,
+        wi: &Vector3<ShadingNormalTangent>,
+    ) -> f32 {
         let wo_cos_n = wo.z();
         let wi_cos_n = wi.z();
 

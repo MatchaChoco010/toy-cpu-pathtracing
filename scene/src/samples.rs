@@ -1,6 +1,8 @@
 //! シーン上の点やマテリアルをサンプルした結果を持つ構造体を定義するモジュール。
 
-use math::{CoordinateSystem, GeometryTangent, Normal, Point3, VertexNormalTangent, Transform, Vector3};
+use math::{
+    CoordinateSystem, GeometryTangent, Normal, Point3, Transform, Vector3, VertexNormalTangent,
+};
 use spectrum::SampledSpectrum;
 use util_macros::impl_binary_ops;
 
@@ -139,7 +141,7 @@ fn mul<From: CoordinateSystem, To: CoordinateSystem>(
     }
 }
 impl<C: CoordinateSystem> SurfaceInteraction<C> {
-    /// ShadingTangent座標系に変換するTransformを取得する。
+    /// VertexNormalTangent座標系に変換するTransformを取得する。
     pub fn shading_transform(&self) -> Transform<C, VertexNormalTangent> {
         Transform::from_shading_normal_tangent(&self.shading_normal, &self.tangent)
     }

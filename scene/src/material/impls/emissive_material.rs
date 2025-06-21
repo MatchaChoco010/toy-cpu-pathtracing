@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use math::{VertexNormalTangent, Vector3};
+use math::{Vector3, VertexNormalTangent};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::{
