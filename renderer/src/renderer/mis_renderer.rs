@@ -1,7 +1,7 @@
 //! MISでBSDFサンプルとNEEを組み合わせたレンダラーを実装するモジュール。
 
 use color::{ColorSrgb, tone_map::ToneMap};
-use math::{Render, VertexNormalTangent, Transform};
+use math::{Render, Transform, VertexNormalTangent};
 use scene::{Intersection, LightIntensity, MaterialSample, SceneId};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 

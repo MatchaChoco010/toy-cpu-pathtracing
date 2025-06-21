@@ -181,7 +181,7 @@ impl<C: CoordinateSystem> Transform<C, GeometryTangent> {
     }
 }
 impl<C: CoordinateSystem> Transform<C, VertexNormalTangent> {
-    /// 任意の座標系CからShadingTangent座標系への変換Transformを作成する。
+    /// 任意の座標系CからVertexNormalTangent座標系への変換Transformを作成する。
     /// シェーディング法線がZ軸になり、tangentの方向にX軸が向くような座標系に変換するTransform。
     pub fn from_shading_normal_tangent(
         shading_normal: &Normal<C>,
@@ -203,7 +203,8 @@ impl<C: CoordinateSystem> Transform<C, VertexNormalTangent> {
     }
 }
 impl Transform<VertexNormalTangent, ShadingNormalTangent> {
-    /// ノーマルマップの法線からShadingTangent空間からNormalMapTangent空間への基底変換Transformを作成する。
+    /// ノーマルマップの法線からVertexNormalTangent空間から
+    /// ShadingNormalTangent空間への基底変換Transformを作成する。
     ///
     /// 標準的なシェーディングタンジェント空間（Z+が法線）から、法線マップで変更されたタンジェント空間への変換。
     ///

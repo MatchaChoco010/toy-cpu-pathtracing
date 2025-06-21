@@ -208,7 +208,11 @@ impl TrowbridgeReitzDistribution {
 
     /// 可視法線分布D_ω(ωm)を計算
     /// pbrt-v4 Equation (9.23)に基づく
-    pub fn d_visible(&self, w: &Vector3<ShadingNormalTangent>, wm: &Vector3<ShadingNormalTangent>) -> f32 {
+    pub fn d_visible(
+        &self,
+        w: &Vector3<ShadingNormalTangent>,
+        wm: &Vector3<ShadingNormalTangent>,
+    ) -> f32 {
         self.g1(w) / abs_cos_theta(w) * self.d(wm) * w.dot(wm).abs()
     }
 
@@ -254,7 +258,11 @@ impl TrowbridgeReitzDistribution {
     }
 
     /// サンプリングPDFを計算
-    pub fn pdf(&self, w: &Vector3<ShadingNormalTangent>, wm: &Vector3<ShadingNormalTangent>) -> f32 {
+    pub fn pdf(
+        &self,
+        w: &Vector3<ShadingNormalTangent>,
+        wm: &Vector3<ShadingNormalTangent>,
+    ) -> f32 {
         self.d_visible(w, wm)
     }
 
@@ -672,7 +680,11 @@ impl DielectricBsdf {
     /// BSDF PDFを計算する。
     /// 完全鏡面の場合は常に0を返す（デルタ関数のため）。
     /// マイクロファセットの場合は実際のPDF値を計算する。
-    pub fn pdf(&self, wo: &Vector3<ShadingNormalTangent>, wi: &Vector3<ShadingNormalTangent>) -> f32 {
+    pub fn pdf(
+        &self,
+        wo: &Vector3<ShadingNormalTangent>,
+        wi: &Vector3<ShadingNormalTangent>,
+    ) -> f32 {
         match &self.microfacet_distribution {
             Some(distrib) => self.pdf_rough_dielectric(wo, wi, distrib),
             None => 0.0, // 完全鏡面の場合は0
