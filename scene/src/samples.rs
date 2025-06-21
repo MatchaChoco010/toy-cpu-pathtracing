@@ -1,6 +1,8 @@
 //! シーン上の点やマテリアルをサンプルした結果を持つ構造体を定義するモジュール。
 
-use math::{CoordinateSystem, GeometryTangent, Normal, Point3, ShadingTangent, Transform, Vector3};
+use math::{
+    CoordinateSystem, GeometryTangent, Normal, Point3, Transform, Vector3, VertexNormalTangent,
+};
 use spectrum::SampledSpectrum;
 use util_macros::impl_binary_ops;
 
@@ -14,7 +16,7 @@ pub struct MaterialEvaluationResult {
     /// レイヤー選択PDF（レイヤーマテリアルでの確率的BSDF選択用）
     pub pdf: f32,
     /// 選択されたレイヤーの法線マップ（シェーディング接空間）
-    pub normal: Normal<ShadingTangent>,
+    pub normal: Normal<VertexNormalTangent>,
 }
 
 use crate::material::bsdf::BsdfSampleType;
@@ -24,14 +26,14 @@ use crate::material::bsdf::BsdfSampleType;
 pub struct NonSpecularDirectionSample {
     pub f: spectrum::SampledSpectrum,
     pub pdf: f32,
-    pub wi: math::Vector3<ShadingTangent>,
+    pub wi: math::Vector3<VertexNormalTangent>,
 }
 
 /// Specular方向サンプリング結果。
 #[derive(Debug, Clone)]
 pub struct SpecularDirectionSample {
     pub f: spectrum::SampledSpectrum,
-    pub wi: math::Vector3<ShadingTangent>,
+    pub wi: math::Vector3<VertexNormalTangent>,
 }
 
 /// マテリアルの方向サンプリング結果を表す構造体。
@@ -40,13 +42,13 @@ pub struct MaterialSample {
     /// BSDF値
     pub f: SampledSpectrum,
     /// サンプルされた入射方向（シェーディング接空間）
-    pub wi: Vector3<ShadingTangent>,
+    pub wi: Vector3<VertexNormalTangent>,
     /// 確率密度関数値
     pub pdf: f32,
     /// マテリアルサンプルのタイプ
     pub sample_type: BsdfSampleType,
     /// 選択されたレイヤーの法線マップ（シェーディング接空間）
-    pub normal: Normal<ShadingTangent>,
+    pub normal: Normal<VertexNormalTangent>,
     /// サンプリングが成功したかどうか
     pub is_sampled: bool,
 }
@@ -54,10 +56,10 @@ impl MaterialSample {
     /// 新しいMaterialSampleを作成する（サンプリング成功）。
     pub fn new(
         f: SampledSpectrum,
-        wi: Vector3<ShadingTangent>,
+        wi: Vector3<VertexNormalTangent>,
         pdf: f32,
         sample_type: BsdfSampleType,
-        normal: Normal<ShadingTangent>,
+        normal: Normal<VertexNormalTangent>,
     ) -> Self {
         Self {
             f,
@@ -70,7 +72,7 @@ impl MaterialSample {
     }
 
     /// サンプリング失敗のMaterialSampleを作成する。
-    pub fn failed(normal: Normal<ShadingTangent>) -> Self {
+    pub fn failed(normal: Normal<VertexNormalTangent>) -> Self {
         Self {
             f: SampledSpectrum::zero(),
             wi: Vector3::new(0.0, 0.0, 1.0), // ダミー値
@@ -139,8 +141,8 @@ fn mul<From: CoordinateSystem, To: CoordinateSystem>(
     }
 }
 impl<C: CoordinateSystem> SurfaceInteraction<C> {
-    /// ShadingTangent座標系に変換するTransformを取得する。
-    pub fn shading_transform(&self) -> Transform<C, ShadingTangent> {
+    /// VertexNormalTangent座標系に変換するTransformを取得する。
+    pub fn shading_transform(&self) -> Transform<C, VertexNormalTangent> {
         Transform::from_shading_normal_tangent(&self.shading_normal, &self.tangent)
     }
 

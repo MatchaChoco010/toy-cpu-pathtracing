@@ -1,7 +1,7 @@
 //! MISでBSDFサンプルとNEEを組み合わせたレンダラーを実装するモジュール。
 
 use color::{ColorSrgb, tone_map::ToneMap};
-use math::{Render, ShadingTangent, Transform};
+use math::{Render, Transform, VertexNormalTangent};
 use scene::{Intersection, LightIntensity, MaterialSample, SceneId};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
@@ -22,7 +22,7 @@ fn evaluate_next_event_estimation_with_mis<Id: SceneId, S: Sampler>(
     scene: &scene::Scene<Id>,
     lambda: &spectrum::SampledWavelengths,
     sampler: &mut S,
-    render_to_tangent: &Transform<Render, ShadingTangent>,
+    render_to_tangent: &Transform<Render, VertexNormalTangent>,
     current_hit_info: &Intersection<Id, Render>,
 ) -> NeeResult {
     let shading_point = &current_hit_info.interaction;
@@ -118,7 +118,7 @@ impl RenderingStrategy for MisStrategy {
         scene: &scene::Scene<Id>,
         lambda: &SampledWavelengths,
         sampler: &mut S,
-        render_to_tangent: &Transform<Render, ShadingTangent>,
+        render_to_tangent: &Transform<Render, VertexNormalTangent>,
         current_hit_info: &Intersection<Id, Render>,
         sample_contribution: &mut SampledSpectrum,
         throughout: &SampledSpectrum,
