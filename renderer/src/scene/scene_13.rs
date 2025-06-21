@@ -1,4 +1,4 @@
-//! シーン8: Cornell box with glass bunny
+//! シーン13: Cornell box with colored thin film plastic bunny (based on scene 10)
 
 use color::{ColorSrgb, tone_map::NoneToneMap};
 use math::{Point3, Transform, Vector3};
@@ -6,27 +6,30 @@ use scene::{
     CreatePrimitiveDesc, EmissiveMaterial, FloatParameter, LambertMaterial, NormalParameter,
     PlasticMaterial, Scene, SceneId, SpectrumParameter,
 };
-use spectrum::{ConstantSpectrum, RgbAlbedoSpectrum, presets};
+use spectrum::{RgbAlbedoSpectrum, presets};
 
 use crate::{camera::Camera, filter::Filter};
 
-pub fn load_scene_9<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut Camera<F>) {
-    // scene 3と同じコーネルボックスで、うさぎを屈折率均一のプラスチックのマテリアルにするシーン
+pub fn load_scene_13<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut Camera<F>) {
+    // scene 10をベースに、色付きのThin Filmプラスチックのマテリアルでバニーを作成
 
-    // 屈折率1.8のプラスチックのマテリアルでバニー
+    // 青色のThin Filmプラスチックのマテリアルでバニー
     let geom = scene.load_obj("./renderer/assets/bunny.obj");
+    let color_spectrum =
+        RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.4, 0.9, 1.0));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
         surface_material: PlasticMaterial::new(
-            1.8,
-            SpectrumParameter::Constant(ConstantSpectrum::new(1.0)),
+            1.5,
+            SpectrumParameter::constant(color_spectrum),
             NormalParameter::none(),
-            false,                         // Thin Film効果を無効化
-            FloatParameter::constant(0.0), // 完全に滑らかなプラスチック
+            false,
+            FloatParameter::constant(0.05),
         ),
         transform: Transform::identity(),
     });
 
+    // Cornell boxの壁 (白)
     let geom = scene.load_obj("./renderer/assets/box.obj");
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.8, 0.8, 0.8));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
@@ -38,6 +41,7 @@ pub fn load_scene_9<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
         transform: Transform::identity(),
     });
 
+    // 左壁 (赤)
     let geom = scene.load_obj("./renderer/assets/hidari.obj");
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.9, 0.0, 0.0));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
@@ -49,6 +53,7 @@ pub fn load_scene_9<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
         transform: Transform::identity(),
     });
 
+    // 右壁 (緑)
     let geom = scene.load_obj("./renderer/assets/migi.obj");
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.0, 0.9, 0.0));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
@@ -60,6 +65,7 @@ pub fn load_scene_9<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
         transform: Transform::identity(),
     });
 
+    // 床 (白)
     let geom = scene.load_obj("./renderer/assets/yuka.obj");
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.8, 0.8, 0.8));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
@@ -71,6 +77,7 @@ pub fn load_scene_9<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
         transform: Transform::identity(),
     });
 
+    // 奥壁 (白)
     let geom = scene.load_obj("./renderer/assets/oku.obj");
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.8, 0.8, 0.8));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
@@ -82,6 +89,7 @@ pub fn load_scene_9<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
         transform: Transform::identity(),
     });
 
+    // 天井 (白)
     let geom = scene.load_obj("./renderer/assets/tenjou.obj");
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.8, 0.8, 0.8));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
