@@ -1,7 +1,7 @@
 //! 全レンダラーの基底となるベースレンダラーの実装。
 
 use color::{ColorSrgb, eotf, tone_map::ToneMap};
-use math::{Ray, Render, ShadingTangent, Transform};
+use math::{Ray, Render, VertexNormalTangent, Transform};
 use scene::{Intersection, MaterialSample, SceneId, SurfaceInteraction};
 use spectrum::{DenselySampledSpectrum, SampledSpectrum, SampledWavelengths, SpectrumTrait};
 
@@ -117,7 +117,7 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy>
         scene: &scene::Scene<Id>,
         lambda: &SampledWavelengths,
         material_sample: &MaterialSample,
-        render_to_tangent: &Transform<Render, ShadingTangent>,
+        render_to_tangent: &Transform<Render, VertexNormalTangent>,
         shading_point: &SurfaceInteraction<Render>,
     ) -> Option<BsdfSamplingResult<Id>> {
         if !material_sample.is_sampled() {

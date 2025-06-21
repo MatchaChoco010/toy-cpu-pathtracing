@@ -2,13 +2,13 @@
 
 use std::f32::consts::PI;
 
-use math::{NormalMapTangent, Vector3};
+use math::{ShadingNormalTangent, Vector3};
 use spectrum::SampledSpectrum;
 
 use super::{BsdfSample, BsdfSampleType};
 
 /// Z軸方向を法線方向として、半球状のコサイン重点サンプリングを行う。
-fn sample_cosine_hemisphere(uv: glam::Vec2) -> Vector3<NormalMapTangent> {
+fn sample_cosine_hemisphere(uv: glam::Vec2) -> Vector3<ShadingNormalTangent> {
     use std::f32::consts::PI;
     let r = uv.x.sqrt();
     let theta = 2.0 * PI * uv.y;
@@ -34,7 +34,7 @@ impl NormalizedLambertBsdf {
     pub fn sample(
         &self,
         albedo: &SampledSpectrum,
-        wo: &Vector3<NormalMapTangent>,
+        wo: &Vector3<ShadingNormalTangent>,
         uv: glam::Vec2,
     ) -> Option<BsdfSample> {
         let wo_cos_n = wo.z();
@@ -78,8 +78,8 @@ impl NormalizedLambertBsdf {
     pub fn evaluate(
         &self,
         albedo: &SampledSpectrum,
-        wo: &Vector3<NormalMapTangent>,
-        wi: &Vector3<NormalMapTangent>,
+        wo: &Vector3<ShadingNormalTangent>,
+        wi: &Vector3<ShadingNormalTangent>,
     ) -> SampledSpectrum {
         let wo_cos_n = wo.z();
         let wi_cos_n = wi.z();
@@ -102,7 +102,7 @@ impl NormalizedLambertBsdf {
     /// # Arguments
     /// - `wo` - 出射方向（ノーマルマップ接空間）
     /// - `wi` - 入射方向（ノーマルマップ接空間）
-    pub fn pdf(&self, wo: &Vector3<NormalMapTangent>, wi: &Vector3<NormalMapTangent>) -> f32 {
+    pub fn pdf(&self, wo: &Vector3<ShadingNormalTangent>, wi: &Vector3<ShadingNormalTangent>) -> f32 {
         let wo_cos_n = wo.z();
         let wi_cos_n = wi.z();
 

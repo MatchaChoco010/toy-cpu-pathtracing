@@ -8,7 +8,7 @@ pub use conductor::ConductorBsdf;
 pub use dielectric::DielectricBsdf;
 pub use lambert::NormalizedLambertBsdf;
 
-use math::NormalMapTangent;
+use math::ShadingNormalTangent;
 
 /// BSDFサンプルのタイプを表す列挙型。
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -27,7 +27,7 @@ pub struct BsdfSample {
     /// BSDF値
     pub f: spectrum::SampledSpectrum,
     /// サンプルされた入射方向（ノーマルマップ接空間）
-    pub wi: math::Vector3<NormalMapTangent>,
+    pub wi: math::Vector3<ShadingNormalTangent>,
     /// 確率密度関数値（スペキュラの場合は1.0）
     pub pdf: f32,
     /// BSDFサンプルのタイプ
@@ -38,7 +38,7 @@ impl BsdfSample {
     /// 新しいBsdfSampleを作成する。
     pub fn new(
         f: spectrum::SampledSpectrum,
-        wi: math::Vector3<NormalMapTangent>,
+        wi: math::Vector3<ShadingNormalTangent>,
         pdf: f32,
         sample_type: BsdfSampleType,
     ) -> Self {

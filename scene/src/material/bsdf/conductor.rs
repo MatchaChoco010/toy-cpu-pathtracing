@@ -1,6 +1,6 @@
 //! 導体（金属）BSDF実装。
 
-use math::{NormalMapTangent, Vector3};
+use math::{ShadingNormalTangent, Vector3};
 use spectrum::SampledSpectrum;
 
 use super::{BsdfSample, BsdfSampleType};
@@ -168,7 +168,7 @@ impl ConductorBsdf {
     }
 
     /// Trowbridge-Reitz分布関数 D(ωm)を計算する。
-    fn microfacet_distribution(&self, wm: &Vector3<NormalMapTangent>) -> f32 {
+    fn microfacet_distribution(&self, wm: &Vector3<ShadingNormalTangent>) -> f32 {
         let tan2_theta = Self::tan2_theta(wm);
         if tan2_theta.is_infinite() {
             return 0.0;
@@ -183,7 +183,7 @@ impl ConductorBsdf {
     }
 
     /// Lambda関数を計算する。
-    fn lambda(&self, w: &Vector3<NormalMapTangent>) -> f32 {
+    fn lambda(&self, w: &Vector3<ShadingNormalTangent>) -> f32 {
         let tan2_theta = Self::tan2_theta(w);
         if tan2_theta.is_infinite() {
             return 0.0;
@@ -195,15 +195,15 @@ impl ConductorBsdf {
     }
 
     /// 単方向マスキング関数 G1(ω)を計算する。
-    fn masking_g1(&self, w: &Vector3<NormalMapTangent>) -> f32 {
+    fn masking_g1(&self, w: &Vector3<ShadingNormalTangent>) -> f32 {
         1.0 / (1.0 + self.lambda(w))
     }
 
     /// 双方向マスキング・シャドウイング関数 G(ωo, ωi)を計算する。
     fn masking_shadowing_g(
         &self,
-        wo: &Vector3<NormalMapTangent>,
-        wi: &Vector3<NormalMapTangent>,
+        wo: &Vector3<ShadingNormalTangent>,
+        wi: &Vector3<ShadingNormalTangent>,
     ) -> f32 {
         1.0 / (1.0 + self.lambda(wo) + self.lambda(wi))
     }
@@ -211,8 +211,8 @@ impl ConductorBsdf {
     /// 可視法線分布 D_ω(ωm)を計算する。
     fn visible_normal_distribution(
         &self,
-        w: &Vector3<NormalMapTangent>,
-        wm: &Vector3<NormalMapTangent>,
+        w: &Vector3<ShadingNormalTangent>,
+        wm: &Vector3<ShadingNormalTangent>,
     ) -> f32 {
         let cos_theta_w = w.z().abs();
         if cos_theta_w == 0.0 {
@@ -222,11 +222,11 @@ impl ConductorBsdf {
     }
 
     // 球面座標系ヘルパー関数群
-    fn cos2_theta(w: &Vector3<NormalMapTangent>) -> f32 {
+    fn cos2_theta(w: &Vector3<ShadingNormalTangent>) -> f32 {
         w.z() * w.z()
     }
 
-    fn tan2_theta(w: &Vector3<NormalMapTangent>) -> f32 {
+    fn tan2_theta(w: &Vector3<ShadingNormalTangent>) -> f32 {
         let cos2 = Self::cos2_theta(w);
         if cos2 == 0.0 {
             f32::INFINITY
@@ -235,7 +235,7 @@ impl ConductorBsdf {
         }
     }
 
-    fn cos_phi(w: &Vector3<NormalMapTangent>) -> f32 {
+    fn cos_phi(w: &Vector3<ShadingNormalTangent>) -> f32 {
         let sin_theta = (1.0 - Self::cos2_theta(w)).max(0.0).sqrt();
         if sin_theta == 0.0 {
             1.0
@@ -244,7 +244,7 @@ impl ConductorBsdf {
         }
     }
 
-    fn sin_phi(w: &Vector3<NormalMapTangent>) -> f32 {
+    fn sin_phi(w: &Vector3<ShadingNormalTangent>) -> f32 {
         let sin_theta = (1.0 - Self::cos2_theta(w)).max(0.0).sqrt();
         if sin_theta == 0.0 {
             0.0
@@ -256,11 +256,11 @@ impl ConductorBsdf {
     /// 可視法線をサンプリングする。
     fn sample_visible_normal(
         &self,
-        w: &Vector3<NormalMapTangent>,
+        w: &Vector3<ShadingNormalTangent>,
         u: glam::Vec2,
-    ) -> Vector3<NormalMapTangent> {
+    ) -> Vector3<ShadingNormalTangent> {
         // wを半球構成に変換
-        let mut wh: Vector3<NormalMapTangent> =
+        let mut wh: Vector3<ShadingNormalTangent> =
             Vector3::new(self.alpha_x * w.x(), self.alpha_y * w.y(), w.z()).normalize();
         if wh.z() < 0.0 {
             wh = -wh;
@@ -303,9 +303,9 @@ impl ConductorBsdf {
 
     /// ハーフベクトルを計算する。
     fn half_vector(
-        wo: &Vector3<NormalMapTangent>,
-        wi: &Vector3<NormalMapTangent>,
-    ) -> Option<Vector3<NormalMapTangent>> {
+        wo: &Vector3<ShadingNormalTangent>,
+        wi: &Vector3<ShadingNormalTangent>,
+    ) -> Option<Vector3<ShadingNormalTangent>> {
         let wm = *wo + *wi;
         if wm.length_squared() == 0.0 {
             None
@@ -320,7 +320,7 @@ impl ConductorBsdf {
     /// # Arguments
     /// - `wo` - 出射方向（ノーマルマップ接空間）
     /// - `uv` - ランダムサンプル
-    pub fn sample(&self, wo: &Vector3<NormalMapTangent>, uv: glam::Vec2) -> Option<BsdfSample> {
+    pub fn sample(&self, wo: &Vector3<ShadingNormalTangent>, uv: glam::Vec2) -> Option<BsdfSample> {
         let wo_cos_n = wo.z();
         if wo_cos_n == 0.0 {
             return None;
@@ -336,7 +336,7 @@ impl ConductorBsdf {
     }
 
     /// 完全鏡面反射サンプリング。
-    fn sample_perfect_specular(&self, wo: &Vector3<NormalMapTangent>) -> Option<BsdfSample> {
+    fn sample_perfect_specular(&self, wo: &Vector3<ShadingNormalTangent>) -> Option<BsdfSample> {
         // 完全鏡面反射: wi = (-wo.x, -wo.y, wo.z)
         let wi = Vector3::new(-wo.x(), -wo.y(), wo.z());
         let wi_cos_n = wi.z();
@@ -357,7 +357,7 @@ impl ConductorBsdf {
     /// マイクロファセットサンプリング（Torrance-Sparrow model）。
     fn sample_microfacet(
         &self,
-        wo: &Vector3<NormalMapTangent>,
+        wo: &Vector3<ShadingNormalTangent>,
         uv: glam::Vec2,
     ) -> Option<BsdfSample> {
         // 可視法線をサンプリング
@@ -381,9 +381,9 @@ impl ConductorBsdf {
     /// Torrance-Sparrow BRDF を評価する。
     fn evaluate_torrance_sparrow(
         &self,
-        wo: &Vector3<NormalMapTangent>,
-        wi: &Vector3<NormalMapTangent>,
-        wm: &Vector3<NormalMapTangent>,
+        wo: &Vector3<ShadingNormalTangent>,
+        wi: &Vector3<ShadingNormalTangent>,
+        wm: &Vector3<ShadingNormalTangent>,
     ) -> SampledSpectrum {
         let cos_theta_o = wo.z().abs();
         let cos_theta_i = wi.z().abs();
@@ -407,14 +407,14 @@ impl ConductorBsdf {
 
     /// 反射ベクトルを計算する。
     fn reflect(
-        wo: &Vector3<NormalMapTangent>,
-        wm: &Vector3<NormalMapTangent>,
-    ) -> Vector3<NormalMapTangent> {
+        wo: &Vector3<ShadingNormalTangent>,
+        wm: &Vector3<ShadingNormalTangent>,
+    ) -> Vector3<ShadingNormalTangent> {
         *wm * (2.0 * wo.dot(wm)) - *wo
     }
 
     /// 二つのベクトルが同じ半球にあるかチェック。
-    fn same_hemisphere(wo: &Vector3<NormalMapTangent>, wi: &Vector3<NormalMapTangent>) -> bool {
+    fn same_hemisphere(wo: &Vector3<ShadingNormalTangent>, wi: &Vector3<ShadingNormalTangent>) -> bool {
         wo.z() * wi.z() > 0.0
     }
 
@@ -422,8 +422,8 @@ impl ConductorBsdf {
     /// 完全鏡面の場合は0、マイクロファセットの場合はTorrance-Sparrow BRDFを返す。
     pub fn evaluate(
         &self,
-        wo: &Vector3<NormalMapTangent>,
-        wi: &Vector3<NormalMapTangent>,
+        wo: &Vector3<ShadingNormalTangent>,
+        wi: &Vector3<ShadingNormalTangent>,
     ) -> SampledSpectrum {
         if self.effectively_smooth() {
             // 完全鏡面反射の場合、evaluate()は常に0を返す（デルタ関数のため）
@@ -437,8 +437,8 @@ impl ConductorBsdf {
     /// マイクロファセットBRDFを評価する。
     fn evaluate_microfacet(
         &self,
-        wo: &Vector3<NormalMapTangent>,
-        wi: &Vector3<NormalMapTangent>,
+        wo: &Vector3<ShadingNormalTangent>,
+        wi: &Vector3<ShadingNormalTangent>,
     ) -> SampledSpectrum {
         let cos_theta_o = wo.z().abs();
         let cos_theta_i = wi.z().abs();
@@ -463,7 +463,7 @@ impl ConductorBsdf {
 
     /// BSDF PDFを計算する。
     /// 完全鏡面の場合は0、マイクロファセットの場合はTorrance-Sparrow PDFを返す。
-    pub fn pdf(&self, wo: &Vector3<NormalMapTangent>, wi: &Vector3<NormalMapTangent>) -> f32 {
+    pub fn pdf(&self, wo: &Vector3<ShadingNormalTangent>, wi: &Vector3<ShadingNormalTangent>) -> f32 {
         if self.effectively_smooth() {
             // 完全鏡面反射の場合、PDF()は常に0を返す（デルタ関数のため）
             0.0
@@ -476,8 +476,8 @@ impl ConductorBsdf {
     /// マイクロファセットPDFを計算する。
     fn pdf_microfacet(
         &self,
-        wo: &Vector3<NormalMapTangent>,
-        wi: &Vector3<NormalMapTangent>,
+        wo: &Vector3<ShadingNormalTangent>,
+        wi: &Vector3<ShadingNormalTangent>,
     ) -> f32 {
         // 同じ半球にあるかチェック
         if !Self::same_hemisphere(wo, wi) {
