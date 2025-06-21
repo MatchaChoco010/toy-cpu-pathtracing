@@ -6,12 +6,12 @@ use math::{Normal, ShadingTangent, Transform, Vector3};
 use spectrum::SampledWavelengths;
 
 use crate::{
-    BsdfSurfaceMaterial, Material, MaterialEvaluationResult, MaterialSample, NormalParameter,
-    SurfaceInteraction, SurfaceMaterial, material::bsdf::DielectricBsdf,
+    BsdfSurfaceMaterial, FloatParameter, Material, MaterialEvaluationResult, MaterialSample,
+    NormalParameter, SurfaceInteraction, SurfaceMaterial, material::bsdf::DielectricBsdf,
 };
 
 /// プラスチックマテリアル。
-/// 定数屈折率の誘電体マテリアル。
+/// roughnessパラメータに応じて完全鏡面反射・透過またはマイクロファセット反射・透過を行う定数屈折率の誘電体マテリアル。
 pub struct PlasticMaterial {
     /// 屈折率（定数値）
     eta: f32,
@@ -19,19 +19,29 @@ pub struct PlasticMaterial {
     normal: NormalParameter,
     /// Thin Filmフラグ
     thin_film: bool,
+    /// 表面の粗さパラメータ
+    roughness: FloatParameter,
 }
 impl PlasticMaterial {
     /// 新しいPlasticMaterialを作成する。
+    /// roughnessが0に限りなく近い場合は完全鏡面、それ以外はマイクロファセット。
     ///
     /// # Arguments
     /// - `eta` - 屈折率（定数値）
     /// - `normal` - ノーマルマップパラメータ
     /// - `thin_film` - Thin Filmフラグ
-    pub fn new(eta: f32, normal: NormalParameter, thin_film: bool) -> Material {
+    /// - `roughness` - 表面の粗さパラメータ（0.0で完全鏡面）
+    pub fn new(
+        eta: f32,
+        normal: NormalParameter,
+        thin_film: bool,
+        roughness: FloatParameter,
+    ) -> Material {
         Arc::new(Self {
             eta,
             normal,
             thin_film,
+            roughness,
         })
     }
 
@@ -40,8 +50,13 @@ impl PlasticMaterial {
     /// # Arguments
     /// - `normal` - ノーマルマップパラメータ
     /// - `thin_film` - Thin Filmフラグ
-    pub fn new_generic(normal: NormalParameter, thin_film: bool) -> Material {
-        Self::new(1.5, normal, thin_film)
+    /// - `roughness` - 表面の粗さパラメータ（0.0で完全鏡面）
+    pub fn new_generic(
+        normal: NormalParameter,
+        thin_film: bool,
+        roughness: FloatParameter,
+    ) -> Material {
+        Self::new(1.5, normal, thin_film, roughness)
     }
 
     /// アクリル用のPlasticMaterialを作成する（屈折率 1.49）。
@@ -49,8 +64,13 @@ impl PlasticMaterial {
     /// # Arguments
     /// - `normal` - ノーマルマップパラメータ
     /// - `thin_film` - Thin Filmフラグ
-    pub fn new_acrylic(normal: NormalParameter, thin_film: bool) -> Material {
-        Self::new(1.49, normal, thin_film)
+    /// - `roughness` - 表面の粗さパラメータ（0.0で完全鏡面）
+    pub fn new_acrylic(
+        normal: NormalParameter,
+        thin_film: bool,
+        roughness: FloatParameter,
+    ) -> Material {
+        Self::new(1.49, normal, thin_film, roughness)
     }
 
     /// ポリカーボネート用のPlasticMaterialを作成する（屈折率 1.58）。
@@ -58,8 +78,13 @@ impl PlasticMaterial {
     /// # Arguments
     /// - `normal` - ノーマルマップパラメータ
     /// - `thin_film` - Thin Filmフラグ
-    pub fn new_polycarbonate(normal: NormalParameter, thin_film: bool) -> Material {
-        Self::new(1.58, normal, thin_film)
+    /// - `roughness` - 表面の粗さパラメータ（0.0で完全鏡面）
+    pub fn new_polycarbonate(
+        normal: NormalParameter,
+        thin_film: bool,
+        roughness: FloatParameter,
+    ) -> Material {
+        Self::new(1.58, normal, thin_film, roughness)
     }
 
     /// 定数屈折率をスペクトラムに変換する。
@@ -113,10 +138,15 @@ impl BsdfSurfaceMaterial for PlasticMaterial {
         // ベクトルをノーマルマップタンジェント空間に変換
         let wo_normalmap = &transform * wo;
 
+        // roughnessパラメータをサンプリング
+        let roughness_value = self.roughness.sample(shading_point.uv);
+
         // 誘電体BSDFサンプリング（ノーマルマップタンジェント空間で実行）
         let entering = shading_point.normal.dot(wo) > 0.0;
-        let dielectric_bsdf = DielectricBsdf::new(eta, entering, self.thin_film);
-        let bsdf_result = match dielectric_bsdf.sample(&wo_normalmap, uv) {
+        let dielectric_bsdf = DielectricBsdf::new(eta, entering, self.thin_film, roughness_value);
+        // ucとして追加のランダム値を生成（uvから派生）
+        let uc = (uv.x * 73.0 + uv.y * 37.0).fract();
+        let bsdf_result = match dielectric_bsdf.sample(&wo_normalmap, uv, uc) {
             Some(result) => result,
             None => {
                 // BSDFサンプリング失敗の場合
@@ -165,9 +195,12 @@ impl BsdfSurfaceMaterial for PlasticMaterial {
         let wo_normalmap = &transform * wo;
         let wi_normalmap = &transform * wi;
 
+        // roughnessパラメータをサンプリング
+        let roughness_value = self.roughness.sample(shading_point.uv);
+
         // 誘電体BSDF評価（ノーマルマップタンジェント空間で実行）
         let entering = shading_point.normal.dot(wo) > 0.0;
-        let dielectric_bsdf = DielectricBsdf::new(eta, entering, self.thin_film);
+        let dielectric_bsdf = DielectricBsdf::new(eta, entering, self.thin_film, roughness_value);
         let f = dielectric_bsdf.evaluate(&wo_normalmap, &wi_normalmap);
 
         MaterialEvaluationResult {
@@ -206,9 +239,12 @@ impl BsdfSurfaceMaterial for PlasticMaterial {
         let wo_normalmap = &transform * wo;
         let wi_normalmap = &transform * wi;
 
+        // roughnessパラメータをサンプリング
+        let roughness_value = self.roughness.sample(shading_point.uv);
+
         // 誘電体BSDF PDF計算（ノーマルマップタンジェント空間で実行）
         let entering = shading_point.normal.dot(wo) > 0.0;
-        let dielectric_bsdf = DielectricBsdf::new(eta, entering, self.thin_film);
+        let dielectric_bsdf = DielectricBsdf::new(eta, entering, self.thin_film, roughness_value);
         dielectric_bsdf.pdf(&wo_normalmap, &wi_normalmap)
     }
 
