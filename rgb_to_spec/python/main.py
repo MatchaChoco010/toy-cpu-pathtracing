@@ -85,10 +85,10 @@ LOSS_SCALE = {
 }
 LR = {
     "sRGB":             (1e-4, 1e-4),
-    "P3-D65":           (1e-4, 1e-4),
-    "Adobe RGB (1998)": (1e-4, 1e-4),
-    "ITU-R BT.2020":    (1e-4, 1e-4),
-    "ACEScg":           (1e-4, 1e-4),
+    "P3-D65":           (2e-5, 2e-5),
+    "Adobe RGB (1998)": (2e-5, 2e-5),
+    "ITU-R BT.2020":    (1e-5, 1e-5),
+    "ACEScg":           (1e-5, 1e-5),
     "ACES2065-1":       (1e-5, 1e-5),
 }
 GREEN_REPEAT = {
