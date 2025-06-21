@@ -6,7 +6,7 @@ use scene::{
     CreatePrimitiveDesc, EmissiveMaterial, FloatParameter, LambertMaterial, NormalParameter,
     PlasticMaterial, Scene, SceneId, SpectrumParameter,
 };
-use spectrum::{RgbAlbedoSpectrum, presets};
+use spectrum::{ConstantSpectrum, RgbAlbedoSpectrum, presets};
 
 use crate::{camera::Camera, filter::Filter};
 
@@ -19,6 +19,7 @@ pub fn load_scene_10<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut
         geometry_index: geom,
         surface_material: PlasticMaterial::new(
             1.8,
+            SpectrumParameter::Constant(ConstantSpectrum::new(1.0)),
             NormalParameter::none(),
             true,                          // Thin Film効果を有効
             FloatParameter::constant(0.0), // 完全に滑らかなthin filmプラスチック
