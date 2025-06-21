@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use math::{ShadingTangent, Vector3};
+use math::{Vector3, VertexNormalTangent};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::{
@@ -48,8 +48,8 @@ impl EmissiveSurfaceMaterial for EmissiveMaterial {
     fn radiance(
         &self,
         lambda: &SampledWavelengths,
-        _wo: Vector3<ShadingTangent>,
-        light_sample_point: &SurfaceInteraction<ShadingTangent>,
+        _wo: Vector3<VertexNormalTangent>,
+        light_sample_point: &SurfaceInteraction<VertexNormalTangent>,
     ) -> SampledSpectrum {
         let radiance_spectrum = self.radiance.sample(light_sample_point.uv).sample(lambda);
         let intensity_value = self.intensity.sample(light_sample_point.uv);

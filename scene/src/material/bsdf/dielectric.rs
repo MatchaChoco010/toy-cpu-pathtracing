@@ -1,38 +1,38 @@
 //! 誘電体BSDFの実装。
 
-use math::{NormalMapTangent, Vector3};
+use math::{ShadingNormalTangent, Vector3};
 use spectrum::SampledSpectrum;
 
 use super::{BsdfSample, BsdfSampleType};
 
 /// 球面座標ヘルパー関数
 #[inline]
-fn cos_theta(w: &Vector3<NormalMapTangent>) -> f32 {
+fn cos_theta(w: &Vector3<ShadingNormalTangent>) -> f32 {
     w.z()
 }
 
 #[inline]
-fn cos2_theta(w: &Vector3<NormalMapTangent>) -> f32 {
+fn cos2_theta(w: &Vector3<ShadingNormalTangent>) -> f32 {
     w.z() * w.z()
 }
 
 #[inline]
-fn abs_cos_theta(w: &Vector3<NormalMapTangent>) -> f32 {
+fn abs_cos_theta(w: &Vector3<ShadingNormalTangent>) -> f32 {
     w.z().abs()
 }
 
 #[inline]
-fn sin2_theta(w: &Vector3<NormalMapTangent>) -> f32 {
+fn sin2_theta(w: &Vector3<ShadingNormalTangent>) -> f32 {
     (1.0 - cos2_theta(w)).max(0.0)
 }
 
 #[inline]
-fn tan2_theta(w: &Vector3<NormalMapTangent>) -> f32 {
+fn tan2_theta(w: &Vector3<ShadingNormalTangent>) -> f32 {
     sin2_theta(w) / cos2_theta(w)
 }
 
 #[inline]
-fn cos_phi(w: &Vector3<NormalMapTangent>) -> f32 {
+fn cos_phi(w: &Vector3<ShadingNormalTangent>) -> f32 {
     let sin_theta = sin2_theta(w).sqrt();
     if sin_theta == 0.0 {
         1.0
@@ -42,7 +42,7 @@ fn cos_phi(w: &Vector3<NormalMapTangent>) -> f32 {
 }
 
 #[inline]
-fn sin_phi(w: &Vector3<NormalMapTangent>) -> f32 {
+fn sin_phi(w: &Vector3<ShadingNormalTangent>) -> f32 {
     let sin_theta = sin2_theta(w).sqrt();
     if sin_theta == 0.0 {
         0.0
@@ -52,7 +52,7 @@ fn sin_phi(w: &Vector3<NormalMapTangent>) -> f32 {
 }
 
 #[inline]
-fn same_hemisphere(w1: &Vector3<NormalMapTangent>, w2: &Vector3<NormalMapTangent>) -> bool {
+fn same_hemisphere(w1: &Vector3<ShadingNormalTangent>, w2: &Vector3<ShadingNormalTangent>) -> bool {
     w1.z() * w2.z() > 0.0
 }
 
@@ -91,10 +91,10 @@ pub fn fresnel_dielectric(cos_theta_i: f32, eta: f32) -> f32 {
 /// - `Some(wt)` - 屈折方向
 /// - `None` - 全反射の場合
 pub fn refract(
-    wi: &Vector3<NormalMapTangent>,
-    n: &Vector3<NormalMapTangent>,
+    wi: &Vector3<ShadingNormalTangent>,
+    n: &Vector3<ShadingNormalTangent>,
     eta: f32,
-) -> Option<Vector3<NormalMapTangent>> {
+) -> Option<Vector3<ShadingNormalTangent>> {
     let cos_theta_i = n.dot(wi);
     let sin2_theta_i = (1.0 - cos_theta_i * cos_theta_i).max(0.0);
     let sin2_theta_t = sin2_theta_i / (eta * eta);
@@ -116,9 +116,9 @@ pub fn refract(
 
 #[inline]
 fn reflect(
-    wo: &Vector3<NormalMapTangent>,
-    n: &Vector3<NormalMapTangent>,
-) -> Vector3<NormalMapTangent> {
+    wo: &Vector3<ShadingNormalTangent>,
+    n: &Vector3<ShadingNormalTangent>,
+) -> Vector3<ShadingNormalTangent> {
     *n * 2.0 * wo.dot(n) - *wo
 }
 
@@ -152,7 +152,7 @@ impl TrowbridgeReitzDistribution {
 
     /// マイクロファセット分布関数D(ωm)を計算
     /// pbrt-v4 Equation (9.16)に基づく
-    pub fn d(&self, wm: &Vector3<NormalMapTangent>) -> f32 {
+    pub fn d(&self, wm: &Vector3<ShadingNormalTangent>) -> f32 {
         let tan2_theta = tan2_theta(wm);
         if tan2_theta.is_infinite() {
             return 0.0;
@@ -180,19 +180,19 @@ impl TrowbridgeReitzDistribution {
 
     /// マスキング関数G1(ω)を計算
     /// pbrt-v4 Equation (9.19)に基づく
-    pub fn g1(&self, w: &Vector3<NormalMapTangent>) -> f32 {
+    pub fn g1(&self, w: &Vector3<ShadingNormalTangent>) -> f32 {
         1.0 / (1.0 + self.lambda(w))
     }
 
     /// 双方向マスキング-シャドウイング関数G(ωo, ωi)を計算
     /// pbrt-v4のSmith's approximationに基づく
-    pub fn g(&self, wo: &Vector3<NormalMapTangent>, wi: &Vector3<NormalMapTangent>) -> f32 {
+    pub fn g(&self, wo: &Vector3<ShadingNormalTangent>, wi: &Vector3<ShadingNormalTangent>) -> f32 {
         1.0 / (1.0 + self.lambda(wo) + self.lambda(wi))
     }
 
     /// Λ(ω)関数を計算 (Smith's approximation用)
     /// pbrt-v4 Equation (9.20)に基づく
-    fn lambda(&self, w: &Vector3<NormalMapTangent>) -> f32 {
+    fn lambda(&self, w: &Vector3<ShadingNormalTangent>) -> f32 {
         let tan2_theta = tan2_theta(w);
         if tan2_theta.is_infinite() {
             return 0.0;
@@ -208,7 +208,11 @@ impl TrowbridgeReitzDistribution {
 
     /// 可視法線分布D_ω(ωm)を計算
     /// pbrt-v4 Equation (9.23)に基づく
-    pub fn d_visible(&self, w: &Vector3<NormalMapTangent>, wm: &Vector3<NormalMapTangent>) -> f32 {
+    pub fn d_visible(
+        &self,
+        w: &Vector3<ShadingNormalTangent>,
+        wm: &Vector3<ShadingNormalTangent>,
+    ) -> f32 {
         self.g1(w) / abs_cos_theta(w) * self.d(wm) * w.dot(wm).abs()
     }
 
@@ -216,17 +220,17 @@ impl TrowbridgeReitzDistribution {
     /// pbrt-v4のellipsoid projection methodに基づく
     pub fn sample_wm(
         &self,
-        w: &Vector3<NormalMapTangent>,
+        w: &Vector3<ShadingNormalTangent>,
         u: glam::Vec2,
-    ) -> Vector3<NormalMapTangent> {
+    ) -> Vector3<ShadingNormalTangent> {
         // 半球構成への変換
-        let wh: Vector3<NormalMapTangent> =
+        let wh: Vector3<ShadingNormalTangent> =
             Vector3::new(self.alpha_x * w.x(), self.alpha_y * w.y(), w.z()).normalize();
 
         let wh = if wh.z() < 0.0 { -wh } else { wh };
 
         // 可視法線サンプリング用の直交基底を構築
-        let t1: Vector3<NormalMapTangent> = if wh.z() < 0.99999 {
+        let t1: Vector3<ShadingNormalTangent> = if wh.z() < 0.99999 {
             Vector3::new(0.0, 0.0, 1.0).cross(wh).normalize()
         } else {
             Vector3::new(1.0, 0.0, 0.0)
@@ -245,7 +249,7 @@ impl TrowbridgeReitzDistribution {
         let pz = (1.0 - p.x * p.x - p.y * p.y).max(0.0).sqrt();
         let nh = t1 * p.x + t2 * p.y + wh * pz;
 
-        Vector3::<NormalMapTangent>::new(
+        Vector3::<ShadingNormalTangent>::new(
             self.alpha_x * nh.x(),
             self.alpha_y * nh.y(),
             nh.z().max(1e-6),
@@ -254,7 +258,11 @@ impl TrowbridgeReitzDistribution {
     }
 
     /// サンプリングPDFを計算
-    pub fn pdf(&self, w: &Vector3<NormalMapTangent>, wm: &Vector3<NormalMapTangent>) -> f32 {
+    pub fn pdf(
+        &self,
+        w: &Vector3<ShadingNormalTangent>,
+        wm: &Vector3<ShadingNormalTangent>,
+    ) -> f32 {
         self.d_visible(w, wm)
     }
 
@@ -310,7 +318,7 @@ impl DielectricBsdf {
     /// - `uc` - 反射/透過選択用の追加ランダム値
     pub fn sample(
         &self,
-        wo: &Vector3<NormalMapTangent>,
+        wo: &Vector3<ShadingNormalTangent>,
         uv: glam::Vec2,
         uc: f32,
     ) -> Option<BsdfSample> {
@@ -337,10 +345,10 @@ impl DielectricBsdf {
     /// - `None` - 計算できない場合（grazing angle等）
     fn compute_generalized_half_vector(
         &self,
-        wo: &Vector3<NormalMapTangent>,
-        wi: &Vector3<NormalMapTangent>,
+        wo: &Vector3<ShadingNormalTangent>,
+        wi: &Vector3<ShadingNormalTangent>,
         eta: f32,
-    ) -> Option<Vector3<NormalMapTangent>> {
+    ) -> Option<Vector3<ShadingNormalTangent>> {
         let cos_theta_o = cos_theta(wo);
         let cos_theta_i = cos_theta(wi);
 
@@ -376,7 +384,7 @@ impl DielectricBsdf {
     /// Rough dielectric BSDFのサンプリングを行う
     fn sample_rough_dielectric(
         &self,
-        wo: &Vector3<NormalMapTangent>,
+        wo: &Vector3<ShadingNormalTangent>,
         u: glam::Vec2,
         uc: f32,
         distrib: &TrowbridgeReitzDistribution,
@@ -426,8 +434,8 @@ impl DielectricBsdf {
     /// Rough dielectric反射のサンプリング
     fn sample_rough_reflection(
         &self,
-        wo: &Vector3<NormalMapTangent>,
-        wm: &Vector3<NormalMapTangent>,
+        wo: &Vector3<ShadingNormalTangent>,
+        wm: &Vector3<ShadingNormalTangent>,
         distrib: &TrowbridgeReitzDistribution,
         r: f32,
         prob: f32,
@@ -461,8 +469,8 @@ impl DielectricBsdf {
     /// Rough dielectric透過のサンプリング
     fn sample_rough_transmission(
         &self,
-        wo: &Vector3<NormalMapTangent>,
-        wm: &Vector3<NormalMapTangent>,
+        wo: &Vector3<ShadingNormalTangent>,
+        wm: &Vector3<ShadingNormalTangent>,
         distrib: &TrowbridgeReitzDistribution,
         t: f32,
         prob: f32,
@@ -502,8 +510,8 @@ impl DielectricBsdf {
     /// Rough dielectric thin film透過のサンプリング
     fn sample_rough_transmission_thin_film(
         &self,
-        wo: &Vector3<NormalMapTangent>,
-        _wm: &Vector3<NormalMapTangent>,
+        wo: &Vector3<ShadingNormalTangent>,
+        _wm: &Vector3<ShadingNormalTangent>,
         _distrib: &TrowbridgeReitzDistribution,
         pt: f32,
         total_prob: f32,
@@ -553,7 +561,7 @@ impl DielectricBsdf {
     /// 完全鏡面反射・透過サンプリング。
     fn sample_perfect_specular(
         &self,
-        wo: &Vector3<NormalMapTangent>,
+        wo: &Vector3<ShadingNormalTangent>,
         uv: glam::Vec2,
     ) -> Option<BsdfSample> {
         let wo_cos_n = wo.z();
@@ -660,8 +668,8 @@ impl DielectricBsdf {
     /// マイクロファセットの場合は実際のBSDF値を計算する。
     pub fn evaluate(
         &self,
-        wo: &Vector3<NormalMapTangent>,
-        wi: &Vector3<NormalMapTangent>,
+        wo: &Vector3<ShadingNormalTangent>,
+        wi: &Vector3<ShadingNormalTangent>,
     ) -> SampledSpectrum {
         match &self.microfacet_distribution {
             Some(distrib) => self.evaluate_rough_dielectric(wo, wi, distrib),
@@ -672,7 +680,11 @@ impl DielectricBsdf {
     /// BSDF PDFを計算する。
     /// 完全鏡面の場合は常に0を返す（デルタ関数のため）。
     /// マイクロファセットの場合は実際のPDF値を計算する。
-    pub fn pdf(&self, wo: &Vector3<NormalMapTangent>, wi: &Vector3<NormalMapTangent>) -> f32 {
+    pub fn pdf(
+        &self,
+        wo: &Vector3<ShadingNormalTangent>,
+        wi: &Vector3<ShadingNormalTangent>,
+    ) -> f32 {
         match &self.microfacet_distribution {
             Some(distrib) => self.pdf_rough_dielectric(wo, wi, distrib),
             None => 0.0, // 完全鏡面の場合は0
@@ -682,8 +694,8 @@ impl DielectricBsdf {
     /// Rough dielectric BSDFの評価を行う
     fn evaluate_rough_dielectric(
         &self,
-        wo: &Vector3<NormalMapTangent>,
-        wi: &Vector3<NormalMapTangent>,
+        wo: &Vector3<ShadingNormalTangent>,
+        wi: &Vector3<ShadingNormalTangent>,
         distrib: &TrowbridgeReitzDistribution,
     ) -> SampledSpectrum {
         let cos_theta_o = cos_theta(wo);
@@ -738,8 +750,8 @@ impl DielectricBsdf {
     /// Rough dielectric BSDFのPDFを計算する
     fn pdf_rough_dielectric(
         &self,
-        wo: &Vector3<NormalMapTangent>,
-        wi: &Vector3<NormalMapTangent>,
+        wo: &Vector3<ShadingNormalTangent>,
+        wi: &Vector3<ShadingNormalTangent>,
         distrib: &TrowbridgeReitzDistribution,
     ) -> f32 {
         let cos_theta_o = cos_theta(wo);

@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use math::{Normal, ShadingTangent, Transform, Vector3};
+use math::{Normal, Transform, Vector3, VertexNormalTangent};
 use spectrum::SampledWavelengths;
 
 use crate::SpectrumParameter;
@@ -123,8 +123,8 @@ impl BsdfSurfaceMaterial for PlasticMaterial {
         &self,
         uv: glam::Vec2,
         lambda: &mut SampledWavelengths,
-        wo: &Vector3<ShadingTangent>,
-        shading_point: &SurfaceInteraction<ShadingTangent>,
+        wo: &Vector3<VertexNormalTangent>,
+        shading_point: &SurfaceInteraction<VertexNormalTangent>,
     ) -> MaterialSample {
         let eta = self.get_eta(lambda);
         // 屈折率が波長依存の場合は最初の波長以外を打ち切る
@@ -191,9 +191,9 @@ impl BsdfSurfaceMaterial for PlasticMaterial {
     fn evaluate(
         &self,
         lambda: &SampledWavelengths,
-        wo: &Vector3<ShadingTangent>,
-        wi: &Vector3<ShadingTangent>,
-        shading_point: &SurfaceInteraction<ShadingTangent>,
+        wo: &Vector3<VertexNormalTangent>,
+        wi: &Vector3<VertexNormalTangent>,
+        shading_point: &SurfaceInteraction<VertexNormalTangent>,
     ) -> MaterialEvaluationResult {
         // プラスチックの光学特性を取得
         let eta = self.get_eta(lambda).value(0); // 単一波長での屈折率を使用
@@ -241,9 +241,9 @@ impl BsdfSurfaceMaterial for PlasticMaterial {
     fn pdf(
         &self,
         lambda: &SampledWavelengths,
-        wo: &Vector3<ShadingTangent>,
-        wi: &Vector3<ShadingTangent>,
-        shading_point: &SurfaceInteraction<ShadingTangent>,
+        wo: &Vector3<VertexNormalTangent>,
+        wi: &Vector3<VertexNormalTangent>,
+        shading_point: &SurfaceInteraction<VertexNormalTangent>,
     ) -> f32 {
         // プラスチックの光学特性を取得
         let eta = self.get_eta(lambda).value(0); // 単一波長での屈折率を使用

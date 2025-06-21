@@ -1,6 +1,6 @@
 //! レンダラー間で共通して使用される関数を提供するモジュール。
 
-use math::{Ray, Render, ShadingTangent, Transform};
+use math::{Ray, Render, Transform, VertexNormalTangent};
 use scene::{
     AreaLightSampleRadiance, BsdfSurfaceMaterial, DeltaDirectionalLightIntensity,
     DeltaPointLightIntensity, SceneId, SurfaceInteraction,
@@ -27,7 +27,7 @@ pub fn evaluate_delta_point_light<Id: SceneId>(
     bsdf: &dyn BsdfSurfaceMaterial,
     lambda: &spectrum::SampledWavelengths,
     wo: &math::Vector3<Render>,
-    render_to_tangent: &Transform<Render, ShadingTangent>,
+    render_to_tangent: &Transform<Render, VertexNormalTangent>,
     light_probability: f32,
 ) -> SampledSpectrum {
     // シャドウレイを飛ばして可視性を確認
@@ -62,7 +62,7 @@ pub fn evaluate_delta_directional_light<Id: SceneId>(
     bsdf: &dyn BsdfSurfaceMaterial,
     lambda: &spectrum::SampledWavelengths,
     wo: &math::Vector3<Render>,
-    render_to_tangent: &Transform<Render, ShadingTangent>,
+    render_to_tangent: &Transform<Render, VertexNormalTangent>,
     light_probability: f32,
 ) -> SampledSpectrum {
     // シャドウレイを飛ばして可視性を確認
@@ -92,7 +92,7 @@ pub fn evaluate_area_light<Id: SceneId>(
     bsdf: &dyn BsdfSurfaceMaterial,
     lambda: &spectrum::SampledWavelengths,
     wo: &math::Vector3<Render>,
-    render_to_tangent: &Transform<Render, ShadingTangent>,
+    render_to_tangent: &Transform<Render, VertexNormalTangent>,
     light_probability: f32,
 ) -> SampledSpectrum {
     // シャドウレイを飛ばして可視性を確認
@@ -115,9 +115,9 @@ pub fn evaluate_area_light<Id: SceneId>(
 
         // 幾何項の計算
         let distance2 = distance_vector.length_squared();
-        let light_normal = render_to_tangent * radiance.light_normal; // ShadingTangent座標系に変換
-        let cos_material = material_result.normal.dot(wi_tangent).abs(); // ShadingTangent座標系で統一
-        let cos_light = light_normal.dot(-wi_tangent).abs(); // ShadingTangent座標系で統一
+        let light_normal = render_to_tangent * radiance.light_normal; // VertexNormalTangent座標系に変換
+        let cos_material = material_result.normal.dot(wi_tangent).abs(); // VertexNormalTangent座標系で統一
+        let cos_light = light_normal.dot(-wi_tangent).abs(); // VertexNormalTangent座標系で統一
         let g = cos_material * cos_light / distance2;
 
         material_result.f * &radiance.radiance * g / (pdf * light_probability)
@@ -134,7 +134,7 @@ pub fn evaluate_area_light_with_mis<Id: SceneId>(
     bsdf: &dyn BsdfSurfaceMaterial,
     lambda: &spectrum::SampledWavelengths,
     wo: &math::Vector3<Render>,
-    render_to_tangent: &Transform<Render, ShadingTangent>,
+    render_to_tangent: &Transform<Render, VertexNormalTangent>,
     light_probability: f32,
 ) -> NeeResult {
     // シャドウレイを飛ばして可視性を確認
