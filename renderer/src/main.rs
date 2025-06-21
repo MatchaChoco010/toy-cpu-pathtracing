@@ -78,6 +78,8 @@ fn main() {
         8 => scene::load_scene_8(&mut scene, &mut camera),
         9 => scene::load_scene_9(&mut scene, &mut camera),
         10 => scene::load_scene_10(&mut scene, &mut camera),
+        11 => scene::load_scene_11(&mut scene, &mut camera),
+        12 => scene::load_scene_12(&mut scene, &mut camera),
         _ => panic!("Invalid scene number"),
     };
 

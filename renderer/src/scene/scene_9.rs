@@ -20,7 +20,8 @@ pub fn load_scene_9<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut 
         surface_material: PlasticMaterial::new(
             1.8,
             NormalParameter::none(),
-            false, // Thin Film効果を無効化
+            false,                         // Thin Film効果を無効化
+            FloatParameter::constant(0.0), // 完全に滑らかなプラスチック
         ),
         transform: Transform::identity(),
     });

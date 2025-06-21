@@ -45,6 +45,9 @@ impl<'a, Id: SceneId> LightSampler<'a, Id> {
 
     /// 指定したPrimitiveIndexの光源をLightSamplerが返す確率を返す。
     pub fn probability(&self, primitive_index: &PrimitiveIndex<Id>) -> f32 {
+        if self.sample_table.is_empty() || self.sample_weight_sum == 0.0 {
+            return 0.0;
+        }
         if let Some(index) = self
             .factory
             .light_list

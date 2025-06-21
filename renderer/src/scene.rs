@@ -3,6 +3,8 @@
 pub mod scene_0;
 pub mod scene_1;
 pub mod scene_10;
+pub mod scene_11;
+pub mod scene_12;
 pub mod scene_2;
 pub mod scene_3;
 pub mod scene_4;
@@ -23,3 +25,5 @@ pub use scene_7::load_scene_7;
 pub use scene_8::load_scene_8;
 pub use scene_9::load_scene_9;
 pub use scene_10::load_scene_10;
+pub use scene_11::load_scene_11;
+pub use scene_12::load_scene_12;
