@@ -476,8 +476,8 @@ impl DielectricBsdf {
         prob: f32,
         etap: f32,
     ) -> Option<BsdfSample> {
-        let wm = if self.entering { wm } else { &-*wm };
-        let wi = refract(wo, wm, etap)?;
+        let wm_refract = if self.entering { wm } else { &-*wm };
+        let wi = refract(wo, wm_refract, etap)?;
 
         if same_hemisphere(wo, &wi) || wi.z().abs() == 0.0 {
             return None;
@@ -496,7 +496,7 @@ impl DielectricBsdf {
         let cos_theta_o = abs_cos_theta(wo);
 
         let mut ft =
-            t * d * g * (wi.dot(wm) * wo.dot(wm) / (denom * cos_theta_i * cos_theta_o)).abs();
+            t * d * g * wi.dot(wm).abs() * wo.dot(wm).abs() / (denom * cos_theta_i * cos_theta_o);
         ft /= etap * etap;
 
         Some(BsdfSample::new(
@@ -514,14 +514,14 @@ impl DielectricBsdf {
         _wm: &Vector3<ShadingNormalTangent>,
         _distrib: &TrowbridgeReitzDistribution,
         pt: f32,
-        total_prob: f32,
+        prob: f32,
         _eta: f32,
     ) -> Option<BsdfSample> {
         // Thin filmの場合は反対方向への透過
         let wi = Vector3::new(-wo.x(), -wo.y(), -wo.z());
 
         // PDF計算（thin filmの場合は特別な処理）
-        let pdf = pt / total_prob;
+        let pdf = prob;
 
         // BTDF値（thin filmの特別な処理）
         let wi_cos_n = abs_cos_theta(&wi);
@@ -702,10 +702,14 @@ impl DielectricBsdf {
         let cos_theta_i = cos_theta(wi);
 
         // 屈折率を計算
-        let (eta_i, eta_t) = if self.entering {
-            (1.0, self.eta)
+        let (eta_i, eta_t) = if self.thin_film {
+            (1.0, self.eta) // 空気(1.0) → 誘電体(n): eta = n
         } else {
-            (self.eta, 1.0)
+            if self.entering {
+                (1.0, self.eta) // 空気(1.0) → 誘電体(n): eta = n
+            } else {
+                (self.eta, 1.0) // 誘電体(n) → 空気(1.0): eta = 1/n
+            }
         };
         let eta = eta_t / eta_i;
 
@@ -722,16 +726,12 @@ impl DielectricBsdf {
         let reflect = cos_theta_i * cos_theta_o > 0.0;
 
         if reflect {
-            // 反射BRDF（pbrt-v4 rough conductor BRDFと同様）
             let d = distrib.d(&wm);
             let g = distrib.g(wo, wi);
             let f_value = d * g * fresnel / (4.0 * abs_cos_theta(wi) * abs_cos_theta(wo));
             SampledSpectrum::constant(f_value)
         } else {
-            // 透過BTDF（pbrt-v4 Equation 9.40）
-            let etap = if cos_theta_o > 0.0 { eta } else { 1.0 / eta };
-
-            let denom = (wi.dot(wm) + wo.dot(wm) / etap).powi(2);
+            let denom = (wi.dot(wm) + wo.dot(wm) / eta).powi(2);
             let d = distrib.d(&wm);
             let g = distrib.g(wo, wi);
 
@@ -739,9 +739,7 @@ impl DielectricBsdf {
             let denominator = denom * abs_cos_theta(wi) * abs_cos_theta(wo);
 
             let mut ft = numerator / denominator;
-
-            // Transport mode補正（radiance mode時はη²で割る）
-            ft /= etap * etap;
+            ft /= eta * eta;
 
             SampledSpectrum::constant(ft)
         }
@@ -758,10 +756,14 @@ impl DielectricBsdf {
         let cos_theta_i = cos_theta(wi);
 
         // 屈折率を計算
-        let (eta_i, eta_t) = if self.entering {
-            (1.0, self.eta)
+        let (eta_i, eta_t) = if self.thin_film {
+            (1.0, self.eta) // 空気(1.0) → 誘電体(n): eta = n
         } else {
-            (self.eta, 1.0)
+            if self.entering {
+                (1.0, self.eta) // 空気(1.0) → 誘電体(n): eta = n
+            } else {
+                (self.eta, 1.0) // 誘電体(n) → 空気(1.0): eta = 1/n
+            }
         };
         let eta = eta_t / eta_i;
 
@@ -786,9 +788,7 @@ impl DielectricBsdf {
             // Thin film透過PDF
             pt / (pr + pt)
         } else {
-            // 通常の透過PDF（pbrt-v4 Equation 9.37）
-            let etap = if cos_theta_o > 0.0 { eta } else { 1.0 / eta };
-            let denom = (wi.dot(wm) + wo.dot(wm) / etap).powi(2);
+            let denom = (wi.dot(wm) + wo.dot(wm) / eta).powi(2);
             let dwm_dwi = wi.dot(wm).abs() / denom;
 
             distrib.pdf(wo, &wm) * dwm_dwi * pt / (pr + pt)
