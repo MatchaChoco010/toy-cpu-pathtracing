@@ -386,12 +386,10 @@ impl DielectricBsdf {
         // 屈折率を計算
         let (eta_i, eta_t) = if self.thin_film {
             (1.0, self.eta) // 空気(1.0) → 誘電体(n): eta = n
+        } else if self.entering {
+            (1.0, self.eta) // 空気(1.0) → 誘電体(n): eta = n
         } else {
-            if self.entering {
-                (1.0, self.eta) // 空気(1.0) → 誘電体(n): eta = n
-            } else {
-                (self.eta, 1.0) // 誘電体(n) → 空気(1.0): eta = 1/n
-            }
+            (self.eta, 1.0) // 誘電体(n) → 空気(1.0): eta = 1/n
         };
         let eta = eta_t / eta_i;
 
@@ -411,14 +409,12 @@ impl DielectricBsdf {
                 // Thin film透過
                 self.sample_rough_transmission_thin_film(wo, &wm, distrib, pt, pt / (pr + pt), eta)
             }
+        } else if uc < pr / (pr + pt) {
+            // 反射
+            self.sample_rough_reflection(wo, &wm, distrib, pr, pr / (pr + pt))
         } else {
-            if uc < pr / (pr + pt) {
-                // 反射
-                self.sample_rough_reflection(wo, &wm, distrib, pr, pr / (pr + pt))
-            } else {
-                // 透過
-                self.sample_rough_transmission(wo, &wm, distrib, pt, pt / (pr + pt), eta)
-            }
+            // 透過
+            self.sample_rough_transmission(wo, &wm, distrib, pt, pt / (pr + pt), eta)
         }
     }
 
@@ -566,12 +562,10 @@ impl DielectricBsdf {
         // 屈折率を計算
         let (eta_i, eta_t) = if self.thin_film {
             (1.0, self.eta) // 空気(1.0) → 誘電体(n): eta = n
+        } else if self.entering {
+            (1.0, self.eta) // 空気(1.0) → 誘電体(n): eta = n
         } else {
-            if self.entering {
-                (1.0, self.eta) // 空気(1.0) → 誘電体(n): eta = n
-            } else {
-                (self.eta, 1.0) // 誘電体(n) → 空気(1.0): eta = 1/n
-            }
+            (self.eta, 1.0) // 誘電体(n) → 空気(1.0): eta = 1/n
         };
         let etap = eta_t / eta_i;
 
@@ -694,12 +688,10 @@ impl DielectricBsdf {
         // 屈折率を計算
         let (eta_i, eta_t) = if self.thin_film {
             (1.0, self.eta) // 空気(1.0) → 誘電体(n): eta = n
+        } else if self.entering {
+            (1.0, self.eta) // 空気(1.0) → 誘電体(n): eta = n
         } else {
-            if self.entering {
-                (1.0, self.eta) // 空気(1.0) → 誘電体(n): eta = n
-            } else {
-                (self.eta, 1.0) // 誘電体(n) → 空気(1.0): eta = 1/n
-            }
+            (self.eta, 1.0) // 誘電体(n) → 空気(1.0): eta = 1/n
         };
         let eta = eta_t / eta_i;
 
@@ -748,12 +740,10 @@ impl DielectricBsdf {
         // 屈折率を計算
         let (eta_i, eta_t) = if self.thin_film {
             (1.0, self.eta) // 空気(1.0) → 誘電体(n): eta = n
+        } else if self.entering {
+            (1.0, self.eta) // 空気(1.0) → 誘電体(n): eta = n
         } else {
-            if self.entering {
-                (1.0, self.eta) // 空気(1.0) → 誘電体(n): eta = n
-            } else {
-                (self.eta, 1.0) // 誘電体(n) → 空気(1.0): eta = 1/n
-            }
+            (self.eta, 1.0) // 誘電体(n) → 空気(1.0): eta = 1/n
         };
         let eta = eta_t / eta_i;
 
