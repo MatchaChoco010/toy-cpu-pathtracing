@@ -173,7 +173,7 @@ impl BsdfSurfaceMaterial for PlasticMaterial {
         // 透過の場合、カラーフィルタを適用
         if bsdf_result.wi.dot(wo_normalmap) < 0.0 {
             let color_spectrum = self.color.sample(uv).sample(lambda);
-            bsdf_result.f *= color_spectrum.sqrt();
+            bsdf_result.f *= color_spectrum;
         }
 
         // 結果をシェーディングタンジェント空間に変換して返す
@@ -228,7 +228,7 @@ impl BsdfSurfaceMaterial for PlasticMaterial {
         // 透過の場合、カラーフィルタを適用
         if wi_normalmap.dot(wo_normalmap) < 0.0 {
             let color_spectrum = self.color.sample(shading_point.uv).sample(lambda);
-            f *= color_spectrum.sqrt();
+            f *= color_spectrum;
         }
 
         MaterialEvaluationResult {
