@@ -3,7 +3,6 @@ import time
 
 import colour
 import torch
-from torch.optim.lr_scheduler import CosineAnnealingLR
 
 FIRST_EPOCHS = 60000
 SECOND_EPOCHS = 30000
@@ -60,12 +59,12 @@ z_nodes = smoothstep(smoothstep(idx_float / (TABLE_SIZE - 1)))
 
 # colour-science の色域キーと出力ファイル名
 SPACES = {
-    "sRGB":             "../tables//srgb_table.bin",
-    "P3-D65":           "../tables/dcip3d65_table.bin",
-    "Adobe RGB (1998)": "../tables/adobergb_table.bin",
+    # "sRGB":             "../tables//srgb_table.bin",
+    # "P3-D65":           "../tables/dcip3d65_table.bin",
+    # "Adobe RGB (1998)": "../tables/adobergb_table.bin",
     "ITU-R BT.2020":    "../tables/rec2020_table.bin",
-    "ACEScg":           "../tables/acescg_table.bin",
-    "ACES2065-1":       "../tables/aces2065_1_table.bin",
+    # "ACEScg":           "../tables/acescg_table.bin",
+    # "ACES2065-1":       "../tables/aces2065_1_table.bin",
 }
 SCALES = {
     "sRGB":             (200.0, 200.0, 20.0),
@@ -84,20 +83,20 @@ LOSS_SCALE = {
     "ACES2065-1":       (2, 12, 3),
 }
 LR = {
-    "sRGB":             (1e-4, 1e-4),
-    "P3-D65":           (2e-5, 2e-5),
-    "Adobe RGB (1998)": (2e-5, 2e-5),
-    "ITU-R BT.2020":    (1e-5, 1e-5),
-    "ACEScg":           (1e-5, 1e-5),
-    "ACES2065-1":       (1e-5, 1e-5),
+    "sRGB":             (1e-5, 1e-5),
+    "P3-D65":           (2e-6, 2e-6),
+    "Adobe RGB (1998)": (2e-6, 2e-6),
+    "ITU-R BT.2020":    (1e-6, 1e-6),
+    "ACEScg":           (1e-6, 1e-6),
+    "ACES2065-1":       (1e-6, 1e-6),
 }
 GREEN_REPEAT = {
     "sRGB":             1,
     "P3-D65":           3,
     "Adobe RGB (1998)": 3,
-    "ITU-R BT.2020":    4,
-    "ACEScg":           5,
-    "ACES2065-1":       6,
+    "ITU-R BT.2020":    3,
+    "ACEScg":           4,
+    "ACES2065-1":       5,
 }
 
 # -------------------------------------
@@ -223,7 +222,7 @@ def train_space(cs_name, out_file):
         { "params": mlp.parameters(), "lr": FIRST_LR },
         { "params": log_scale, "lr": FIRST_LR * 10 },
     ])
-    scheduler = CosineAnnealingLR(opt, FIRST_EPOCHS, eta_min=FIRST_LR / 10)
+    # scheduler = CosineAnnealingLR(opt, FIRST_EPOCHS)
 
     for i in range(1, FIRST_EPOCHS + 1):
         rand_idx  = torch.randint(0, N_POOL, (FIRST_BATCH,))
@@ -270,7 +269,7 @@ def train_space(cs_name, out_file):
         delta_dark = delta_e(pred_dark, input_dark, m_rgb2xyz, white_xyz)
 
 
-        scheduler.step()
+        # scheduler.step()
 
 
         delta_max = torch.max(torch.cat([delta_rgb, delta_green, delta_dark]))
@@ -282,7 +281,7 @@ def train_space(cs_name, out_file):
     # --- 最適化 --------------------------------
     coeff_raw = torch.nn.Parameter(mlp(rgb_target.to(torch.float32)))
     opt = torch.optim.Adam([coeff_raw], lr=SECOND_LR)
-    scheduler = CosineAnnealingLR(opt, SECOND_EPOCHS, eta_min=SECOND_LR / 10)
+    # scheduler = CosineAnnealingLR(opt, SECOND_EPOCHS)
 
     for epoch in range(1, SECOND_EPOCHS + 1):
         opt.zero_grad(set_to_none=True)
@@ -293,7 +292,7 @@ def train_space(cs_name, out_file):
 
         loss.backward()
         opt.step()
-        scheduler.step()
+        # scheduler.step()
 
         if epoch % 1000 == 0 or epoch == 1 or epoch == SECOND_EPOCHS:
             print(f"[{cs_name}] OPT epoch {epoch:5d}/{SECOND_EPOCHS}  ΔE_mean={delta.mean().item():.4f}, ΔE_max={delta.max().item():.4f}")
