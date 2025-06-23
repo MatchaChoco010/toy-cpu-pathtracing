@@ -203,7 +203,12 @@ impl<Id: SceneId> TriangleMesh<Id> {
                     }
                     let r = 1.0 / denominator;
                     let tangent = r * (edge1 * delta_uv2.y - edge2 * delta_uv1.y);
-                    let tangent = tangent.normalize();
+                    let mut tangent = tangent.normalize();
+                    if tangent.is_nan() {
+                        // タンジェントにNaNを含む場合は、法線を使用してタンジェントを生成する
+                        let normal = edge1.cross(edge2).normalize().to_normal();
+                        tangent = normal.generate_tangent();
+                    }
                     tangents.push(tangent);
                 }
             }
