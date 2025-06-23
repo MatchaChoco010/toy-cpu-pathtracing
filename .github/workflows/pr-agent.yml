@@ -9,12 +9,12 @@ jobs:
     if: >
       (
         github.event_name == 'pull_request' &&
-        github.event.pull_request.user.login == 'your-github-username'
+        github.event.pull_request.user.login == 'MatchaChoco010'
       ) ||
       (
         github.event_name == 'issue_comment' &&
         github.event.issue.pull_request &&
-        github.event.comment.user.login == 'your-github-username'
+        github.event.comment.user.login == 'MatchaChoco010'
       )
     runs-on: ubuntu-latest
     permissions:
