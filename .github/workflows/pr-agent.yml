@@ -1,0 +1,29 @@
+name: PR-Agent
+run-name: PR-Agent [${{github.event.number}}]
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+  issue_comment:
+jobs:
+  pr_agent_job:
+    if: ${{ github.event.pull_request.user.login == 'MatchaChoco010' && github.event.sender.type != 'Bot' }}
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+      contents: write
+    name: Run pr agent on every pull request, respond to user comments
+    steps:
+      - name: PR Agent action step
+        id: pragent
+        uses: qodo-ai/pr-agent@main
+        env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            anthropic.key: ${{ secrets.ANTHROPIC_KEY }}
+            config.model: "anthropic/claude-sonnet-4-20250514"
+            config.model_turbo: "anthropic/claude-sonnet-4-20250514"
+            pr_reviewer.extra_instructions: "回答は必ず全て日本語で記述してください。"
+            pr_description.extra_instructions: "回答は必ず全て日本語で記述してください。"
+            pr_code_suggestions.extra_instructions: "回答は必ず全て日本語で記述してください。"
+            pr_test.extra_instructions: "Use Japanese"
+            pr_improve_component.extra_instructions: "回答は必ず全て日本語で記述してください。"
