@@ -1,6 +1,6 @@
 //! シーン13: Cornell box with colored thin film plastic bunny (based on scene 10)
 
-use color::{ColorSrgb, tone_map::NoneToneMap};
+use color::{ColorSrgb, ColorSrgbLinear, tone_map::NoneToneMap};
 use math::{Point3, Transform, Vector3};
 use scene::{
     CreatePrimitiveDesc, EmissiveMaterial, FloatParameter, LambertMaterial, NormalParameter,
@@ -16,7 +16,7 @@ pub fn load_scene_13<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut
     // 青色のプラスチックのマテリアルでバニー
     let geom = scene.load_obj("./renderer/assets/bunny.obj");
     let color_spectrum =
-        RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.4, 0.9, 1.0));
+        RgbAlbedoSpectrum::<ColorSrgbLinear<NoneToneMap>>::new(ColorSrgbLinear::new(0.4, 0.9, 1.0));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
         surface_material: PlasticMaterial::new(
