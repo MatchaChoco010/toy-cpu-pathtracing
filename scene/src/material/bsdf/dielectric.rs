@@ -130,7 +130,6 @@ fn sample_uniform_disk_polar(u: glam::Vec2) -> glam::Vec2 {
 }
 
 /// Trowbridge-Reitz (GGX) マイクロファセット分布
-/// pbrt-v4のTrowbridgeReitzDistributionに忠実に実装
 #[derive(Debug, Clone)]
 pub struct TrowbridgeReitzDistribution {
     /// X軸方向の粗さパラメータ
@@ -151,7 +150,6 @@ impl TrowbridgeReitzDistribution {
     }
 
     /// マイクロファセット分布関数D(ωm)を計算
-    /// pbrt-v4 Equation (9.16)に基づく
     pub fn d(&self, wm: &Vector3<ShadingNormalTangent>) -> f32 {
         let tan2_theta = tan2_theta(wm);
         if tan2_theta.is_infinite() {
@@ -179,19 +177,16 @@ impl TrowbridgeReitzDistribution {
     }
 
     /// マスキング関数G1(ω)を計算
-    /// pbrt-v4 Equation (9.19)に基づく
     pub fn g1(&self, w: &Vector3<ShadingNormalTangent>) -> f32 {
         1.0 / (1.0 + self.lambda(w))
     }
 
     /// 双方向マスキング-シャドウイング関数G(ωo, ωi)を計算
-    /// pbrt-v4のSmith's approximationに基づく
     pub fn g(&self, wo: &Vector3<ShadingNormalTangent>, wi: &Vector3<ShadingNormalTangent>) -> f32 {
         1.0 / (1.0 + self.lambda(wo) + self.lambda(wi))
     }
 
     /// Λ(ω)関数を計算 (Smith's approximation用)
-    /// pbrt-v4 Equation (9.20)に基づく
     fn lambda(&self, w: &Vector3<ShadingNormalTangent>) -> f32 {
         let tan2_theta = tan2_theta(w);
         if tan2_theta.is_infinite() {
@@ -207,7 +202,6 @@ impl TrowbridgeReitzDistribution {
     }
 
     /// 可視法線分布D_ω(ωm)を計算
-    /// pbrt-v4 Equation (9.23)に基づく
     pub fn d_visible(
         &self,
         w: &Vector3<ShadingNormalTangent>,
@@ -217,7 +211,6 @@ impl TrowbridgeReitzDistribution {
     }
 
     /// 可視法線分布からマイクロファセット法線をサンプリング
-    /// pbrt-v4のellipsoid projection methodに基づく
     pub fn sample_wm(
         &self,
         w: &Vector3<ShadingNormalTangent>,
@@ -240,7 +233,6 @@ impl TrowbridgeReitzDistribution {
         // 単位円板上の一様分布点を生成
         let mut p = sample_uniform_disk_polar(u);
 
-        // pbrt-v4準拠の半球射影変形
         let h = (1.0 - p.x * p.x).sqrt();
         let lerp_t = (1.0 + wh.z()) / 2.0;
         p.y = h * (1.0 - lerp_t) + lerp_t * p.y;
@@ -333,7 +325,6 @@ impl DielectricBsdf {
         }
     }
 
-    /// Generalized half vectorを計算する（pbrt-v4 Equation 9.34に基づく）
     ///
     /// # Arguments
     /// - `wo` - 出射方向
@@ -489,7 +480,6 @@ impl DielectricBsdf {
         // PDF計算
         let pdf = distrib.pdf(wo, wm) * dwm_dwi * prob;
 
-        // pbrt-v4準拠のBTDF値計算
         let d = distrib.d(wm);
         let g = distrib.g(wo, &wi);
         let cos_theta_i = abs_cos_theta(&wi);

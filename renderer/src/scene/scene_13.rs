@@ -15,8 +15,10 @@ pub fn load_scene_13<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut
 
     // 青色のプラスチックのマテリアルでバニー
     let geom = scene.load_obj("./renderer/assets/bunny.obj");
+    // let color_spectrum =
+    //     RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.4, 0.9, 1.0));
     let color_spectrum =
-        RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.4, 0.9, 1.0));
+        RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(1.0, 1.0, 1.0));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
         surface_material: PlasticMaterial::new(
