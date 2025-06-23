@@ -171,7 +171,7 @@ impl BsdfSurfaceMaterial for PlasticMaterial {
         };
 
         // 透過の場合、カラーフィルタを適用
-        if bsdf_result.wi.z() < 0.0 {
+        if bsdf_result.wi.dot(wo_normalmap) < 0.0 {
             let color_spectrum = self.color.sample(uv).sample(lambda);
             bsdf_result.f *= color_spectrum;
         }
@@ -226,7 +226,7 @@ impl BsdfSurfaceMaterial for PlasticMaterial {
         let mut f = dielectric_bsdf.evaluate(&wo_normalmap, &wi_normalmap);
 
         // 透過の場合、カラーフィルタを適用
-        if wi_normalmap.z() < 0.0 {
+        if wi_normalmap.dot(wo_normalmap) < 0.0 {
             let color_spectrum = self.color.sample(shading_point.uv).sample(lambda);
             f *= color_spectrum;
         }
