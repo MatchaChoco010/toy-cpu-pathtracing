@@ -84,6 +84,12 @@ impl<C: CoordinateSystem> Vector3<C> {
         }
     }
 
+    /// NaNを含むかどうかを判定する。
+    #[inline(always)]
+    pub fn is_nan(&self) -> bool {
+        self.vec.x.is_nan() || self.vec.y.is_nan() || self.vec.z.is_nan()
+    }
+
     /// このVectorをNormalに変換する。
     #[inline(always)]
     pub fn to_normal(&self) -> crate::Normal<C> {
