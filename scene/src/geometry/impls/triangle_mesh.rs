@@ -193,33 +193,20 @@ impl<Id: SceneId> TriangleMesh<Id> {
                     let delta_uv2 = uv2 - uv0;
 
                     let denominator = delta_uv1.x * delta_uv2.y - delta_uv1.y * delta_uv2.x;
-                    if denominator.abs() < f32::EPSILON {
-                        // UVの差分がゼロの場合は、UVからタンジェントを生成できないので、
+                    let r = 1.0 / denominator;
+                    let mut tangent = r * (edge1 * delta_uv2.y - edge2 * delta_uv1.y);
+                    tangent = tangent.normalize();
+                    if denominator.abs() < 1e-6 || tangent.is_nan() {
+                        // UVが重なっている場合などでタンジェントにNaNを含む場合は、
                         // 法線を使用してタンジェントを生成する
                         let cross_product = edge1.cross(edge2);
-                        if cross_product.length_squared() < f32::EPSILON {
+                        if cross_product.length_squared() < 1e-12 {
                             // normalも計算出来ない縮退した三角形ではデフォルトのタンジェントを使用
-                            tangents.push(Vector3::new(1.0, 0.0, 0.0));
-                            continue;
+                            tangent = Vector3::new(1.0, 0.0, 0.0);
+                        } else {
+                            let normal = cross_product.normalize().to_normal();
+                            tangent = normal.generate_tangent();
                         }
-                        let normal = cross_product.normalize().to_normal();
-                        let tangent = normal.generate_tangent();
-                        tangents.push(tangent);
-                        continue;
-                    }
-                    let r = 1.0 / denominator;
-                    let tangent = r * (edge1 * delta_uv2.y - edge2 * delta_uv1.y);
-                    let mut tangent = tangent.normalize();
-                    if tangent.is_nan() {
-                        // タンジェントにNaNを含む場合は、法線を使用してタンジェントを生成する
-                        let cross_product = edge1.cross(edge2);
-                        if cross_product.length_squared() < f32::EPSILON {
-                            // normalも計算出来ない縮退した三角形ではデフォルトのタンジェントを使用
-                            tangents.push(Vector3::new(1.0, 0.0, 0.0));
-                            continue;
-                        }
-                        let normal = cross_product.normalize().to_normal();
-                        tangent = normal.generate_tangent();
                     }
                     tangents.push(tangent);
                 }
