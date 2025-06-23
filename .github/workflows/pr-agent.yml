@@ -6,7 +6,16 @@ on:
   issue_comment:
 jobs:
   pr_agent_job:
-    if: ${{ github.event.pull_request.user.login == 'MatchaChoco010' && github.event.sender.type != 'Bot' }}
+    if: >
+      (
+        github.event_name == 'pull_request' &&
+        github.event.pull_request.user.login == 'your-github-username'
+      ) ||
+      (
+        github.event_name == 'issue_comment' &&
+        github.event.issue.pull_request &&
+        github.event.comment.user.login == 'your-github-username'
+      )
     runs-on: ubuntu-latest
     permissions:
       issues: write
