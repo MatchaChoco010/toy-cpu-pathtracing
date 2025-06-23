@@ -195,9 +195,9 @@ impl<Id: SceneId> TriangleMesh<Id> {
                     let denominator = delta_uv1.x * delta_uv2.y - delta_uv1.y * delta_uv2.x;
                     let r = 1.0 / denominator;
                     let mut tangent = r * (edge1 * delta_uv2.y - edge2 * delta_uv1.y);
-                    tangent = tangent.normalize();
-                    if denominator.abs() < 1e-6 || tangent.is_nan() {
-                        // UVが重なっている場合などでタンジェントにNaNを含む場合は、
+
+                    if denominator.abs() < 1e-6 {
+                        // UVが重なっている場合などは、
                         // 法線を使用してタンジェントを生成する
                         let cross_product = edge1.cross(edge2);
                         if cross_product.length_squared() < 1e-12 {
@@ -206,6 +206,19 @@ impl<Id: SceneId> TriangleMesh<Id> {
                         } else {
                             let normal = cross_product.normalize().to_normal();
                             tangent = normal.generate_tangent();
+                        }
+                    } else {
+                        tangent = tangent.normalize();
+                        if tangent.is_nan() {
+                            // NaNが発生した場合はフォールバックする
+                            let cross_product = edge1.cross(edge2);
+                            if cross_product.length_squared() < 1e-12 {
+                                // normalも計算出来ない縮退した三角形ではデフォルトのタンジェントを使用
+                                tangent = Vector3::new(1.0, 0.0, 0.0);
+                            } else {
+                                let normal = cross_product.normalize().to_normal();
+                                tangent = normal.generate_tangent();
+                            }
                         }
                     }
                     tangents.push(tangent);
