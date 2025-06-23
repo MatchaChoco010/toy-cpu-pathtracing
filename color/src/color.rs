@@ -143,6 +143,10 @@ impl<G: ColorGamut> ColorImpl<G, NoneToneMap, Linear> {
 /// 色域がsRGBでEOTFがsRGBのガンマ関数。
 pub type ColorSrgb<T> = ColorImpl<GamutSrgb, T, GammaSrgb>;
 
+/// LinearなガンマのsRGB色空間の色を表す構造体。
+/// 色域がsRGBでEOTFがLinearのガンマ関数。
+pub type ColorSrgbLinear<T> = ColorImpl<GamutSrgb, T, Linear>;
+
 /// Display P3色空間の色を表す構造体。
 /// 色域がDisplay P3でEOTFはsRGBのガンマ関数。
 pub type ColorDisplayP3<T> = ColorImpl<GamutDciP3D65, T, GammaSrgb>;
