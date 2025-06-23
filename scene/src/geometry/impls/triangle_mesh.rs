@@ -196,7 +196,13 @@ impl<Id: SceneId> TriangleMesh<Id> {
                     if denominator.abs() < f32::EPSILON {
                         // UVの差分がゼロの場合は、UVからタンジェントを生成できないので、
                         // 法線を使用してタンジェントを生成する
-                        let normal = edge1.cross(edge2).normalize().to_normal();
+                        let cross_product = edge1.cross(edge2);
+                        if cross_product.length_squared() < f32::EPSILON {
+                            // normalも計算出来ない縮退した三角形ではデフォルトのタンジェントを使用
+                            tangents.push(Vector3::new(1.0, 0.0, 0.0));
+                            continue;
+                        }
+                        let normal = cross_product.normalize().to_normal();
                         let tangent = normal.generate_tangent();
                         tangents.push(tangent);
                         continue;
@@ -206,7 +212,13 @@ impl<Id: SceneId> TriangleMesh<Id> {
                     let mut tangent = tangent.normalize();
                     if tangent.is_nan() {
                         // タンジェントにNaNを含む場合は、法線を使用してタンジェントを生成する
-                        let normal = edge1.cross(edge2).normalize().to_normal();
+                        let cross_product = edge1.cross(edge2);
+                        if cross_product.length_squared() < f32::EPSILON {
+                            // normalも計算出来ない縮退した三角形ではデフォルトのタンジェントを使用
+                            tangents.push(Vector3::new(1.0, 0.0, 0.0));
+                            continue;
+                        }
+                        let normal = cross_product.normalize().to_normal();
                         tangent = normal.generate_tangent();
                     }
                     tangents.push(tangent);
