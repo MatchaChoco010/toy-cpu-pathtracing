@@ -5,7 +5,8 @@ use std::{marker::PhantomData, sync::OnceLock};
 
 use color::{
     Color, ColorAces2065_1, ColorAcesCg, ColorAdobeRGB, ColorDisplayP3, ColorImpl, ColorP3D65,
-    ColorRec709, ColorRec2020, ColorSrgb, eotf::Eotf, gamut::ColorGamut, tone_map::NoneToneMap,
+    ColorRec709, ColorRec2020, ColorSrgb, ColorSrgbLinear, eotf::Eotf, gamut::ColorGamut,
+    tone_map::NoneToneMap,
 };
 use rgb_to_spec::*;
 
@@ -203,6 +204,14 @@ macro_rules! get_table {
 // 各色空間のFromトレイト実装
 impl From<ColorSrgb<NoneToneMap>> for RgbSigmoidPolynomial<ColorSrgb<NoneToneMap>> {
     fn from(color: ColorSrgb<NoneToneMap>) -> Self {
+        let table = get_table!(SRGB_DATA, SRGB_TABLE);
+        let [c0, c1, c2] = table.get(color);
+        Self::new(c0, c1, c2)
+    }
+}
+
+impl From<ColorSrgbLinear<NoneToneMap>> for RgbSigmoidPolynomial<ColorSrgbLinear<NoneToneMap>> {
+    fn from(color: ColorSrgbLinear<NoneToneMap>) -> Self {
         let table = get_table!(SRGB_DATA, SRGB_TABLE);
         let [c0, c1, c2] = table.get(color);
         Self::new(c0, c1, c2)

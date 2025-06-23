@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use color::{
     Color, ColorAces2065_1, ColorAcesCg, ColorAdobeRGB, ColorDisplayP3, ColorP3D65, ColorRec709,
-    ColorRec2020, ColorSrgb, tone_map,
+    ColorRec2020, ColorSrgb, ColorSrgbLinear, tone_map::NoneToneMap,
 };
 
 use crate::{
@@ -42,11 +42,12 @@ macro_rules! impl_rgb_unbounded_spectrum {
         }
     };
 }
-impl_rgb_unbounded_spectrum!(ColorSrgb<tone_map::NoneToneMap>);
-impl_rgb_unbounded_spectrum!(ColorDisplayP3<tone_map::NoneToneMap>);
-impl_rgb_unbounded_spectrum!(ColorP3D65<tone_map::NoneToneMap>);
-impl_rgb_unbounded_spectrum!(ColorAdobeRGB<tone_map::NoneToneMap>);
-impl_rgb_unbounded_spectrum!(ColorRec709<tone_map::NoneToneMap>);
-impl_rgb_unbounded_spectrum!(ColorRec2020<tone_map::NoneToneMap>);
-impl_rgb_unbounded_spectrum!(ColorAcesCg<tone_map::NoneToneMap>);
-impl_rgb_unbounded_spectrum!(ColorAces2065_1<tone_map::NoneToneMap>);
+impl_rgb_unbounded_spectrum!(ColorSrgb<NoneToneMap>);
+impl_rgb_unbounded_spectrum!(ColorSrgbLinear<NoneToneMap>);
+impl_rgb_unbounded_spectrum!(ColorDisplayP3<NoneToneMap>);
+impl_rgb_unbounded_spectrum!(ColorP3D65<NoneToneMap>);
+impl_rgb_unbounded_spectrum!(ColorAdobeRGB<NoneToneMap>);
+impl_rgb_unbounded_spectrum!(ColorRec709<NoneToneMap>);
+impl_rgb_unbounded_spectrum!(ColorRec2020<NoneToneMap>);
+impl_rgb_unbounded_spectrum!(ColorAcesCg<NoneToneMap>);
+impl_rgb_unbounded_spectrum!(ColorAces2065_1<NoneToneMap>);
