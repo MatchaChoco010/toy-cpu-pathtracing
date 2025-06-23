@@ -192,9 +192,35 @@ impl<Id: SceneId> TriangleMesh<Id> {
                     let delta_uv1 = uv1 - uv0;
                     let delta_uv2 = uv2 - uv0;
 
-                    let r = 1.0 / (delta_uv1.x * delta_uv2.y - delta_uv1.y * delta_uv2.x);
-                    let tangent = r * (edge1 * delta_uv2.y - edge2 * delta_uv1.y);
-                    let tangent = tangent.normalize();
+                    let denominator = delta_uv1.x * delta_uv2.y - delta_uv1.y * delta_uv2.x;
+                    let r = 1.0 / denominator;
+                    let mut tangent = r * (edge1 * delta_uv2.y - edge2 * delta_uv1.y);
+
+                    fn fallback_tangent(
+                        edge1: Vector3<Local>,
+                        edge2: Vector3<Local>,
+                    ) -> Vector3<Local> {
+                        let cross_product = edge1.cross(edge2);
+                        if cross_product.length_squared() < 1e-12 {
+                            // normalも計算出来ない縮退した三角形ではデフォルトのタンジェントを使用
+                            Vector3::new(1.0, 0.0, 0.0)
+                        } else {
+                            let normal = cross_product.normalize().to_normal();
+                            normal.generate_tangent()
+                        }
+                    }
+
+                    if denominator.abs() < 1e-6 {
+                        // UVが重なっている場合などは、
+                        // 法線を使用してタンジェントを生成する
+                        tangent = fallback_tangent(edge1, edge2);
+                    } else {
+                        tangent = tangent.normalize();
+                        if tangent.is_nan() {
+                            // NaNが発生した場合はフォールバックする
+                            tangent = fallback_tangent(edge1, edge2);
+                        }
+                    }
                     tangents.push(tangent);
                 }
             }
