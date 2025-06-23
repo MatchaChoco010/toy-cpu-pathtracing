@@ -193,7 +193,7 @@ impl<Id: SceneId> TriangleMesh<Id> {
                     let delta_uv2 = uv2 - uv0;
 
                     let denominator = delta_uv1.x * delta_uv2.y - delta_uv1.y * delta_uv2.x;
-                    if denominator == 0.0 {
+                    if denominator.abs() < f32::EPSILON {
                         // UVの差分がゼロの場合は、UVからタンジェントを生成できないので、
                         // 法線を使用してタンジェントを生成する
                         let normal = edge1.cross(edge2).normalize().to_normal();
