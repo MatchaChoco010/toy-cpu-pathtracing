@@ -192,17 +192,19 @@ impl<Id: SceneId> TriangleMesh<Id> {
                     let delta_uv1 = uv1 - uv0;
                     let delta_uv2 = uv2 - uv0;
 
-                    let r = 1.0 / (delta_uv1.x * delta_uv2.y - delta_uv1.y * delta_uv2.x);
-                    let tangent = r * (edge1 * delta_uv2.y - edge2 * delta_uv1.y);
-                    let tangent = tangent.normalize();
-                    if tangent.is_nan() {
-                        // NaNが発生した場合は、法線を使用してタンジェントを生成する
-                        let normal = normals[i[0] as usize];
+                    let denominator = delta_uv1.x * delta_uv2.y - delta_uv1.y * delta_uv2.x;
+                    if denominator == 0.0 {
+                        // UVの差分がゼロの場合は、UVからタンジェントを生成できないので、
+                        // 法線を使用してタンジェントを生成する
+                        let normal = edge1.cross(edge2).normalize().to_normal();
                         let tangent = normal.generate_tangent();
                         tangents.push(tangent);
-                    } else {
-                        tangents.push(tangent);
+                        continue;
                     }
+                    let r = 1.0 / denominator;
+                    let tangent = r * (edge1 * delta_uv2.y - edge2 * delta_uv1.y);
+                    let tangent = tangent.normalize();
+                    tangents.push(tangent);
                 }
             }
         }
