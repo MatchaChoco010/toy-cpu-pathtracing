@@ -5,6 +5,74 @@ use spectrum::SampledSpectrum;
 
 use super::{BsdfSample, BsdfSampleType};
 
+/// 球面座標計算
+fn cos2_theta(w: &Vector3<ShadingNormalTangent>) -> f32 {
+    w.z() * w.z()
+}
+
+fn tan2_theta(w: &Vector3<ShadingNormalTangent>) -> f32 {
+    let cos2 = cos2_theta(w);
+    if cos2 == 0.0 {
+        f32::INFINITY
+    } else {
+        (1.0 - cos2) / cos2
+    }
+}
+
+fn cos_phi(w: &Vector3<ShadingNormalTangent>) -> f32 {
+    let sin_theta = (1.0 - cos2_theta(w)).max(0.0).sqrt();
+    if sin_theta == 0.0 {
+        1.0
+    } else {
+        (w.x() / sin_theta).clamp(-1.0, 1.0)
+    }
+}
+
+fn sin_phi(w: &Vector3<ShadingNormalTangent>) -> f32 {
+    let sin_theta = (1.0 - cos2_theta(w)).max(0.0).sqrt();
+    if sin_theta == 0.0 {
+        0.0
+    } else {
+        (w.y() / sin_theta).clamp(-1.0, 1.0)
+    }
+}
+
+/// ハーフベクトルを計算
+fn half_vector(
+    wo: &Vector3<ShadingNormalTangent>,
+    wi: &Vector3<ShadingNormalTangent>,
+) -> Option<Vector3<ShadingNormalTangent>> {
+    let wm = *wo + *wi;
+    if wm.length_squared() == 0.0 {
+        None
+    } else {
+        Some(wm.normalize())
+    }
+}
+
+/// 反射ベクトルを計算
+fn reflect(
+    wo: &Vector3<ShadingNormalTangent>,
+    wm: &Vector3<ShadingNormalTangent>,
+) -> Vector3<ShadingNormalTangent> {
+    *wm * (2.0 * wo.dot(wm)) - *wo
+}
+
+/// 二つのベクトルが同じ半球にあるかチェック
+fn same_hemisphere(
+    wo: &Vector3<ShadingNormalTangent>,
+    wi: &Vector3<ShadingNormalTangent>,
+) -> bool {
+    wo.z() * wi.z() > 0.0
+}
+
+/// 極座標を使った単位円盤のサンプリング
+fn sample_uniform_disk_polar(u: glam::Vec2) -> glam::Vec2 {
+    let r = u.x.sqrt();
+    let theta = 2.0 * std::f32::consts::PI * u.y;
+    glam::Vec2::new(r * theta.cos(), r * theta.sin())
+}
+
 /// 簡単な複素数実装
 #[derive(Debug, Clone, Copy)]
 struct Complex {
@@ -127,28 +195,15 @@ pub struct ConductorBsdf {
     alpha_y: f32,
 }
 impl ConductorBsdf {
-    /// 完全鏡面反射用のConductorBsdfを作成する。
-    ///
-    /// # Arguments
-    /// - `eta` - 屈折率の実部（スペクトル依存）
-    /// - `k` - 屈折率の虚部（消散係数、スペクトル依存）
-    pub fn new(eta: SampledSpectrum, k: SampledSpectrum) -> Self {
-        Self {
-            eta,
-            k,
-            alpha_x: 0.0,
-            alpha_y: 0.0,
-        }
-    }
-
-    /// マイクロファセット用のConductorBsdfを作成する。
+    /// ConductorBsdfを作成する。
+    /// alpha_x, alpha_yが0.0に近い場合は完全鏡面反射となる。
     ///
     /// # Arguments
     /// - `eta` - 屈折率の実部（スペクトル依存）
     /// - `k` - 屈折率の虚部（消散係数、スペクトル依存）
     /// - `alpha_x` - X方向のroughness parameter
     /// - `alpha_y` - Y方向のroughness parameter
-    pub fn new_microfacet(
+    pub fn new(
         eta: SampledSpectrum,
         k: SampledSpectrum,
         alpha_x: f32,
@@ -169,28 +224,28 @@ impl ConductorBsdf {
 
     /// Trowbridge-Reitz分布関数 D(ωm)を計算する。
     fn microfacet_distribution(&self, wm: &Vector3<ShadingNormalTangent>) -> f32 {
-        let tan2_theta = Self::tan2_theta(wm);
+        let tan2_theta = tan2_theta(wm);
         if tan2_theta.is_infinite() {
             return 0.0;
         }
 
-        let cos4_theta = Self::cos2_theta(wm).powi(2);
+        let cos4_theta = cos2_theta(wm).powi(2);
         let e = tan2_theta
-            * (Self::cos_phi(wm).powi(2) / self.alpha_x.powi(2)
-                + Self::sin_phi(wm).powi(2) / self.alpha_y.powi(2));
+            * (cos_phi(wm).powi(2) / self.alpha_x.powi(2)
+                + sin_phi(wm).powi(2) / self.alpha_y.powi(2));
 
         1.0 / (std::f32::consts::PI * self.alpha_x * self.alpha_y * cos4_theta * (1.0 + e).powi(2))
     }
 
     /// Lambda関数を計算する。
     fn lambda(&self, w: &Vector3<ShadingNormalTangent>) -> f32 {
-        let tan2_theta = Self::tan2_theta(w);
+        let tan2_theta = tan2_theta(w);
         if tan2_theta.is_infinite() {
             return 0.0;
         }
 
         let alpha2 =
-            (Self::cos_phi(w) * self.alpha_x).powi(2) + (Self::sin_phi(w) * self.alpha_y).powi(2);
+            (cos_phi(w) * self.alpha_x).powi(2) + (sin_phi(w) * self.alpha_y).powi(2);
         ((1.0 + alpha2 * tan2_theta).sqrt() - 1.0) / 2.0
     }
 
@@ -221,37 +276,6 @@ impl ConductorBsdf {
         self.masking_g1(w) / cos_theta_w * self.microfacet_distribution(wm) * w.dot(wm).abs()
     }
 
-    // 球面座標系ヘルパー関数群
-    fn cos2_theta(w: &Vector3<ShadingNormalTangent>) -> f32 {
-        w.z() * w.z()
-    }
-
-    fn tan2_theta(w: &Vector3<ShadingNormalTangent>) -> f32 {
-        let cos2 = Self::cos2_theta(w);
-        if cos2 == 0.0 {
-            f32::INFINITY
-        } else {
-            (1.0 - cos2) / cos2
-        }
-    }
-
-    fn cos_phi(w: &Vector3<ShadingNormalTangent>) -> f32 {
-        let sin_theta = (1.0 - Self::cos2_theta(w)).max(0.0).sqrt();
-        if sin_theta == 0.0 {
-            1.0
-        } else {
-            (w.x() / sin_theta).clamp(-1.0, 1.0)
-        }
-    }
-
-    fn sin_phi(w: &Vector3<ShadingNormalTangent>) -> f32 {
-        let sin_theta = (1.0 - Self::cos2_theta(w)).max(0.0).sqrt();
-        if sin_theta == 0.0 {
-            0.0
-        } else {
-            (w.y() / sin_theta).clamp(-1.0, 1.0)
-        }
-    }
 
     /// 可視法線をサンプリングする。
     fn sample_visible_normal(
@@ -275,7 +299,7 @@ impl ConductorBsdf {
         let t2 = wh.cross(t1);
 
         // 単位円盤上に均等分布点を生成
-        let p = Self::sample_uniform_disk_polar(u);
+        let p = sample_uniform_disk_polar(u);
 
         // 半球投影を可視法線サンプリング用にワープ
         let h = (1.0 - p.x * p.x).max(0.0).sqrt();
@@ -294,25 +318,6 @@ impl ConductorBsdf {
         .normalize()
     }
 
-    /// 極座標を使った単位円盤のサンプリング。
-    fn sample_uniform_disk_polar(u: glam::Vec2) -> glam::Vec2 {
-        let r = u.x.sqrt();
-        let theta = 2.0 * std::f32::consts::PI * u.y;
-        glam::Vec2::new(r * theta.cos(), r * theta.sin())
-    }
-
-    /// ハーフベクトルを計算する。
-    fn half_vector(
-        wo: &Vector3<ShadingNormalTangent>,
-        wi: &Vector3<ShadingNormalTangent>,
-    ) -> Option<Vector3<ShadingNormalTangent>> {
-        let wm = *wo + *wi;
-        if wm.length_squared() == 0.0 {
-            None
-        } else {
-            Some(wm.normalize())
-        }
-    }
 
     /// BSDF方向サンプリングを行う。
     /// 表面の粗さに応じて完全鏡面またはマイクロファセットサンプリングを使用。
@@ -364,10 +369,10 @@ impl ConductorBsdf {
         let wm = self.sample_visible_normal(wo, uv);
 
         // 鏡面反射方向を計算
-        let wi = Self::reflect(wo, &wm);
+        let wi = reflect(wo, &wm);
 
         // 同じ半球にあるかチェック
-        if !Self::same_hemisphere(wo, &wi) {
+        if !same_hemisphere(wo, &wi) {
             return None;
         }
 
@@ -405,21 +410,6 @@ impl ConductorBsdf {
         fresnel * distribution * masking_shadowing / (4.0 * cos_theta_i * cos_theta_o)
     }
 
-    /// 反射ベクトルを計算する。
-    fn reflect(
-        wo: &Vector3<ShadingNormalTangent>,
-        wm: &Vector3<ShadingNormalTangent>,
-    ) -> Vector3<ShadingNormalTangent> {
-        *wm * (2.0 * wo.dot(wm)) - *wo
-    }
-
-    /// 二つのベクトルが同じ半球にあるかチェック。
-    fn same_hemisphere(
-        wo: &Vector3<ShadingNormalTangent>,
-        wi: &Vector3<ShadingNormalTangent>,
-    ) -> bool {
-        wo.z() * wi.z() > 0.0
-    }
 
     /// BSDF値を評価する。
     /// 完全鏡面の場合は0、マイクロファセットの場合はTorrance-Sparrow BRDFを返す。
@@ -451,12 +441,12 @@ impl ConductorBsdf {
         }
 
         // 同じ半球にあるかチェック
-        if !Self::same_hemisphere(wo, wi) {
+        if !same_hemisphere(wo, wi) {
             return SampledSpectrum::zero();
         }
 
         // ハーフベクトルを計算
-        let wm = match Self::half_vector(wo, wi) {
+        let wm = match half_vector(wo, wi) {
             Some(wm) => wm,
             None => return SampledSpectrum::zero(),
         };
@@ -487,12 +477,12 @@ impl ConductorBsdf {
         wi: &Vector3<ShadingNormalTangent>,
     ) -> f32 {
         // 同じ半球にあるかチェック
-        if !Self::same_hemisphere(wo, wi) {
+        if !same_hemisphere(wo, wi) {
             return 0.0;
         }
 
         // ハーフベクトルを計算
-        let wm = match Self::half_vector(wo, wi) {
+        let wm = match half_vector(wo, wi) {
             Some(wm) => wm,
             None => return 0.0,
         };
@@ -509,11 +499,4 @@ impl ConductorBsdf {
         visible_normal_pdf / jacobian
     }
 
-    /// Fresnel反射率を計算する。
-    ///
-    /// # Arguments
-    /// - `cos_theta_i` - 入射角のコサイン値
-    pub fn fresnel(&self, cos_theta_i: f32) -> SampledSpectrum {
-        fresnel_complex(cos_theta_i, &self.eta, &self.k)
-    }
 }
