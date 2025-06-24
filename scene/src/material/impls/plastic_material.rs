@@ -21,8 +21,8 @@ pub struct PlasticMaterial {
     color: SpectrumParameter,
     /// ノーマルマップパラメータ
     normal: NormalParameter,
-    /// Thin Filmフラグ
-    thin_film: bool,
+    /// Thin Surfaceフラグ
+    thin_surface: bool,
     /// 表面の粗さパラメータ
     roughness: FloatParameter,
 }
@@ -33,20 +33,20 @@ impl PlasticMaterial {
     /// # Arguments
     /// - `eta` - 屈折率（定数値）
     /// - `normal` - ノーマルマップパラメータ
-    /// - `thin_film` - Thin Filmフラグ
+    /// - `thin_surface` - Thin Surfaceフラグ
     /// - `roughness` - 表面の粗さパラメータ（0.0で完全鏡面）
     pub fn new(
         eta: f32,
         color: SpectrumParameter,
         normal: NormalParameter,
-        thin_film: bool,
+        thin_surface: bool,
         roughness: FloatParameter,
     ) -> Material {
         Arc::new(Self {
             eta,
             color,
             normal,
-            thin_film,
+            thin_surface,
             roughness,
         })
     }
@@ -55,18 +55,18 @@ impl PlasticMaterial {
     ///
     /// # Arguments
     /// - `normal` - ノーマルマップパラメータ
-    /// - `thin_film` - Thin Filmフラグ
+    /// - `thin_surface` - Thin Surfaceフラグ
     /// - `roughness` - 表面の粗さパラメータ（0.0で完全鏡面）
     pub fn new_generic(
         normal: NormalParameter,
-        thin_film: bool,
+        thin_surface: bool,
         roughness: FloatParameter,
     ) -> Material {
         Self::new(
             1.5,
             SpectrumParameter::Constant(ConstantSpectrum::new(1.0)),
             normal,
-            thin_film,
+            thin_surface,
             roughness,
         )
     }
@@ -76,15 +76,15 @@ impl PlasticMaterial {
     /// # Arguments
     /// - `color` - 色パラメータ
     /// - `normal` - ノーマルマップパラメータ
-    /// - `thin_film` - Thin Filmフラグ
+    /// - `thin_surface` - Thin Surfaceフラグ
     /// - `roughness` - 表面の粗さパラメータ（0.0で完全鏡面）
     pub fn new_acrylic(
         color: SpectrumParameter,
         normal: NormalParameter,
-        thin_film: bool,
+        thin_surface: bool,
         roughness: FloatParameter,
     ) -> Material {
-        Self::new(1.49, color, normal, thin_film, roughness)
+        Self::new(1.49, color, normal, thin_surface, roughness)
     }
 
     /// ポリカーボネート用のPlasticMaterialを作成する（屈折率 1.58）。
@@ -92,15 +92,15 @@ impl PlasticMaterial {
     /// # Arguments
     /// - `color` - 色パラメータ
     /// - `normal` - ノーマルマップパラメータ
-    /// - `thin_film` - Thin Filmフラグ
+    /// - `thin_surface` - Thin Surfaceフラグ
     /// - `roughness` - 表面の粗さパラメータ（0.0で完全鏡面）
     pub fn new_polycarbonate(
         color: SpectrumParameter,
         normal: NormalParameter,
-        thin_film: bool,
+        thin_surface: bool,
         roughness: FloatParameter,
     ) -> Material {
-        Self::new(1.58, color, normal, thin_film, roughness)
+        Self::new(1.58, color, normal, thin_surface, roughness)
     }
 
     /// 定数屈折率をスペクトラムに変換する。
@@ -160,7 +160,8 @@ impl BsdfSurfaceMaterial for PlasticMaterial {
 
         // 誘電体BSDFサンプリング（ノーマルマップタンジェント空間で実行）
         let entering = shading_point.normal.dot(wo) > 0.0;
-        let dielectric_bsdf = DielectricBsdf::new(eta, entering, self.thin_film, roughness_value);
+        let dielectric_bsdf =
+            DielectricBsdf::new(eta, entering, self.thin_surface, roughness_value);
         let mut bsdf_result = match dielectric_bsdf.sample(&wo_normalmap, uv, uc) {
             Some(result) => result,
             None => {
@@ -221,7 +222,8 @@ impl BsdfSurfaceMaterial for PlasticMaterial {
 
         // 誘電体BSDF評価（ノーマルマップタンジェント空間で実行）
         let entering = shading_point.normal.dot(wo) > 0.0;
-        let dielectric_bsdf = DielectricBsdf::new(eta, entering, self.thin_film, roughness_value);
+        let dielectric_bsdf =
+            DielectricBsdf::new(eta, entering, self.thin_surface, roughness_value);
         let mut f = dielectric_bsdf.evaluate(&wo_normalmap, &wi_normalmap);
 
         // 透過の場合、カラーフィルタを適用
@@ -271,7 +273,8 @@ impl BsdfSurfaceMaterial for PlasticMaterial {
 
         // 誘電体BSDF PDF計算（ノーマルマップタンジェント空間で実行）
         let entering = shading_point.normal.dot(wo) > 0.0;
-        let dielectric_bsdf = DielectricBsdf::new(eta, entering, self.thin_film, roughness_value);
+        let dielectric_bsdf =
+            DielectricBsdf::new(eta, entering, self.thin_surface, roughness_value);
         dielectric_bsdf.pdf(&wo_normalmap, &wi_normalmap)
     }
 
