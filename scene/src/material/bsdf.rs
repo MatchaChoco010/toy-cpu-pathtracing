@@ -16,10 +16,14 @@ use math::ShadingNormalTangent;
 pub enum BsdfSampleType {
     /// 拡散反射（例：Lambert BSDF）
     Diffuse,
-    /// 完全鏡面反射・透過（例：デルタ関数BSDF）
-    Specular,
+    /// 完全鏡面反射（例：デルタ関数BSDF）
+    SpecularReflection,
+    /// 完全鏡面透過（例：デルタ関数BSDF）
+    SpecularTransmission,
     /// 光沢反射（例：マイクロファセットBSDF）
-    Glossy,
+    GlossyReflection,
+    /// 光沢透過（例：マイクロファセットBSDF）
+    GlossyTransmission,
 }
 
 /// 散乱モードを表す列挙型。
@@ -62,11 +66,19 @@ impl BsdfSample {
 
     /// Specularのサンプリングかどうか。
     pub fn is_specular(&self) -> bool {
-        self.sample_type == BsdfSampleType::Specular
+        matches!(
+            self.sample_type,
+            BsdfSampleType::SpecularReflection | BsdfSampleType::SpecularTransmission
+        )
     }
 
     /// 非Specularのサンプリングかどうか。
     pub fn is_non_specular(&self) -> bool {
-        self.sample_type == BsdfSampleType::Diffuse || self.sample_type == BsdfSampleType::Glossy
+        matches!(
+            self.sample_type,
+            BsdfSampleType::Diffuse
+                | BsdfSampleType::GlossyReflection
+                | BsdfSampleType::GlossyTransmission
+        )
     }
 }
