@@ -41,10 +41,12 @@ impl<G: ColorGamut, T: ToneMap, E: Eotf> Sensor<G, T, E> {
         // XYZを計算する
         let mut xyz = glam::Vec3::ZERO;
         
+        let pdf = lambda.pdf();
+        
         // 最初の波長以外が終了している場合は、最初の波長の値のみを使用
         if lambda.is_secondary_terminated() {
             let lambda_val = lambda.lambda(0);
-            let s_val = s.value(0);
+            let s_val = s.value(0) / pdf.value(0) / N_SPECTRUM_SAMPLES as f32;
             
             let x_val = presets::x().value(lambda_val);
             let y_val = presets::y().value(lambda_val);
@@ -57,7 +59,7 @@ impl<G: ColorGamut, T: ToneMap, E: Eotf> Sensor<G, T, E> {
             // 全波長サンプルを使用
             for i in 0..N_SPECTRUM_SAMPLES {
                 let lambda_val = lambda.lambda(i);
-                let s_val = s.value(i);
+                let s_val = s.value(i) / pdf.value(i) / N_SPECTRUM_SAMPLES as f32;
                 
                 let x_val = presets::x().value(lambda_val);
                 let y_val = presets::y().value(lambda_val);
