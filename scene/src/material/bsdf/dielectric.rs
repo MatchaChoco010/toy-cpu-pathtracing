@@ -6,68 +6,10 @@ use spectrum::{SampledSpectrum, SampledWavelengths};
 use crate::material::{
     bsdf::{BsdfSample, BsdfSampleType},
     common::{
-        abs_cos_theta, cos_phi, cos_theta, cos2_theta, reflect, same_hemisphere,
-        sample_uniform_disk_polar, sin_phi, tan2_theta,
+        abs_cos_theta, cos_phi, cos_theta, cos2_theta, fresnel_dielectric, refract, reflect, 
+        same_hemisphere, sample_uniform_disk_polar, sin_phi, tan2_theta,
     },
 };
-
-/// 誘電体のフレネル反射率を計算する。
-///
-/// # Arguments
-/// - `cos_theta_i` - 入射角のコサイン値
-/// - `eta` - 屈折率の比（透過側/入射側）
-pub fn fresnel_dielectric(cos_theta_i: f32, eta: f32) -> f32 {
-    // Snellの法則で透過角を計算
-    let sin2_theta_i = 1.0 - cos_theta_i * cos_theta_i;
-    let sin2_theta_t = sin2_theta_i / (eta * eta);
-
-    // 全反射の場合
-    if sin2_theta_t >= 1.0 {
-        return 1.0;
-    }
-
-    let cos_theta_t = (1.0 - sin2_theta_t).max(0.0).sqrt();
-
-    // フレネル方程式
-    let r_parl = (eta * cos_theta_i - cos_theta_t) / (eta * cos_theta_i + cos_theta_t);
-    let r_perp = (cos_theta_i - eta * cos_theta_t) / (cos_theta_i + eta * cos_theta_t);
-
-    (r_parl * r_parl + r_perp * r_perp) * 0.5
-}
-
-/// 屈折方向を計算する。
-///
-/// # Arguments
-/// - `wi` - 入射方向
-/// - `n` - 法線方向
-/// - `eta` - 屈折率の比（透過側/入射側）
-///
-/// # Returns
-/// - `Some(wt)` - 屈折方向
-/// - `None` - 全反射の場合
-pub fn refract(
-    wi: &Vector3<ShadingNormalTangent>,
-    n: &Vector3<ShadingNormalTangent>,
-    eta: f32,
-) -> Option<Vector3<ShadingNormalTangent>> {
-    let cos_theta_i = n.dot(wi);
-    let sin2_theta_i = (1.0 - cos_theta_i * cos_theta_i).max(0.0);
-    let sin2_theta_t = sin2_theta_i / (eta * eta);
-
-    // 全反射チェック
-    if sin2_theta_t >= 1.0 {
-        return None;
-    }
-
-    let cos_theta_t = (1.0 - sin2_theta_t).max(0.0).sqrt();
-    let wt = -*wi / eta + n * (cos_theta_i / eta - cos_theta_t);
-    let wt_length_sq = wt.length_squared();
-    if wt_length_sq < 1e-12 {
-        None
-    } else {
-        Some(wt / wt_length_sq.sqrt())
-    }
-}
 
 /// 誘電体のBSDF計算を行う構造体。
 /// 完全鏡面とマイクロファセットをサポート。
