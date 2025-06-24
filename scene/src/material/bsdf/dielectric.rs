@@ -1,7 +1,7 @@
 //! 誘電体BSDFの実装。
 
 use math::{ShadingNormalTangent, Vector3};
-use spectrum::SampledSpectrum;
+use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::material::{
     bsdf::{BsdfSample, BsdfSampleType},
@@ -72,8 +72,8 @@ pub fn refract(
 /// 誘電体のBSDF計算を行う構造体。
 /// 完全鏡面とマイクロファセットをサポート。
 pub struct DielectricBsdf {
-    /// 屈折率
-    eta: f32,
+    /// 屈折率（スペクトル依存）
+    eta: SampledSpectrum,
     /// 入射方向が面の外側に向いているかどうか
     entering: bool,
     /// Thin surfaceフラグ
@@ -186,12 +186,25 @@ impl DielectricBsdf {
     /// alpha_x, alpha_yが0に限りなく近い場合は完全鏡面、それ以外はマイクロファセット。
     ///
     /// # Arguments
-    /// - `eta` - 屈折率
+    /// - `eta` - 屈折率（スペクトル依存）
     /// - `entering` - 入射方向が面の外側に向いているかどうか
     /// - `thin_surface` - Thin surfaceフラグ
     /// - `alpha_x` - X方向のroughness parameter
     /// - `alpha_y` - Y方向のroughness parameter
-    pub fn new(eta: f32, entering: bool, thin_surface: bool, alpha_x: f32, alpha_y: f32) -> Self {
+    pub fn new(
+        eta: SampledSpectrum,
+        entering: bool,
+        thin_surface: bool,
+        alpha_x: f32,
+        alpha_y: f32,
+    ) -> Self {
+        // 屈折率の妥当性チェック：0の場合は1.0にフォールバック
+        let eta = if eta.value(0) == 0.0 {
+            SampledSpectrum::constant(1.0)
+        } else {
+            eta
+        };
+
         Self {
             eta,
             entering,
@@ -208,12 +221,19 @@ impl DielectricBsdf {
     /// - `wo` - 出射方向（ノーマルマップ接空間）
     /// - `uv` - ランダムサンプル
     /// - `uc` - 反射/透過選択用の追加ランダム値
+    /// - `lambda` - 波長サンプリング情報
     pub fn sample(
         &self,
         wo: &Vector3<ShadingNormalTangent>,
         uv: glam::Vec2,
         uc: f32,
+        lambda: &mut SampledWavelengths,
     ) -> Option<BsdfSample> {
+        // 屈折率が波長依存の場合は最初の波長以外を打ち切る
+        if !self.eta.is_constant() {
+            lambda.terminate_secondary();
+        }
+
         let wo_cos_n = wo.z();
         if wo_cos_n == 0.0 {
             return None;
@@ -284,12 +304,13 @@ impl DielectricBsdf {
         let wm = self.sample_visible_normal(wo, u);
 
         // 屈折率を計算
+        let eta_val = self.eta.value(0);
         let (eta_i, eta_t) = if self.thin_surface {
-            (1.0, self.eta) // 空気(1.0) → 誘電体(n): eta = n
+            (1.0, eta_val) // 空気(1.0) → 誘電体(n): eta = n
         } else if self.entering {
-            (1.0, self.eta) // 空気(1.0) → 誘電体(n): eta = n
+            (1.0, eta_val) // 空気(1.0) → 誘電体(n): eta = n
         } else {
-            (self.eta, 1.0) // 誘電体(n) → 空気(1.0): eta = 1/n
+            (eta_val, 1.0) // 誘電体(n) → 空気(1.0): eta = 1/n
         };
         let eta = eta_t / eta_i;
 
@@ -457,12 +478,13 @@ impl DielectricBsdf {
         };
 
         // 屈折率を計算
+        let eta_val = self.eta.value(0);
         let (eta_i, eta_t) = if self.thin_surface {
-            (1.0, self.eta) // 空気(1.0) → 誘電体(n): eta = n
+            (1.0, eta_val) // 空気(1.0) → 誘電体(n): eta = n
         } else if self.entering {
-            (1.0, self.eta) // 空気(1.0) → 誘電体(n): eta = n
+            (1.0, eta_val) // 空気(1.0) → 誘電体(n): eta = n
         } else {
-            (self.eta, 1.0) // 誘電体(n) → 空気(1.0): eta = 1/n
+            (eta_val, 1.0) // 誘電体(n) → 空気(1.0): eta = 1/n
         };
         let etap = eta_t / eta_i;
 
@@ -584,12 +606,13 @@ impl DielectricBsdf {
         let cos_theta_i = cos_theta(wi);
 
         // 屈折率を計算
+        let eta_val = self.eta.value(0);
         let (eta_i, eta_t) = if self.thin_surface {
-            (1.0, self.eta) // 空気(1.0) → 誘電体(n): eta = n
+            (1.0, eta_val) // 空気(1.0) → 誘電体(n): eta = n
         } else if self.entering {
-            (1.0, self.eta) // 空気(1.0) → 誘電体(n): eta = n
+            (1.0, eta_val) // 空気(1.0) → 誘電体(n): eta = n
         } else {
-            (self.eta, 1.0) // 誘電体(n) → 空気(1.0): eta = 1/n
+            (eta_val, 1.0) // 誘電体(n) → 空気(1.0): eta = 1/n
         };
         let eta = eta_t / eta_i;
 
@@ -635,12 +658,13 @@ impl DielectricBsdf {
         let cos_theta_i = cos_theta(wi);
 
         // 屈折率を計算
+        let eta_val = self.eta.value(0);
         let (eta_i, eta_t) = if self.thin_surface {
-            (1.0, self.eta) // 空気(1.0) → 誘電体(n): eta = n
+            (1.0, eta_val) // 空気(1.0) → 誘電体(n): eta = n
         } else if self.entering {
-            (1.0, self.eta) // 空気(1.0) → 誘電体(n): eta = n
+            (1.0, eta_val) // 空気(1.0) → 誘電体(n): eta = n
         } else {
-            (self.eta, 1.0) // 誘電体(n) → 空気(1.0): eta = 1/n
+            (eta_val, 1.0) // 誘電体(n) → 空気(1.0): eta = 1/n
         };
         let eta = eta_t / eta_i;
 
