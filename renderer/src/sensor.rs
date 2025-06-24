@@ -10,8 +10,8 @@ const N_SPECTRUM_DENSELY_SAMPLES: usize = (830.0 - 360.0) as usize;
 
 /// 寄与を蓄積するセンサー構造体。
 pub struct Sensor<G: ColorGamut, T: ToneMap, E: Eotf> {
-    /// 密にサンプリングされたスペクトル配列（オリジナルと同じ）
-    densely_sampled_spectrum: [f32; N_SPECTRUM_DENSELY_SAMPLES],
+    /// 露光量適用済みのRGB値を蓄積
+    accumulated_rgb: glam::Vec3,
     /// 露光量。
     exposure: f32,
     /// サンプル数。
@@ -28,7 +28,7 @@ impl<G: ColorGamut, T: ToneMap, E: Eotf> Sensor<G, T, E> {
     /// 新しいセンサーを作成する。
     pub fn new(spp: u32, exposure: f32, tone_map: T) -> Self {
         Self {
-            densely_sampled_spectrum: [0.0; N_SPECTRUM_DENSELY_SAMPLES],
+            accumulated_rgb: glam::Vec3::ZERO,
             exposure,
             spp,
             tone_map,
@@ -46,6 +46,8 @@ impl<G: ColorGamut, T: ToneMap, E: Eotf> Sensor<G, T, E> {
             N_SPECTRUM_SAMPLES
         };
 
+        let mut xyz = glam::Vec3::ZERO;
+
         for index in 0..count {
             let l = lambda.lambda(index);
             let mut i = (l - LAMBDA_MIN).floor() as usize;
@@ -55,32 +57,30 @@ impl<G: ColorGamut, T: ToneMap, E: Eotf> Sensor<G, T, E> {
                 i
             };
 
-            self.densely_sampled_spectrum[i] +=
+            let normalized_contribution =
                 s.value(index) / pdf.value(index) / N_SPECTRUM_SAMPLES as f32;
+
+            let lambda_for_cmf = LAMBDA_MIN + i as f32;
+            xyz.x += normalized_contribution * presets::x().value(lambda_for_cmf);
+            xyz.y += normalized_contribution * presets::y().value(lambda_for_cmf);
+            xyz.z += normalized_contribution * presets::z().value(lambda_for_cmf);
         }
+
+        // 直接ガンマ行列でXYZからRGBに変換（クリッピングなし）
+        let gamut = G::new();
+        let rgb = gamut.xyz_to_rgb() * xyz;
+
+        // exposureを適用してからRGB値を蓄積
+        let exposed_rgb = rgb * self.exposure;
+        self.accumulated_rgb += exposed_rgb;
     }
 
     /// 最終的なRGB値を取得する。
     pub fn to_rgb(&self) -> ColorImpl<G, T, E> {
-        let mut averaged_spectrum = self.densely_sampled_spectrum;
-        for i in 0..N_SPECTRUM_DENSELY_SAMPLES {
-            averaged_spectrum[i] /= self.spp as f32;
-        }
-
-        let mut xyz = glam::Vec3::ZERO;
-        for i in 0..N_SPECTRUM_DENSELY_SAMPLES {
-            let lambda = LAMBDA_MIN + i as f32;
-            let spectrum_value = averaged_spectrum[i];
-
-            xyz.x += spectrum_value * presets::x().value(lambda);
-            xyz.y += spectrum_value * presets::y().value(lambda);
-            xyz.z += spectrum_value * presets::z().value(lambda);
-        }
-
-        let xyz_color = color::Xyz::from(xyz);
-        let rgb_color = xyz_color.xyz_to_rgb::<G>();
-        let exposed_color = rgb_color.apply_exposure(self.exposure);
-        let tone_mapped = exposed_color.apply_tone_map(self.tone_map.clone());
+        let averaged_rgb = self.accumulated_rgb / self.spp as f32;
+        let clipped_rgb = averaged_rgb.max(glam::Vec3::ZERO);
+        let rgb_color = ColorImpl::from_rgb(clipped_rgb);
+        let tone_mapped = rgb_color.apply_tone_map(self.tone_map.clone());
 
         tone_mapped.apply_eotf::<E>()
     }
