@@ -74,11 +74,6 @@ impl BsdfSample {
 
     /// 非Specularのサンプリングかどうか。
     pub fn is_non_specular(&self) -> bool {
-        matches!(
-            self.sample_type,
-            BsdfSampleType::Diffuse
-                | BsdfSampleType::GlossyReflection
-                | BsdfSampleType::GlossyTransmission
-        )
+        !self.is_specular()
     }
 }
