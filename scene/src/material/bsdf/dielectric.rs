@@ -271,8 +271,8 @@ pub struct DielectricBsdf {
     eta: f32,
     /// 入射方向が面の外側に向いているかどうか
     entering: bool,
-    /// Thin filmフラグ
-    thin_film: bool,
+    /// Thin surfaceフラグ
+    thin_surface: bool,
     /// マイクロファセット分布（Noneの場合は完全鏡面）
     microfacet_distribution: Option<TrowbridgeReitzDistribution>,
 }
@@ -283,9 +283,9 @@ impl DielectricBsdf {
     /// # Arguments
     /// - `eta` - 屈折率
     /// - `entering` - 入射方向が面の外側に向いているかどうか
-    /// - `thin_film` - Thin filmフラグ
+    /// - `thin_surface` - Thin surfaceフラグ
     /// - `roughness` - 表面粗さパラメータ（0.0で完全鏡面）
-    pub fn new(eta: f32, entering: bool, thin_film: bool, roughness: f32) -> Self {
+    pub fn new(eta: f32, entering: bool, thin_surface: bool, roughness: f32) -> Self {
         let distribution = TrowbridgeReitzDistribution::isotropic(roughness);
         let microfacet_distribution = if eta == 1.0 || distribution.effectively_smooth() {
             None
@@ -296,7 +296,7 @@ impl DielectricBsdf {
         Self {
             eta,
             entering,
-            thin_film,
+            thin_surface,
             microfacet_distribution,
         }
     }
@@ -384,7 +384,7 @@ impl DielectricBsdf {
         let wm = distrib.sample_wm(wo, u);
 
         // 屈折率を計算
-        let (eta_i, eta_t) = if self.thin_film {
+        let (eta_i, eta_t) = if self.thin_surface {
             (1.0, self.eta) // 空気(1.0) → 誘電体(n): eta = n
         } else if self.entering {
             (1.0, self.eta) // 空気(1.0) → 誘電体(n): eta = n
@@ -399,15 +399,22 @@ impl DielectricBsdf {
         let pr = fresnel;
         let pt = 1.0 - pr;
 
-        if self.thin_film {
-            let (pr, pt) = self.calculate_thin_film_coefficients(fresnel);
+        if self.thin_surface {
+            let (pr, pt) = self.calculate_thin_surface_coefficients(fresnel);
 
             if uc < pr / (pr + pt) {
                 // 反射
                 self.sample_rough_reflection(wo, &wm, distrib, pr, pr / (pr + pt))
             } else {
-                // Thin film透過
-                self.sample_rough_transmission_thin_film(wo, &wm, distrib, pt, pt / (pr + pt), eta)
+                // Thin surface透過
+                self.sample_rough_transmission_thin_surface(
+                    wo,
+                    &wm,
+                    distrib,
+                    pt,
+                    pt / (pr + pt),
+                    eta,
+                )
             }
         } else if uc < pr / (pr + pt) {
             // 反射
@@ -493,8 +500,8 @@ impl DielectricBsdf {
         ))
     }
 
-    /// Rough dielectric thin film透過のサンプリング
-    fn sample_rough_transmission_thin_film(
+    /// Rough dielectric thin surface透過のサンプリング
+    fn sample_rough_transmission_thin_surface(
         &self,
         wo: &Vector3<ShadingNormalTangent>,
         _wm: &Vector3<ShadingNormalTangent>,
@@ -503,13 +510,13 @@ impl DielectricBsdf {
         prob: f32,
         _eta: f32,
     ) -> Option<BsdfSample> {
-        // Thin filmの場合は反対方向への透過
+        // Thin surfaceの場合は反対方向への透過
         let wi = Vector3::new(-wo.x(), -wo.y(), -wo.z());
 
-        // PDF計算（thin filmの場合は特別な処理）
+        // PDF計算（thin surfaceの場合は特別な処理）
         let pdf = prob;
 
-        // BTDF値（thin filmの特別な処理）
+        // BTDF値（thin surfaceの特別な処理）
         let wi_cos_n = abs_cos_theta(&wi);
         let f_value = pt / wi_cos_n;
 
@@ -521,14 +528,14 @@ impl DielectricBsdf {
         ))
     }
 
-    /// Thin filmの累積反射・透過係数を計算する。
+    /// Thin surfaceの累積反射・透過係数を計算する。
     ///
     /// # Arguments
     /// - `fresnel` - 通常のフレネル反射率
     ///
     /// # Returns
     /// - `(cumulative_reflection, cumulative_transmission)` - 累積反射率と累積透過率
-    fn calculate_thin_film_coefficients(&self, fresnel: f32) -> (f32, f32) {
+    fn calculate_thin_surface_coefficients(&self, fresnel: f32) -> (f32, f32) {
         // Geometric seriesを使った累積反射率の計算
         // R' = R + (T²R) / (1 - R²)
         let r = fresnel;
@@ -560,7 +567,7 @@ impl DielectricBsdf {
         };
 
         // 屈折率を計算
-        let (eta_i, eta_t) = if self.thin_film {
+        let (eta_i, eta_t) = if self.thin_surface {
             (1.0, self.eta) // 空気(1.0) → 誘電体(n): eta = n
         } else if self.entering {
             (1.0, self.eta) // 空気(1.0) → 誘電体(n): eta = n
@@ -572,13 +579,13 @@ impl DielectricBsdf {
         // フレネル反射率を計算
         let fresnel = fresnel_dielectric(wo_cos_n.abs(), etap);
 
-        if self.thin_film {
-            // Thin filmの場合は累積係数を計算
-            let (pr, pt) = self.calculate_thin_film_coefficients(fresnel);
+        if self.thin_surface {
+            // Thin surfaceの場合は累積係数を計算
+            let (pr, pt) = self.calculate_thin_surface_coefficients(fresnel);
 
             // 反射か透過かをサンプリング
             if uv.x < pr / (pr + pt) {
-                // 反射（thin film/通常誘電体ともに同じ鏡面反射方向）
+                // 反射（thin surface/通常誘電体ともに同じ鏡面反射方向）
                 let wi = Vector3::new(-wo.x(), -wo.y(), wo.z());
                 if wo_cos_n.abs() < 1e-6 {
                     return None;
@@ -591,14 +598,14 @@ impl DielectricBsdf {
                     BsdfSampleType::Specular,
                 ))
             } else {
-                // Thin film: 透過方向は入射方向の反対（wi = -wo）
+                // Thin surface: 透過方向は入射方向の反対（wi = -wo）
                 let wi = Vector3::new(-wo.x(), -wo.y(), -wo.z());
                 let wi_cos_n = wi.z();
                 if wi_cos_n == 0.0 {
                     return None;
                 }
 
-                // Thin filmの場合、放射輝度のスケーリングは不要（同じ媒質に戻るため）
+                // Thin surfaceの場合、放射輝度のスケーリングは不要（同じ媒質に戻るため）
                 let f = SampledSpectrum::constant(pt / wi_cos_n.abs());
                 Some(BsdfSample::new(
                     f,
@@ -613,7 +620,7 @@ impl DielectricBsdf {
 
             // 反射か透過かをサンプリング
             if uv.x < pr / (pr + pt) {
-                // 反射（thin film/通常誘電体ともに同じ鏡面反射方向）
+                // 反射（thin surface/通常誘電体ともに同じ鏡面反射方向）
                 let wi = Vector3::new(-wo.x(), -wo.y(), wo.z());
                 if wo_cos_n.abs() < 1e-6 {
                     return None;
@@ -686,7 +693,7 @@ impl DielectricBsdf {
         let cos_theta_i = cos_theta(wi);
 
         // 屈折率を計算
-        let (eta_i, eta_t) = if self.thin_film {
+        let (eta_i, eta_t) = if self.thin_surface {
             (1.0, self.eta) // 空気(1.0) → 誘電体(n): eta = n
         } else if self.entering {
             (1.0, self.eta) // 空気(1.0) → 誘電体(n): eta = n
@@ -738,7 +745,7 @@ impl DielectricBsdf {
         let cos_theta_i = cos_theta(wi);
 
         // 屈折率を計算
-        let (eta_i, eta_t) = if self.thin_film {
+        let (eta_i, eta_t) = if self.thin_surface {
             (1.0, self.eta) // 空気(1.0) → 誘電体(n): eta = n
         } else if self.entering {
             (1.0, self.eta) // 空気(1.0) → 誘電体(n): eta = n
@@ -764,8 +771,8 @@ impl DielectricBsdf {
         if reflect {
             // 反射PDF
             distrib.pdf(wo, &wm) / (4.0 * wo.dot(wm).abs()) * pr / (pr + pt)
-        } else if self.thin_film {
-            // Thin film透過PDF
+        } else if self.thin_surface {
+            // Thin surface透過PDF
             pt / (pr + pt)
         } else {
             let denom = (wi.dot(wm) + wo.dot(wm) / eta).powi(2);

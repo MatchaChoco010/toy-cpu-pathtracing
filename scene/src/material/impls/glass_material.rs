@@ -36,8 +36,8 @@ pub struct GlassMaterial {
     glass_type: GlassType,
     /// ノーマルマップパラメータ
     normal: NormalParameter,
-    /// Thin Filmフラグ
-    thin_film: bool,
+    /// Thin Surfaceフラグ
+    thin_surface: bool,
     /// 表面の粗さパラメータ
     roughness: FloatParameter,
 }
@@ -49,18 +49,18 @@ impl GlassMaterial {
     /// # Arguments
     /// - `glass_type` - ガラスの種類
     /// - `normal` - ノーマルマップパラメータ
-    /// - `thin_film` - Thin Filmフラグ
+    /// - `thin_surface` - Thin Surfaceフラグ
     /// - `roughness` - 表面の粗さパラメータ（0.0で完全鏡面）
     pub fn new(
         glass_type: GlassType,
         normal: NormalParameter,
-        thin_film: bool,
+        thin_surface: bool,
         roughness: FloatParameter,
     ) -> Material {
         Arc::new(Self {
             glass_type,
             normal,
-            thin_film,
+            thin_surface,
             roughness,
         })
     }
@@ -130,7 +130,8 @@ impl BsdfSurfaceMaterial for GlassMaterial {
 
         // 誘電体BSDFサンプリング（ノーマルマップタンジェント空間で実行）
         let entering = shading_point.normal.dot(wo) > 0.0;
-        let dielectric_bsdf = DielectricBsdf::new(eta, entering, self.thin_film, roughness_value);
+        let dielectric_bsdf =
+            DielectricBsdf::new(eta, entering, self.thin_surface, roughness_value);
         let bsdf_result = match dielectric_bsdf.sample(&wo_normalmap, uv, uc) {
             Some(result) => result,
             None => {
@@ -185,7 +186,8 @@ impl BsdfSurfaceMaterial for GlassMaterial {
 
         // 誘電体BSDF評価（ノーマルマップタンジェント空間で実行）
         let entering = shading_point.normal.dot(wo) > 0.0;
-        let dielectric_bsdf = DielectricBsdf::new(eta, entering, self.thin_film, roughness_value);
+        let dielectric_bsdf =
+            DielectricBsdf::new(eta, entering, self.thin_surface, roughness_value);
         let f = dielectric_bsdf.evaluate(&wo_normalmap, &wi_normalmap);
 
         MaterialEvaluationResult {
@@ -229,7 +231,8 @@ impl BsdfSurfaceMaterial for GlassMaterial {
 
         // 誘電体BSDF PDF計算（ノーマルマップタンジェント空間で実行）
         let entering = shading_point.normal.dot(wo) > 0.0;
-        let dielectric_bsdf = DielectricBsdf::new(eta, entering, self.thin_film, roughness_value);
+        let dielectric_bsdf =
+            DielectricBsdf::new(eta, entering, self.thin_surface, roughness_value);
         dielectric_bsdf.pdf(&wo_normalmap, &wi_normalmap)
     }
 
