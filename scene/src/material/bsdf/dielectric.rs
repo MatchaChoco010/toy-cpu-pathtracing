@@ -129,140 +129,7 @@ fn sample_uniform_disk_polar(u: glam::Vec2) -> glam::Vec2 {
     glam::Vec2::new(r * theta.cos(), r * theta.sin())
 }
 
-/// Trowbridge-Reitz (GGX) マイクロファセット分布
-#[derive(Debug, Clone)]
-pub struct TrowbridgeReitzDistribution {
-    /// X軸方向の粗さパラメータ
-    alpha_x: f32,
-    /// Y軸方向の粗さパラメータ
-    alpha_y: f32,
-}
 
-impl TrowbridgeReitzDistribution {
-    /// 新しいTrowbridge-Reitz分布を作成
-    pub fn new(alpha_x: f32, alpha_y: f32) -> Self {
-        Self { alpha_x, alpha_y }
-    }
-
-    /// 等方性分布を作成
-    pub fn isotropic(alpha: f32) -> Self {
-        Self::new(alpha, alpha)
-    }
-
-    /// マイクロファセット分布関数D(ωm)を計算
-    pub fn d(&self, wm: &Vector3<ShadingNormalTangent>) -> f32 {
-        let tan2_theta = tan2_theta(wm);
-        if tan2_theta.is_infinite() {
-            return 0.0;
-        }
-
-        let cos4_theta = cos2_theta(wm) * cos2_theta(wm);
-        if cos4_theta == 0.0 {
-            return 0.0;
-        }
-
-        let cos_phi = cos_phi(wm);
-        let sin_phi = sin_phi(wm);
-
-        let e = tan2_theta
-            * ((cos_phi / self.alpha_x) * (cos_phi / self.alpha_x)
-                + (sin_phi / self.alpha_y) * (sin_phi / self.alpha_y));
-
-        1.0 / (std::f32::consts::PI
-            * self.alpha_x
-            * self.alpha_y
-            * cos4_theta
-            * (1.0 + e)
-            * (1.0 + e))
-    }
-
-    /// マスキング関数G1(ω)を計算
-    pub fn g1(&self, w: &Vector3<ShadingNormalTangent>) -> f32 {
-        1.0 / (1.0 + self.lambda(w))
-    }
-
-    /// 双方向マスキング-シャドウイング関数G(ωo, ωi)を計算
-    pub fn g(&self, wo: &Vector3<ShadingNormalTangent>, wi: &Vector3<ShadingNormalTangent>) -> f32 {
-        1.0 / (1.0 + self.lambda(wo) + self.lambda(wi))
-    }
-
-    /// Λ(ω)関数を計算 (Smith's approximation用)
-    fn lambda(&self, w: &Vector3<ShadingNormalTangent>) -> f32 {
-        let tan2_theta = tan2_theta(w);
-        if tan2_theta.is_infinite() {
-            return 0.0;
-        }
-
-        let cos_phi = cos_phi(w);
-        let sin_phi = sin_phi(w);
-        let alpha2 = (cos_phi * self.alpha_x) * (cos_phi * self.alpha_x)
-            + (sin_phi * self.alpha_y) * (sin_phi * self.alpha_y);
-
-        ((1.0 + alpha2 * tan2_theta).sqrt() - 1.0) / 2.0
-    }
-
-    /// 可視法線分布D_ω(ωm)を計算
-    pub fn d_visible(
-        &self,
-        w: &Vector3<ShadingNormalTangent>,
-        wm: &Vector3<ShadingNormalTangent>,
-    ) -> f32 {
-        self.g1(w) / abs_cos_theta(w) * self.d(wm) * w.dot(wm).abs()
-    }
-
-    /// 可視法線分布からマイクロファセット法線をサンプリング
-    pub fn sample_wm(
-        &self,
-        w: &Vector3<ShadingNormalTangent>,
-        u: glam::Vec2,
-    ) -> Vector3<ShadingNormalTangent> {
-        // 半球構成への変換
-        let wh: Vector3<ShadingNormalTangent> =
-            Vector3::new(self.alpha_x * w.x(), self.alpha_y * w.y(), w.z()).normalize();
-
-        let wh = if wh.z() < 0.0 { -wh } else { wh };
-
-        // 可視法線サンプリング用の直交基底を構築
-        let t1: Vector3<ShadingNormalTangent> = if wh.z() < 0.99999 {
-            Vector3::new(0.0, 0.0, 1.0).cross(wh).normalize()
-        } else {
-            Vector3::new(1.0, 0.0, 0.0)
-        };
-        let t2 = wh.cross(t1);
-
-        // 単位円板上の一様分布点を生成
-        let mut p = sample_uniform_disk_polar(u);
-
-        let h = (1.0 - p.x * p.x).sqrt();
-        let lerp_t = (1.0 + wh.z()) / 2.0;
-        p.y = h * (1.0 - lerp_t) + lerp_t * p.y;
-
-        // 半球への再射影と楕円体構成への変換
-        let pz = (1.0 - p.x * p.x - p.y * p.y).max(0.0).sqrt();
-        let nh = t1 * p.x + t2 * p.y + wh * pz;
-
-        Vector3::<ShadingNormalTangent>::new(
-            self.alpha_x * nh.x(),
-            self.alpha_y * nh.y(),
-            nh.z().max(1e-6),
-        )
-        .normalize()
-    }
-
-    /// サンプリングPDFを計算
-    pub fn pdf(
-        &self,
-        w: &Vector3<ShadingNormalTangent>,
-        wm: &Vector3<ShadingNormalTangent>,
-    ) -> f32 {
-        self.d_visible(w, wm)
-    }
-
-    /// 事実上滑らかとみなせるかどうかを判定
-    pub fn effectively_smooth(&self) -> bool {
-        self.alpha_x.max(self.alpha_y) < 1e-3
-    }
-}
 
 /// 誘電体のBSDF計算を行う構造体。
 /// 完全鏡面とマイクロファセットをサポート。
@@ -273,31 +140,127 @@ pub struct DielectricBsdf {
     entering: bool,
     /// Thin surfaceフラグ
     thin_surface: bool,
-    /// マイクロファセット分布（Noneの場合は完全鏡面）
-    microfacet_distribution: Option<TrowbridgeReitzDistribution>,
+    /// X方向のroughness parameter (α_x)
+    alpha_x: f32,
+    /// Y方向のroughness parameter (α_y)
+    alpha_y: f32,
 }
 impl DielectricBsdf {
+    /// 表面が事実上滑らかかどうかを判定する。
+    fn effectively_smooth(&self) -> bool {
+        self.alpha_x.max(self.alpha_y) < 1e-3
+    }
+
+    /// Trowbridge-Reitz分布関数 D(ωm)を計算する。
+    fn microfacet_distribution(&self, wm: &Vector3<ShadingNormalTangent>) -> f32 {
+        let tan2_theta = tan2_theta(wm);
+        if tan2_theta.is_infinite() {
+            return 0.0;
+        }
+
+        let cos4_theta = cos2_theta(wm).powi(2);
+        let e = tan2_theta
+            * (cos_phi(wm).powi(2) / self.alpha_x.powi(2)
+                + sin_phi(wm).powi(2) / self.alpha_y.powi(2));
+
+        1.0 / (std::f32::consts::PI * self.alpha_x * self.alpha_y * cos4_theta * (1.0 + e).powi(2))
+    }
+
+    /// Lambda関数を計算する。
+    fn lambda(&self, w: &Vector3<ShadingNormalTangent>) -> f32 {
+        let tan2_theta = tan2_theta(w);
+        if tan2_theta.is_infinite() {
+            return 0.0;
+        }
+
+        let alpha2 =
+            (cos_phi(w) * self.alpha_x).powi(2) + (sin_phi(w) * self.alpha_y).powi(2);
+        ((1.0 + alpha2 * tan2_theta).sqrt() - 1.0) / 2.0
+    }
+
+    /// 単方向マスキング関数 G1(ω)を計算する。
+    fn masking_g1(&self, w: &Vector3<ShadingNormalTangent>) -> f32 {
+        1.0 / (1.0 + self.lambda(w))
+    }
+
+    /// 双方向マスキング・シャドウイング関数 G(ωo, ωi)を計算する。
+    fn masking_shadowing_g(
+        &self,
+        wo: &Vector3<ShadingNormalTangent>,
+        wi: &Vector3<ShadingNormalTangent>,
+    ) -> f32 {
+        1.0 / (1.0 + self.lambda(wo) + self.lambda(wi))
+    }
+
+    /// 可視法線分布 D_ω(ωm)を計算する。
+    fn visible_normal_distribution(
+        &self,
+        w: &Vector3<ShadingNormalTangent>,
+        wm: &Vector3<ShadingNormalTangent>,
+    ) -> f32 {
+        let cos_theta_w = w.z().abs();
+        if cos_theta_w == 0.0 {
+            return 0.0;
+        }
+        self.masking_g1(w) / cos_theta_w * self.microfacet_distribution(wm) * w.dot(wm).abs()
+    }
+
+    /// 可視法線をサンプリングする。
+    fn sample_visible_normal(
+        &self,
+        w: &Vector3<ShadingNormalTangent>,
+        u: glam::Vec2,
+    ) -> Vector3<ShadingNormalTangent> {
+        // wを半球構成に変換
+        let mut wh: Vector3<ShadingNormalTangent> =
+            Vector3::new(self.alpha_x * w.x(), self.alpha_y * w.y(), w.z()).normalize();
+        if wh.z() < 0.0 {
+            wh = -wh;
+        }
+
+        // 可視法線サンプリング用の直交基底を見つける
+        let t1 = if wh.z() < 0.99999 {
+            Vector3::new(0.0, 0.0, 1.0).cross(wh).normalize()
+        } else {
+            Vector3::new(1.0, 0.0, 0.0)
+        };
+        let t2 = wh.cross(t1);
+
+        // 単位円盤上に均等分布点を生成
+        let p = sample_uniform_disk_polar(u);
+
+        // 半球投影を可視法線サンプリング用にワープ
+        let h = (1.0 - p.x * p.x).max(0.0).sqrt();
+        let lerp_factor = (1.0 + wh.z()) / 2.0;
+        let p_y = h * (1.0 - lerp_factor) + p.y * lerp_factor;
+
+        // 半球に再投影し、法線を楕円体構成に変換
+        let pz = (1.0 - p.x * p.x - p_y * p_y).max(0.0).sqrt();
+        let nh = t1 * p.x + t2 * p_y + wh * pz;
+
+        Vector3::new(
+            self.alpha_x * nh.x(),
+            self.alpha_y * nh.y(),
+            (1e-6_f32).max(nh.z()),
+        )
+        .normalize()
+    }
     /// DielectricBsdfを作成する。
-    /// roughnessが0に限りなく近い場合は完全鏡面、それ以外はマイクロファセット。
+    /// alpha_x, alpha_yが0に限りなく近い場合は完全鏡面、それ以外はマイクロファセット。
     ///
     /// # Arguments
     /// - `eta` - 屈折率
     /// - `entering` - 入射方向が面の外側に向いているかどうか
     /// - `thin_surface` - Thin surfaceフラグ
-    /// - `roughness` - 表面粗さパラメータ（0.0で完全鏡面）
-    pub fn new(eta: f32, entering: bool, thin_surface: bool, roughness: f32) -> Self {
-        let distribution = TrowbridgeReitzDistribution::isotropic(roughness);
-        let microfacet_distribution = if eta == 1.0 || distribution.effectively_smooth() {
-            None
-        } else {
-            Some(distribution)
-        };
-
+    /// - `alpha_x` - X方向のroughness parameter
+    /// - `alpha_y` - Y方向のroughness parameter
+    pub fn new(eta: f32, entering: bool, thin_surface: bool, alpha_x: f32, alpha_y: f32) -> Self {
         Self {
             eta,
             entering,
             thin_surface,
-            microfacet_distribution,
+            alpha_x,
+            alpha_y,
         }
     }
 
@@ -319,9 +282,10 @@ impl DielectricBsdf {
             return None;
         }
 
-        match &self.microfacet_distribution {
-            Some(distrib) => self.sample_rough_dielectric(wo, uv, uc, distrib),
-            None => self.sample_perfect_specular(wo, glam::Vec2::new(uc, uv.x)),
+        if self.effectively_smooth() {
+            self.sample_perfect_specular(wo, glam::Vec2::new(uc, uv.x))
+        } else {
+            self.sample_rough_dielectric(wo, uv, uc)
         }
     }
 
@@ -378,10 +342,9 @@ impl DielectricBsdf {
         wo: &Vector3<ShadingNormalTangent>,
         u: glam::Vec2,
         uc: f32,
-        distrib: &TrowbridgeReitzDistribution,
     ) -> Option<BsdfSample> {
         // マイクロファセット法線をサンプリング
-        let wm = distrib.sample_wm(wo, u);
+        let wm = self.sample_visible_normal(wo, u);
 
         // 屈折率を計算
         let (eta_i, eta_t) = if self.thin_surface {
@@ -404,13 +367,12 @@ impl DielectricBsdf {
 
             if uc < pr / (pr + pt) {
                 // 反射
-                self.sample_rough_reflection(wo, &wm, distrib, pr, pr / (pr + pt))
+                self.sample_rough_reflection(wo, &wm, pr, pr / (pr + pt))
             } else {
                 // Thin surface透過
                 self.sample_rough_transmission_thin_surface(
                     wo,
                     &wm,
-                    distrib,
                     pt,
                     pt / (pr + pt),
                     eta,
@@ -418,10 +380,10 @@ impl DielectricBsdf {
             }
         } else if uc < pr / (pr + pt) {
             // 反射
-            self.sample_rough_reflection(wo, &wm, distrib, pr, pr / (pr + pt))
+            self.sample_rough_reflection(wo, &wm, pr, pr / (pr + pt))
         } else {
             // 透過
-            self.sample_rough_transmission(wo, &wm, distrib, pt, pt / (pr + pt), eta)
+            self.sample_rough_transmission(wo, &wm, pt, pt / (pr + pt), eta)
         }
     }
 
@@ -430,7 +392,6 @@ impl DielectricBsdf {
         &self,
         wo: &Vector3<ShadingNormalTangent>,
         wm: &Vector3<ShadingNormalTangent>,
-        distrib: &TrowbridgeReitzDistribution,
         r: f32,
         prob: f32,
     ) -> Option<BsdfSample> {
@@ -445,11 +406,11 @@ impl DielectricBsdf {
         if cos_theta_dot < 1e-6 {
             return None;
         }
-        let pdf = distrib.pdf(wo, wm) / (4.0 * cos_theta_dot) * prob;
+        let pdf = self.visible_normal_distribution(wo, wm) / (4.0 * cos_theta_dot) * prob;
 
         // BRDF値計算
-        let d = distrib.d(wm);
-        let g = distrib.g(wo, &wi);
+        let d = self.microfacet_distribution(wm);
+        let g = self.masking_shadowing_g(wo, &wi);
         let f_value = d * g * r / (4.0 * abs_cos_theta(&wi) * abs_cos_theta(wo));
 
         Some(BsdfSample::new(
@@ -465,7 +426,6 @@ impl DielectricBsdf {
         &self,
         wo: &Vector3<ShadingNormalTangent>,
         wm: &Vector3<ShadingNormalTangent>,
-        distrib: &TrowbridgeReitzDistribution,
         t: f32,
         prob: f32,
         etap: f32,
@@ -481,10 +441,10 @@ impl DielectricBsdf {
         let dwm_dwi = wi.dot(wm).abs() / denom;
 
         // PDF計算
-        let pdf = distrib.pdf(wo, wm) * dwm_dwi * prob;
+        let pdf = self.visible_normal_distribution(wo, wm) * dwm_dwi * prob;
 
-        let d = distrib.d(wm);
-        let g = distrib.g(wo, &wi);
+        let d = self.microfacet_distribution(wm);
+        let g = self.masking_shadowing_g(wo, &wi);
         let cos_theta_i = abs_cos_theta(&wi);
         let cos_theta_o = abs_cos_theta(wo);
 
@@ -505,7 +465,6 @@ impl DielectricBsdf {
         &self,
         wo: &Vector3<ShadingNormalTangent>,
         _wm: &Vector3<ShadingNormalTangent>,
-        _distrib: &TrowbridgeReitzDistribution,
         pt: f32,
         prob: f32,
         _eta: f32,
@@ -662,9 +621,10 @@ impl DielectricBsdf {
         wo: &Vector3<ShadingNormalTangent>,
         wi: &Vector3<ShadingNormalTangent>,
     ) -> SampledSpectrum {
-        match &self.microfacet_distribution {
-            Some(distrib) => self.evaluate_rough_dielectric(wo, wi, distrib),
-            None => SampledSpectrum::zero(), // 完全鏡面の場合は0
+        if self.effectively_smooth() {
+            SampledSpectrum::zero() // 完全鏡面の場合は0
+        } else {
+            self.evaluate_rough_dielectric(wo, wi)
         }
     }
 
@@ -676,9 +636,10 @@ impl DielectricBsdf {
         wo: &Vector3<ShadingNormalTangent>,
         wi: &Vector3<ShadingNormalTangent>,
     ) -> f32 {
-        match &self.microfacet_distribution {
-            Some(distrib) => self.pdf_rough_dielectric(wo, wi, distrib),
-            None => 0.0, // 完全鏡面の場合は0
+        if self.effectively_smooth() {
+            0.0 // 完全鏡面の場合は0
+        } else {
+            self.pdf_rough_dielectric(wo, wi)
         }
     }
 
@@ -687,7 +648,6 @@ impl DielectricBsdf {
         &self,
         wo: &Vector3<ShadingNormalTangent>,
         wi: &Vector3<ShadingNormalTangent>,
-        distrib: &TrowbridgeReitzDistribution,
     ) -> SampledSpectrum {
         let cos_theta_o = cos_theta(wo);
         let cos_theta_i = cos_theta(wi);
@@ -715,14 +675,14 @@ impl DielectricBsdf {
         let reflect = cos_theta_i * cos_theta_o > 0.0;
 
         if reflect {
-            let d = distrib.d(&wm);
-            let g = distrib.g(wo, wi);
+            let d = self.microfacet_distribution(&wm);
+            let g = self.masking_shadowing_g(wo, wi);
             let f_value = d * g * fresnel / (4.0 * abs_cos_theta(wi) * abs_cos_theta(wo));
             SampledSpectrum::constant(f_value)
         } else {
             let denom = (wi.dot(wm) + wo.dot(wm) / eta).powi(2);
-            let d = distrib.d(&wm);
-            let g = distrib.g(wo, wi);
+            let d = self.microfacet_distribution(&wm);
+            let g = self.masking_shadowing_g(wo, wi);
 
             let numerator = d * (1.0 - fresnel) * g * wi.dot(wm).abs() * wo.dot(wm).abs();
             let denominator = denom * abs_cos_theta(wi) * abs_cos_theta(wo);
@@ -739,7 +699,6 @@ impl DielectricBsdf {
         &self,
         wo: &Vector3<ShadingNormalTangent>,
         wi: &Vector3<ShadingNormalTangent>,
-        distrib: &TrowbridgeReitzDistribution,
     ) -> f32 {
         let cos_theta_o = cos_theta(wo);
         let cos_theta_i = cos_theta(wi);
@@ -770,7 +729,7 @@ impl DielectricBsdf {
 
         if reflect {
             // 反射PDF
-            distrib.pdf(wo, &wm) / (4.0 * wo.dot(wm).abs()) * pr / (pr + pt)
+            self.visible_normal_distribution(wo, &wm) / (4.0 * wo.dot(wm).abs()) * pr / (pr + pt)
         } else if self.thin_surface {
             // Thin surface透過PDF
             pt / (pr + pt)
@@ -778,7 +737,7 @@ impl DielectricBsdf {
             let denom = (wi.dot(wm) + wo.dot(wm) / eta).powi(2);
             let dwm_dwi = wi.dot(wm).abs() / denom;
 
-            distrib.pdf(wo, &wm) * dwm_dwi * pt / (pr + pt)
+            self.visible_normal_distribution(wo, &wm) * dwm_dwi * pt / (pr + pt)
         }
     }
 }

@@ -161,7 +161,7 @@ impl BsdfSurfaceMaterial for PlasticMaterial {
         // 誘電体BSDFサンプリング（ノーマルマップタンジェント空間で実行）
         let entering = shading_point.normal.dot(wo) > 0.0;
         let dielectric_bsdf =
-            DielectricBsdf::new(eta, entering, self.thin_surface, roughness_value);
+            DielectricBsdf::new(eta, entering, self.thin_surface, roughness_value, roughness_value);
         let mut bsdf_result = match dielectric_bsdf.sample(&wo_normalmap, uv, uc) {
             Some(result) => result,
             None => {
@@ -223,7 +223,7 @@ impl BsdfSurfaceMaterial for PlasticMaterial {
         // 誘電体BSDF評価（ノーマルマップタンジェント空間で実行）
         let entering = shading_point.normal.dot(wo) > 0.0;
         let dielectric_bsdf =
-            DielectricBsdf::new(eta, entering, self.thin_surface, roughness_value);
+            DielectricBsdf::new(eta, entering, self.thin_surface, roughness_value, roughness_value);
         let mut f = dielectric_bsdf.evaluate(&wo_normalmap, &wi_normalmap);
 
         // 透過の場合、カラーフィルタを適用
@@ -274,7 +274,7 @@ impl BsdfSurfaceMaterial for PlasticMaterial {
         // 誘電体BSDF PDF計算（ノーマルマップタンジェント空間で実行）
         let entering = shading_point.normal.dot(wo) > 0.0;
         let dielectric_bsdf =
-            DielectricBsdf::new(eta, entering, self.thin_surface, roughness_value);
+            DielectricBsdf::new(eta, entering, self.thin_surface, roughness_value, roughness_value);
         dielectric_bsdf.pdf(&wo_normalmap, &wi_normalmap)
     }
 
