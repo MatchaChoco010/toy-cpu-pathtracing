@@ -4,10 +4,7 @@ use std::sync::Arc;
 
 use util_macros::impl_assign_ops;
 
-use crate::{
-    N_SPECTRUM_SAMPLES, SampledSpectrum, SampledWavelengths,
-    spectrum::{LAMBDA_MAX, LAMBDA_MIN, Spectrum, SpectrumTrait},
-};
+use crate::spectrum::{LAMBDA_MAX, LAMBDA_MIN, Spectrum, SpectrumTrait};
 
 pub const N_SPECTRUM_DENSELY_SAMPLES: usize = (LAMBDA_MAX - LAMBDA_MIN) as usize;
 
@@ -38,29 +35,6 @@ impl DenselySampledSpectrum {
         Self {
             values,
             max_value: 0.0,
-        }
-    }
-
-    /// SampledSpectrumを足し合わせる。
-    pub fn add_sample(&mut self, lambda: &SampledWavelengths, s: SampledSpectrum) {
-        s.eprint_nan_inf("DenselySampledSpectrum::add_sample");
-
-        let count = if lambda.is_secondary_terminated() {
-            1
-        } else {
-            N_SPECTRUM_SAMPLES
-        };
-        for index in 0..count {
-            let l = lambda.lambda(index);
-            let i = (l - LAMBDA_MIN).floor() as usize;
-            let i = if i == N_SPECTRUM_DENSELY_SAMPLES {
-                0
-            } else {
-                i
-            };
-            self.values[i] +=
-                s.value(index) / lambda.pdf().value(index) / N_SPECTRUM_SAMPLES as f32;
-            self.max_value = self.max_value.max(self.values[i]);
         }
     }
 
