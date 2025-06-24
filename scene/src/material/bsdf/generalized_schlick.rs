@@ -303,7 +303,14 @@ impl GeneralizedSchlickBsdf {
                 } else {
                     // 通常の誘電体：Snellの法則による屈折
                     let eta_val = self.eta.value(0);
-                    let eta = eta_val;
+                    let (eta_i, eta_t) = if self.thin_surface {
+                        (1.0, eta_val) // 空気(1.0) → 誘電体(n): eta = n
+                    } else if self.entering {
+                        (1.0, eta_val) // 空気(1.0) → 誘電体(n): eta = n
+                    } else {
+                        (eta_val, 1.0) // 誘電体(n) → 空気(1.0): eta = 1/n
+                    };
+                    let eta = eta_t / eta_i;
                     let n = Vector3::new(0.0, 0.0, 1.0);
 
                     if let Some(wt) = refract(wo, &n, eta) {
@@ -433,7 +440,14 @@ impl GeneralizedSchlickBsdf {
         } else {
             // 通常の誘電体：Snellの法則による屈折
             let eta_val = self.eta.value(0);
-            let eta = eta_val; // 空気から材料への屈折
+            let (eta_i, eta_t) = if self.thin_surface {
+                (1.0, eta_val) // 空気(1.0) → 誘電体(n): eta = n
+            } else if self.entering {
+                (1.0, eta_val) // 空気(1.0) → 誘電体(n): eta = n
+            } else {
+                (eta_val, 1.0) // 誘電体(n) → 空気(1.0): eta = 1/n
+            };
+            let eta = eta_t / eta_i;
 
             let wm_refract = if self.entering { wm } else { &-*wm };
             let wi = refract(wo, wm_refract, eta)?;
@@ -559,7 +573,14 @@ impl GeneralizedSchlickBsdf {
         } else {
             // 通常の誘電体：適切な屈折BTDF
             let eta_val = self.eta.value(0);
-            let eta = eta_val;
+            let (eta_i, eta_t) = if self.thin_surface {
+                (1.0, eta_val) // 空気(1.0) → 誘電体(n): eta = n
+            } else if self.entering {
+                (1.0, eta_val) // 空気(1.0) → 誘電体(n): eta = n
+            } else {
+                (eta_val, 1.0) // 誘電体(n) → 空気(1.0): eta = 1/n
+            };
+            let eta = eta_t / eta_i;
 
             // Generalized half vectorを計算
             let wm = match self.compute_generalized_half_vector(wo, wi, eta) {
@@ -727,7 +748,14 @@ impl GeneralizedSchlickBsdf {
         } else {
             // 通常の誘電体：適切な屈折PDF
             let eta_val = self.eta.value(0);
-            let eta = eta_val;
+            let (eta_i, eta_t) = if self.thin_surface {
+                (1.0, eta_val) // 空気(1.0) → 誘電体(n): eta = n
+            } else if self.entering {
+                (1.0, eta_val) // 空気(1.0) → 誘電体(n): eta = n
+            } else {
+                (eta_val, 1.0) // 誘電体(n) → 空気(1.0): eta = 1/n
+            };
+            let eta = eta_t / eta_i;
 
             // Generalized half vectorを計算
             let wm = match self.compute_generalized_half_vector(wo, wi, eta) {
