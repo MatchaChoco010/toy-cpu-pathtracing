@@ -132,6 +132,6 @@ pub fn refract(
     if wt_length_sq < 1e-12 {
         None
     } else {
-        Some(wt / wt_length_sq.sqrt())
+        Some(wt.normalize())
     }
 }
