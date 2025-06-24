@@ -59,10 +59,7 @@ fn reflect(
 }
 
 /// 二つのベクトルが同じ半球にあるかチェック
-fn same_hemisphere(
-    wo: &Vector3<ShadingNormalTangent>,
-    wi: &Vector3<ShadingNormalTangent>,
-) -> bool {
+fn same_hemisphere(wo: &Vector3<ShadingNormalTangent>, wi: &Vector3<ShadingNormalTangent>) -> bool {
     wo.z() * wi.z() > 0.0
 }
 
@@ -203,12 +200,7 @@ impl ConductorBsdf {
     /// - `k` - 屈折率の虚部（消散係数、スペクトル依存）
     /// - `alpha_x` - X方向のroughness parameter
     /// - `alpha_y` - Y方向のroughness parameter
-    pub fn new(
-        eta: SampledSpectrum,
-        k: SampledSpectrum,
-        alpha_x: f32,
-        alpha_y: f32,
-    ) -> Self {
+    pub fn new(eta: SampledSpectrum, k: SampledSpectrum, alpha_x: f32, alpha_y: f32) -> Self {
         Self {
             eta,
             k,
@@ -244,8 +236,7 @@ impl ConductorBsdf {
             return 0.0;
         }
 
-        let alpha2 =
-            (cos_phi(w) * self.alpha_x).powi(2) + (sin_phi(w) * self.alpha_y).powi(2);
+        let alpha2 = (cos_phi(w) * self.alpha_x).powi(2) + (sin_phi(w) * self.alpha_y).powi(2);
         ((1.0 + alpha2 * tan2_theta).sqrt() - 1.0) / 2.0
     }
 
@@ -275,7 +266,6 @@ impl ConductorBsdf {
         }
         self.masking_g1(w) / cos_theta_w * self.microfacet_distribution(wm) * w.dot(wm).abs()
     }
-
 
     /// 可視法線をサンプリングする。
     fn sample_visible_normal(
@@ -317,7 +307,6 @@ impl ConductorBsdf {
         )
         .normalize()
     }
-
 
     /// BSDF方向サンプリングを行う。
     /// 表面の粗さに応じて完全鏡面またはマイクロファセットサンプリングを使用。
@@ -410,7 +399,6 @@ impl ConductorBsdf {
         fresnel * distribution * masking_shadowing / (4.0 * cos_theta_i * cos_theta_o)
     }
 
-
     /// BSDF値を評価する。
     /// 完全鏡面の場合は0、マイクロファセットの場合はTorrance-Sparrow BRDFを返す。
     pub fn evaluate(
@@ -498,5 +486,4 @@ impl ConductorBsdf {
 
         visible_normal_pdf / jacobian
     }
-
 }

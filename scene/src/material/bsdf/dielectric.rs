@@ -163,8 +163,7 @@ impl DielectricBsdf {
             return 0.0;
         }
 
-        let alpha2 =
-            (cos_phi(w) * self.alpha_x).powi(2) + (sin_phi(w) * self.alpha_y).powi(2);
+        let alpha2 = (cos_phi(w) * self.alpha_x).powi(2) + (sin_phi(w) * self.alpha_y).powi(2);
         ((1.0 + alpha2 * tan2_theta).sqrt() - 1.0) / 2.0
     }
 
@@ -360,13 +359,7 @@ impl DielectricBsdf {
                 self.sample_rough_reflection(wo, &wm, pr, pr / (pr + pt))
             } else {
                 // Thin surface透過
-                self.sample_rough_transmission_thin_surface(
-                    wo,
-                    &wm,
-                    pt,
-                    pt / (pr + pt),
-                    eta,
-                )
+                self.sample_rough_transmission_thin_surface(wo, &wm, pt, pt / (pr + pt), eta)
             }
         } else if uc < pr / (pr + pt) {
             // 反射
