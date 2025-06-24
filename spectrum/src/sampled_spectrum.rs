@@ -2,7 +2,10 @@
 
 use util_macros::{impl_assign_ops, impl_binary_ops};
 
-use crate::spectrum::{LAMBDA_MAX, LAMBDA_MIN};
+use crate::{
+    Spectrum,
+    spectrum::{LAMBDA_MAX, LAMBDA_MIN},
+};
 
 /// レンダリング時にスペクトルをサンプルする波長の数。
 pub const N_SPECTRUM_SAMPLES: usize = 4;
@@ -252,6 +255,20 @@ impl SampledSpectrum {
     pub fn is_constant(&self) -> bool {
         let first_value = self.values[0];
         self.values.iter().all(|&v| v == first_value)
+    }
+
+    /// Spectrumとかけ合わせる
+    pub fn multiply_spectrum(
+        &self,
+        lambda: &SampledWavelengths,
+        spectrum: &Spectrum,
+    ) -> SampledSpectrum {
+        let mut result = SampledSpectrum::new();
+        for i in 0..N_SPECTRUM_SAMPLES {
+            let lambda_value = lambda.lambda(i);
+            result.values[i] = self.values[i] * spectrum.value(lambda_value);
+        }
+        result
     }
 
     /// NaNやInfinityの値をチェックして警告を出力する。
