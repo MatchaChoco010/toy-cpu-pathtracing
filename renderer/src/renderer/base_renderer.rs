@@ -1,6 +1,6 @@
 //! 全レンダラーの基底となるベースレンダラーの実装。
 
-use color::{ColorSrgb, tone_map::ToneMap};
+use color::{ColorSrgb, eotf, gamut::GamutSrgb, tone_map::ToneMap};
 use math::{Ray, Render, Transform, VertexNormalTangent};
 use scene::{Intersection, MaterialSample, SceneId, SurfaceInteraction};
 use spectrum::{SampledSpectrum, SampledWavelengths};
@@ -155,7 +155,7 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy> Render
         } = self.args.clone();
         let mut sampler = S::new(spp, resolution, seed);
 
-        let mut sensor = Sensor::new(spp, self.exposure, self.tone_map.clone());
+        let mut sensor = Sensor::<GamutSrgb, T, eotf::GammaSrgb>::new(spp, self.exposure, self.tone_map.clone());
 
         // spp数だけループする
         'sample_loop: for sample_index in 0..spp {
