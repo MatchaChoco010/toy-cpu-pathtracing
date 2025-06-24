@@ -21,6 +21,15 @@ pub enum BsdfSampleType {
     Glossy,
 }
 
+/// 散乱モードを表す列挙型。
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ScatterMode {
+    /// 反射のみ
+    R,
+    /// 反射と透過
+    RT,
+}
+
 // Bsdfのサンプリング結果を表す構造体。
 #[derive(Debug, Clone)]
 pub struct BsdfSample {
