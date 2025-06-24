@@ -54,7 +54,7 @@ impl<G: ColorGamut, T: ToneMap, E: Eotf> Sensor<G, T, E> {
             } else {
                 i
             };
-            
+
             self.densely_sampled_spectrum[i] +=
                 s.value(index) / pdf.value(index) / N_SPECTRUM_SAMPLES as f32;
         }
@@ -71,7 +71,7 @@ impl<G: ColorGamut, T: ToneMap, E: Eotf> Sensor<G, T, E> {
         for i in 0..N_SPECTRUM_DENSELY_SAMPLES {
             let lambda = LAMBDA_MIN + i as f32;
             let spectrum_value = averaged_spectrum[i];
-            
+
             xyz.x += spectrum_value * presets::x().value(lambda);
             xyz.y += spectrum_value * presets::y().value(lambda);
             xyz.z += spectrum_value * presets::z().value(lambda);
@@ -81,7 +81,7 @@ impl<G: ColorGamut, T: ToneMap, E: Eotf> Sensor<G, T, E> {
         let rgb_color = xyz_color.xyz_to_rgb::<G>();
         let exposed_color = rgb_color.apply_exposure(self.exposure);
         let tone_mapped = exposed_color.apply_tone_map(self.tone_map.clone());
-        
+
         tone_mapped.apply_eotf::<E>()
     }
 }
