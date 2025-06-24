@@ -121,6 +121,7 @@ impl SurfaceMaterial for PlasticMaterial {
 impl BsdfSurfaceMaterial for PlasticMaterial {
     fn sample(
         &self,
+        uc: f32,
         uv: glam::Vec2,
         lambda: &mut SampledWavelengths,
         wo: &Vector3<VertexNormalTangent>,
@@ -160,8 +161,6 @@ impl BsdfSurfaceMaterial for PlasticMaterial {
         // 誘電体BSDFサンプリング（ノーマルマップタンジェント空間で実行）
         let entering = shading_point.normal.dot(wo) > 0.0;
         let dielectric_bsdf = DielectricBsdf::new(eta, entering, self.thin_film, roughness_value);
-        // ucとして追加のランダム値を生成（uvから派生）
-        let uc = (uv.x * 73.0 + uv.y * 37.0).fract();
         let mut bsdf_result = match dielectric_bsdf.sample(&wo_normalmap, uv, uc) {
             Some(result) => result,
             None => {

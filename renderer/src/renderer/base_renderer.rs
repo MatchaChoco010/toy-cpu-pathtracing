@@ -228,8 +228,10 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy> Render
                 let shading_point = &render_to_tangent * &hit_info.interaction;
 
                 // マテリアルのサンプリングを行う
+                let uc = sampler.get_1d();
                 let uv = sampler.get_2d();
-                let material_sample = bsdf_material.sample(uv, &mut lambda, &wo, &shading_point);
+                let material_sample =
+                    bsdf_material.sample(uc, uv, &mut lambda, &wo, &shading_point);
 
                 // サンプルしたマテリアルが非Specularな場合、NEEを評価する
                 if material_sample.is_non_specular() {

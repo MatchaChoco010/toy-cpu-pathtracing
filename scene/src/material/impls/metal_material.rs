@@ -116,6 +116,7 @@ impl SurfaceMaterial for MetalMaterial {
 impl BsdfSurfaceMaterial for MetalMaterial {
     fn sample(
         &self,
+        _uc: f32,
         uv: glam::Vec2,
         lambda: &mut SampledWavelengths,
         wo: &Vector3<VertexNormalTangent>,

@@ -57,8 +57,9 @@ impl<'a, Id: SceneId, F: Filter> Renderer for NormalRenderer<'a, Id, F> {
                     let shading_point = &render_to_tangent * &interaction;
 
                     if let Some(bsdf) = interaction.material.as_bsdf_material() {
+                        let uc = sampler.get_1d();
                         let uv = sampler.get_2d();
-                        let material_sample = bsdf.sample(uv, &mut lambda, &wo, &shading_point);
+                        let material_sample = bsdf.sample(uc, uv, &mut lambda, &wo, &shading_point);
                         let normal = material_sample.normal;
                         let normal = render_to_tangent.inverse() * normal;
                         glam::Vec3::new(
