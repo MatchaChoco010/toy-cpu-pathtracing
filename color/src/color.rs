@@ -62,6 +62,11 @@ impl<G: ColorGamut, T: ToneMap, E: Eotf> ColorImpl<G, T, E> {
         }
     }
 
+    /// 同じG, T, Eの色を受け取って内部で保持するrgbを加算する。
+    pub fn add_sample(&mut self, other: &ColorImpl<G, T, E>) {
+        self.rgb += other.rgb;
+    }
+
     /// 別の色域の色から新しい色域に色域を変更する。
     pub fn from<FromGamut: ColorGamut>(color: &ColorImpl<FromGamut, T, E>) -> Self {
         let gamut = G::new();
