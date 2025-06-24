@@ -30,12 +30,14 @@ pub trait BsdfSurfaceMaterial {
     /// BSDF方向サンプリングを行う。
     ///
     /// # Arguments
+    /// - `uc` - 1次元乱数サンプル
     /// - `uv` - 2次元乱数サンプル
     /// - `lambda` - サンプルされた波長（分散処理のため可変）
     /// - `wo` - 出射方向（シェーディング接空間）
     /// - `shading_point` - シェーディング点情報
     fn sample(
         &self,
+        uc: f32,
         uv: glam::Vec2,
         lambda: &mut SampledWavelengths,
         wo: &Vector3<VertexNormalTangent>,

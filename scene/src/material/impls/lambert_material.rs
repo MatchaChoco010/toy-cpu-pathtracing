@@ -47,6 +47,7 @@ impl SurfaceMaterial for LambertMaterial {
 impl BsdfSurfaceMaterial for LambertMaterial {
     fn sample(
         &self,
+        _uc: f32,
         uv: glam::Vec2,
         lambda: &mut SampledWavelengths,
         wo: &Vector3<VertexNormalTangent>,
