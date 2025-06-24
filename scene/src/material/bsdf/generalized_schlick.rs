@@ -6,8 +6,8 @@ use spectrum::SampledSpectrum;
 use crate::material::{
     bsdf::{BsdfSample, BsdfSampleType, ScatterMode},
     common::{
-        abs_cos_theta, cos_phi, cos_theta, cos2_theta, fresnel_dielectric, half_vector, 
-        refract, reflect, same_hemisphere, sample_uniform_disk_polar, sin_phi, tan2_theta,
+        abs_cos_theta, cos_phi, cos_theta, cos2_theta, fresnel_dielectric, half_vector, reflect,
+        refract, same_hemisphere, sample_uniform_disk_polar, sin_phi, tan2_theta,
     },
 };
 
@@ -85,23 +85,25 @@ impl GeneralizedSchlickBsdf {
     fn generalized_schlick_fresnel(&self, cos_theta: f32) -> SampledSpectrum {
         let cos_theta = cos_theta.clamp(0.0, 1.0);
         let one_minus_cos = 1.0 - cos_theta;
-        
+
         // θ_max ≈ 82度（cos θ_max = 1/7）
         const COS_THETA_MAX: f32 = 1.0 / 7.0;
         const ONE_MINUS_COS_THETA_MAX: f32 = 1.0 - COS_THETA_MAX;
-        
+
         // 基本のSchlickモデル: r₀ + (r₉₀ - r₀)(1 - cos θ)^α
-        let base_fresnel = self.r0.clone() + (self.r90.clone() - self.r0.clone()) * one_minus_cos.powf(self.exponent);
-        
+        let base_fresnel = self.r0.clone()
+            + (self.r90.clone() - self.r0.clone()) * one_minus_cos.powf(self.exponent);
+
         // パラメータaの計算：
         // a = [r₀ + (r₉₀ - r₀)(1 - cos θ_max)^α](1 - t) / [cos θ_max (1 - cos θ_max)^6]
-        let fresnel_at_max = self.r0.clone() + (self.r90.clone() - self.r0.clone()) * ONE_MINUS_COS_THETA_MAX.powf(self.exponent);
-        let a = fresnel_at_max * (SampledSpectrum::one() - self.tint.clone()) / 
-               (COS_THETA_MAX * ONE_MINUS_COS_THETA_MAX.powi(6));
-        
+        let fresnel_at_max = self.r0.clone()
+            + (self.r90.clone() - self.r0.clone()) * ONE_MINUS_COS_THETA_MAX.powf(self.exponent);
+        let a = fresnel_at_max * (SampledSpectrum::one() - self.tint.clone())
+            / (COS_THETA_MAX * ONE_MINUS_COS_THETA_MAX.powi(6));
+
         // Lazanyi項: a cos θ (1 - cos θ)^6
         let lazanyi_term = a * cos_theta * one_minus_cos.powi(6);
-        
+
         // 最終的なフレネル反射率
         base_fresnel - lazanyi_term
     }
@@ -207,7 +209,12 @@ impl GeneralizedSchlickBsdf {
     /// - `wo` - 出射方向（ノーマルマップ接空間）
     /// - `uv` - ランダムサンプル
     /// - `uc` - 反射/透過選択用の追加ランダム値
-    pub fn sample(&self, wo: &Vector3<ShadingNormalTangent>, uv: glam::Vec2, uc: f32) -> Option<BsdfSample> {
+    pub fn sample(
+        &self,
+        wo: &Vector3<ShadingNormalTangent>,
+        uv: glam::Vec2,
+        uc: f32,
+    ) -> Option<BsdfSample> {
         let wo_cos_n = wo.z();
         if wo_cos_n == 0.0 {
             return None;
@@ -223,12 +230,16 @@ impl GeneralizedSchlickBsdf {
     }
 
     /// 完全鏡面反射/透過サンプリング。
-    fn sample_perfect_specular(&self, wo: &Vector3<ShadingNormalTangent>, uc: f32) -> Option<BsdfSample> {
+    fn sample_perfect_specular(
+        &self,
+        wo: &Vector3<ShadingNormalTangent>,
+        uc: f32,
+    ) -> Option<BsdfSample> {
         let wo_cos_n = wo.z();
-        
+
         // フレネル反射率を計算
         let fresnel = self.generalized_schlick_fresnel(wo_cos_n.abs());
-        
+
         match self.scatter_mode {
             ScatterMode::R => {
                 // 反射のみ
@@ -243,14 +254,14 @@ impl GeneralizedSchlickBsdf {
                 let f = fresnel / wi_cos_n.abs();
 
                 Some(BsdfSample::new(f, wi, 1.0, BsdfSampleType::Specular))
-            },
+            }
             ScatterMode::RT => {
                 // 反射と透過
                 // フレネル反射率の平均値を使用して反射/透過を決定
                 let avg_fresnel = fresnel.average();
                 let pr = avg_fresnel;
                 let pt = 1.0 - pr;
-                
+
                 if uc < pr / (pr + pt) {
                     // 反射
                     let wi = Vector3::new(-wo.x(), -wo.y(), wo.z());
@@ -261,38 +272,51 @@ impl GeneralizedSchlickBsdf {
                     }
 
                     let f = fresnel * (pr / (pr + pt)) / wi_cos_n.abs();
-                    Some(BsdfSample::new(f, wi, pr / (pr + pt), BsdfSampleType::Specular))
-                } else {
-                    if self.thin_surface {
-                        // Thin surface: 反対方向への透過
-                        let wi = Vector3::new(-wo.x(), -wo.y(), -wo.z());
-                        let wi_cos_n = wi.z();
+                    Some(BsdfSample::new(
+                        f,
+                        wi,
+                        pr / (pr + pt),
+                        BsdfSampleType::Specular,
+                    ))
+                } else if self.thin_surface {
+                    // Thin surface: 反対方向への透過
+                    let wi = Vector3::new(-wo.x(), -wo.y(), -wo.z());
+                    let wi_cos_n = wi.z();
 
-                        if wi_cos_n == 0.0 {
+                    if wi_cos_n == 0.0 {
+                        return None;
+                    }
+
+                    let transmission = SampledSpectrum::one() - fresnel;
+                    let f = transmission * (pt / (pr + pt)) / wi_cos_n.abs();
+                    Some(BsdfSample::new(
+                        f,
+                        wi,
+                        pt / (pr + pt),
+                        BsdfSampleType::Specular,
+                    ))
+                } else {
+                    // 通常の誘電体：Snellの法則による屈折
+                    let eta_val = self.eta.value(0);
+                    let eta = eta_val;
+                    let n = Vector3::new(0.0, 0.0, 1.0);
+
+                    if let Some(wt) = refract(wo, &n, eta) {
+                        let wt_cos_n = wt.z();
+                        if wt_cos_n == 0.0 {
                             return None;
                         }
 
                         let transmission = SampledSpectrum::one() - fresnel;
-                        let f = transmission * (pt / (pr + pt)) / wi_cos_n.abs();
-                        Some(BsdfSample::new(f, wi, pt / (pr + pt), BsdfSampleType::Specular))
+                        let f = transmission * (pt / (pr + pt)) / (eta * eta * wt_cos_n.abs());
+                        Some(BsdfSample::new(
+                            f,
+                            wt,
+                            pt / (pr + pt),
+                            BsdfSampleType::Specular,
+                        ))
                     } else {
-                        // 通常の誘電体：Snellの法則による屈折
-                        let eta_val = self.eta.value(0);
-                        let eta = eta_val;
-                        let n = Vector3::new(0.0, 0.0, 1.0);
-
-                        if let Some(wt) = refract(wo, &n, eta) {
-                            let wt_cos_n = wt.z();
-                            if wt_cos_n == 0.0 {
-                                return None;
-                            }
-
-                            let transmission = SampledSpectrum::one() - fresnel;
-                            let f = transmission * (pt / (pr + pt)) / (eta * eta * wt_cos_n.abs());
-                            Some(BsdfSample::new(f, wt, pt / (pr + pt), BsdfSampleType::Specular))
-                        } else {
-                            None
-                        }
+                        None
                     }
                 }
             }
@@ -317,19 +341,24 @@ impl GeneralizedSchlickBsdf {
             ScatterMode::R => {
                 // 反射のみ
                 self.sample_microfacet_reflection(wo, &wm, fresnel)
-            },
+            }
             ScatterMode::RT => {
                 // 反射と透過
                 let avg_fresnel = fresnel.average();
                 let pr = avg_fresnel;
                 let pt = 1.0 - pr;
-                
+
                 if uc < pr / (pr + pt) {
                     // 反射
                     self.sample_microfacet_reflection(wo, &wm, fresnel * (pr / (pr + pt)))
                 } else {
                     // 透過
-                    self.sample_microfacet_transmission(wo, &wm, (SampledSpectrum::one() - fresnel) * (pt / (pr + pt)), pt / (pr + pt))
+                    self.sample_microfacet_transmission(
+                        wo,
+                        &wm,
+                        (SampledSpectrum::one() - fresnel) * (pt / (pr + pt)),
+                        pt / (pr + pt),
+                    )
                 }
             }
         }
@@ -362,7 +391,7 @@ impl GeneralizedSchlickBsdf {
         let g = self.masking_shadowing_g(wo, &wi);
         let cos_theta_i = wi.z().abs();
         let cos_theta_o = wo.z().abs();
-        
+
         if cos_theta_i == 0.0 || cos_theta_o == 0.0 {
             return None;
         }
@@ -420,8 +449,8 @@ impl GeneralizedSchlickBsdf {
             let cos_theta_i = abs_cos_theta(&wi);
             let cos_theta_o = abs_cos_theta(wo);
 
-            let ft = transmission * d * g * wi.dot(wm).abs() * wo.dot(wm).abs() / 
-                    (denom * cos_theta_i * cos_theta_o * eta * eta);
+            let ft = transmission * d * g * wi.dot(wm).abs() * wo.dot(wm).abs()
+                / (denom * cos_theta_i * cos_theta_o * eta * eta);
 
             Some(BsdfSample::new(ft, wi, pdf, BsdfSampleType::Glossy))
         }
@@ -467,7 +496,7 @@ impl GeneralizedSchlickBsdf {
                 }
                 // 反射のみ評価
                 self.evaluate_reflection(wo, wi)
-            },
+            }
             ScatterMode::RT => {
                 if is_reflection {
                     // 反射評価
@@ -623,29 +652,29 @@ impl GeneralizedSchlickBsdf {
                 }
                 // 反射PDFのみ
                 self.pdf_reflection(wo, wi)
-            },
+            }
             ScatterMode::RT => {
                 if is_reflection {
                     // 反射PDF
                     let pdf_refl = self.pdf_reflection(wo, wi);
-                    
+
                     // フレネル反射率の平均値で重み付け
                     let fresnel = self.generalized_schlick_fresnel(wo.z().abs());
                     let avg_fresnel = fresnel.average();
                     let pr = avg_fresnel;
                     let pt = 1.0 - pr;
-                    
+
                     pdf_refl * pr / (pr + pt)
                 } else {
                     // 透過PDF
                     let pdf_trans = self.pdf_transmission(wo, wi);
-                    
+
                     // フレネル透過率の平均値で重み付け
                     let fresnel = self.generalized_schlick_fresnel(wo.z().abs());
                     let avg_fresnel = fresnel.average();
                     let pr = avg_fresnel;
                     let pt = 1.0 - pr;
-                    
+
                     pdf_trans * pt / (pr + pt)
                 }
             }
