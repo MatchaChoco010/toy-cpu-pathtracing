@@ -111,7 +111,7 @@ impl GeneralizedSchlickBsdf {
     /// Trowbridge-Reitz分布関数 D(ωm)を計算する。
     fn microfacet_distribution(&self, wm: &Vector3<ShadingNormalTangent>) -> f32 {
         let tan2_theta = tan2_theta(wm);
-        if tan2_theta.is_infinite() {
+        if !tan2_theta.is_finite() {
             return 0.0;
         }
 
