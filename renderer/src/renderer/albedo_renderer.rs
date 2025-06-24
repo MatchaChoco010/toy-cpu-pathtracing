@@ -1,9 +1,11 @@
 //! 法線を出力するレンダラーを実装するモジュール。
 
+use color::tone_map::NoneToneMap;
 use color::{ColorSrgb, eotf, gamut::GamutSrgb, tone_map};
 use scene::{SceneId, SurfaceInteraction};
-use spectrum::{DenselySampledSpectrum, SampledWavelengths, SpectrumTrait, presets};
+use spectrum::{SampledWavelengths, presets};
 
+use crate::sensor::Sensor;
 use crate::{
     filter::Filter,
     renderer::{Renderer, RendererArgs},
@@ -34,7 +36,8 @@ impl<'a, Id: SceneId, F: Filter> Renderer for AlbedoRenderer<'a, Id, F> {
         } = self.args.clone();
         let mut sampler = S::new(spp, resolution, seed);
 
-        let mut acc_sample = DenselySampledSpectrum::zero();
+        let mut sensor =
+            Sensor::<GamutSrgb, NoneToneMap, eotf::GammaSrgb>::new(spp, 1.0, NoneToneMap);
 
         for sample_index in 0..spp {
             sampler.start_pixel_sample(p, sample_index);
@@ -52,26 +55,16 @@ impl<'a, Id: SceneId, F: Filter> Renderer for AlbedoRenderer<'a, Id, F> {
                     let SurfaceInteraction { uv, material, .. } = intersect.interaction;
                     material.as_bsdf_material().map(|s| {
                         let sample = s.sample_albedo_spectrum(uv, &lambda);
-                        acc_sample.add_sample(&lambda, sample * rs.weight);
+                        let sample = (sample * rs.weight)
+                            .multiply_spectrum(&lambda, &presets::cie_illum_d6500());
+                        sensor.add_sample(&lambda, &sample);
                     });
                 }
                 // None => glam::Vec3::ZERO,
                 None => (),
             };
         }
-        // sppでoutputを除算
-        acc_sample /= spp as f32;
 
-        // d65光源のスペクトルをかけ合わせる。
-        let d65 = presets::cie_illum_d6500();
-        acc_sample *= d65;
-
-        // outputのスペクトルをXYZに変換する。
-        let xyz = acc_sample.to_xyz();
-        // XYZをRGBに変換する。
-        let rgb = xyz.xyz_to_rgb::<GamutSrgb>();
-        // ガンマ補正のEOTFを適用する。
-
-        rgb.apply_eotf::<eotf::GammaSrgb>()
+        sensor.to_rgb()
     }
 }
