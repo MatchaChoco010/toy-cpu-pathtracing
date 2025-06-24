@@ -7,7 +7,8 @@ use spectrum::{SampledWavelengths, presets};
 
 use crate::{
     BsdfSurfaceMaterial, FloatParameter, Material, MaterialEvaluationResult, MaterialSample,
-    NormalParameter, SurfaceInteraction, SurfaceMaterial, material::bsdf::{ConductorBsdf, fresnel_complex},
+    NormalParameter, SurfaceInteraction, SurfaceMaterial,
+    material::bsdf::{ConductorBsdf, fresnel_complex},
 };
 
 /// 金属の種類を表す列挙型。
