@@ -15,7 +15,7 @@ pub fn load_scene_15<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut
     // PBRドラゴンを含むコーネルボックス
 
     // PBRドラゴン
-    let geom = scene.load_obj("./renderer/assets/dragon.obj");
+    let geom = scene.load_obj("./renderer/assets/dragon.min.obj");
 
     // BaseColorテクスチャ
     let base_color_texture =
@@ -23,24 +23,24 @@ pub fn load_scene_15<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut
             .expect("Failed to load base color texture");
     let base_color_param = SpectrumParameter::texture(base_color_texture, SpectrumType::Albedo);
 
-    // MetallicテクスチャをFloatTextureとして読み込み（ガンマ補正なし）
+    // Metallicテクスチャ
     let metallic_texture =
         FloatTexture::load("./renderer/assets/dragon-material/Metallic.png", false)
             .expect("Failed to load metallic texture");
     let metallic_param = FloatParameter::texture(metallic_texture);
 
-    // RoughnessテクスチャをFloatTextureとして読み込み（ガンマ補正なし）
+    // Roughnessテクスチャ
     let roughness_texture =
         FloatTexture::load("./renderer/assets/dragon-material/Roughness.png", false)
             .expect("Failed to load roughness texture");
     let roughness_param = FloatParameter::texture(roughness_texture);
 
-    // Normalテクスチャ
+    // ノーマルマップテクスチャ
     let normal_texture = NormalTexture::load("./renderer/assets/dragon-material/Normal.png", false)
         .expect("Failed to load normal texture");
     let normal_param = NormalParameter::texture(normal_texture);
 
-    // IOR（デフォルト値として1.5を使用）
+    // 屈折率設定
     let ior_param = FloatParameter::constant(1.5);
 
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
@@ -52,10 +52,17 @@ pub fn load_scene_15<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut
             normal_param,
             ior_param,
         ),
-        transform: Transform::identity(),
+        transform: Transform::identity()
+            .rotate(glam::Quat::from_euler(
+                glam::EulerRot::XYZ,
+                0.0,
+                std::f32::consts::FRAC_PI_2,
+                0.0,
+            ))
+            .scale(glam::vec3(2.5, 2.5, 2.5)),
     });
 
-    // コーネルボックスの壁（シーン3と同じ）
+    // コーネルボックスの背景壁
     let geom = scene.load_obj("./renderer/assets/box.obj");
     let spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.8, 0.8, 0.8));
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
@@ -138,7 +145,7 @@ pub fn load_scene_15<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut
         transform: Transform::identity(),
     });
 
-    // カメラ位置（シーン3と同じ）
+    // カメラ位置設定
     camera.set_look_to(
         Point3::new(0.0, 3.15221, 6.0),
         Vector3::new(0.0, -0.9, -3.2).normalize(),
