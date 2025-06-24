@@ -130,8 +130,13 @@ impl BsdfSurfaceMaterial for GlassMaterial {
 
         // 誘電体BSDFサンプリング（ノーマルマップタンジェント空間で実行）
         let entering = shading_point.normal.dot(wo) > 0.0;
-        let dielectric_bsdf =
-            DielectricBsdf::new(eta, entering, self.thin_surface, roughness_value);
+        let dielectric_bsdf = DielectricBsdf::new(
+            eta,
+            entering,
+            self.thin_surface,
+            roughness_value,
+            roughness_value,
+        );
         let bsdf_result = match dielectric_bsdf.sample(&wo_normalmap, uv, uc) {
             Some(result) => result,
             None => {
@@ -186,8 +191,13 @@ impl BsdfSurfaceMaterial for GlassMaterial {
 
         // 誘電体BSDF評価（ノーマルマップタンジェント空間で実行）
         let entering = shading_point.normal.dot(wo) > 0.0;
-        let dielectric_bsdf =
-            DielectricBsdf::new(eta, entering, self.thin_surface, roughness_value);
+        let dielectric_bsdf = DielectricBsdf::new(
+            eta,
+            entering,
+            self.thin_surface,
+            roughness_value,
+            roughness_value,
+        );
         let f = dielectric_bsdf.evaluate(&wo_normalmap, &wi_normalmap);
 
         MaterialEvaluationResult {
@@ -231,8 +241,13 @@ impl BsdfSurfaceMaterial for GlassMaterial {
 
         // 誘電体BSDF PDF計算（ノーマルマップタンジェント空間で実行）
         let entering = shading_point.normal.dot(wo) > 0.0;
-        let dielectric_bsdf =
-            DielectricBsdf::new(eta, entering, self.thin_surface, roughness_value);
+        let dielectric_bsdf = DielectricBsdf::new(
+            eta,
+            entering,
+            self.thin_surface,
+            roughness_value,
+            roughness_value,
+        );
         dielectric_bsdf.pdf(&wo_normalmap, &wi_normalmap)
     }
 

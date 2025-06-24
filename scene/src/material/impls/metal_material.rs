@@ -7,7 +7,8 @@ use spectrum::{SampledWavelengths, presets};
 
 use crate::{
     BsdfSurfaceMaterial, FloatParameter, Material, MaterialEvaluationResult, MaterialSample,
-    NormalParameter, SurfaceInteraction, SurfaceMaterial, material::bsdf::ConductorBsdf,
+    NormalParameter, SurfaceInteraction, SurfaceMaterial,
+    material::bsdf::{ConductorBsdf, fresnel_complex},
 };
 
 /// 金属の種類を表す列挙型。
@@ -144,11 +145,7 @@ impl BsdfSurfaceMaterial for MetalMaterial {
         let alpha = Self::roughness_to_alpha(roughness_value);
 
         // 導体BSDFサンプリング（ノーマルマップタンジェント空間で実行）
-        let conductor_bsdf = if alpha == 0.0 {
-            ConductorBsdf::new(eta, k)
-        } else {
-            ConductorBsdf::new_microfacet(eta, k, alpha, alpha)
-        };
+        let conductor_bsdf = ConductorBsdf::new(eta, k, alpha, alpha);
         let bsdf_result = match conductor_bsdf.sample(&wo_normalmap, uv) {
             Some(result) => result,
             None => {
@@ -221,11 +218,7 @@ impl BsdfSurfaceMaterial for MetalMaterial {
         let alpha = Self::roughness_to_alpha(roughness_value);
 
         // 導体BSDF評価（ノーマルマップタンジェント空間で実行）
-        let conductor_bsdf = if alpha == 0.0 {
-            ConductorBsdf::new(eta, k)
-        } else {
-            ConductorBsdf::new_microfacet(eta, k, alpha, alpha)
-        };
+        let conductor_bsdf = ConductorBsdf::new(eta, k, alpha, alpha);
         let f = conductor_bsdf.evaluate(&wo_normalmap, &wi_normalmap);
 
         MaterialEvaluationResult {
@@ -273,11 +266,7 @@ impl BsdfSurfaceMaterial for MetalMaterial {
         let alpha = Self::roughness_to_alpha(roughness_value);
 
         // 導体BSDF PDF計算（ノーマルマップタンジェント空間で実行）
-        let conductor_bsdf = if alpha == 0.0 {
-            ConductorBsdf::new(eta, k)
-        } else {
-            ConductorBsdf::new_microfacet(eta, k, alpha, alpha)
-        };
+        let conductor_bsdf = ConductorBsdf::new(eta, k, alpha, alpha);
         conductor_bsdf.pdf(&wo_normalmap, &wi_normalmap)
     }
 
@@ -290,8 +279,7 @@ impl BsdfSurfaceMaterial for MetalMaterial {
         let eta = self.get_eta(lambda);
         let k = self.get_k(lambda);
 
-        // ConductorBsdfを使用してFresnel反射率を計算
-        let conductor_bsdf = ConductorBsdf::new(eta, k);
-        conductor_bsdf.fresnel(1.0) // 垂直入射
+        // Fresnel反射率を計算（垂直入射）
+        fresnel_complex(1.0, &eta, &k)
     }
 }
