@@ -1,6 +1,7 @@
 //! 新しいマテリアルシステムを定義するモジュール。
 
 pub mod bsdf;
+pub mod common;
 mod edf;
 mod impls;
 mod parameter;

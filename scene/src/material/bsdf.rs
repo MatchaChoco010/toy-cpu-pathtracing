@@ -4,7 +4,7 @@ mod conductor;
 mod dielectric;
 mod lambert;
 
-pub use conductor::ConductorBsdf;
+pub use conductor::{ConductorBsdf, fresnel_complex};
 pub use dielectric::DielectricBsdf;
 pub use lambert::NormalizedLambertBsdf;
 
