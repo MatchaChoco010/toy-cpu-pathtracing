@@ -13,7 +13,7 @@ pub use material::{
     BsdfSample, BsdfSampleType, BsdfSurfaceMaterial, ConductorBsdf, DielectricBsdf,
     EmissiveMaterial, EmissiveSurfaceMaterial, FloatParameter, GlassMaterial, GlassType,
     LambertMaterial, Material, MetalMaterial, MetalType, NormalParameter, NormalizedLambertBsdf,
-    PlasticMaterial, SpectrumParameter, SurfaceMaterial, UniformEdf,
+    PlasticMaterial, SimplePbrMaterial, SpectrumParameter, SurfaceMaterial, UniformEdf,
 };
 pub use primitive::{CreatePrimitiveDesc, Intersection, PrimitiveBvh, PrimitiveIndex};
 pub use samples::{
@@ -22,4 +22,4 @@ pub use samples::{
     NonSpecularDirectionSample, SpecularDirectionSample, SurfaceInteraction,
 };
 pub use scene::{Scene, SceneId, WorldToRender, internal};
-pub use texture::{NormalTexture, RgbTexture, SpectrumType};
+pub use texture::{FloatTexture, NormalTexture, RgbTexture, SpectrumType};

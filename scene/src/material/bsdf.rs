@@ -7,6 +7,7 @@ mod lambert;
 
 pub use conductor::{ConductorBsdf, fresnel_complex};
 pub use dielectric::DielectricBsdf;
+pub use generalized_schlick::GeneralizedSchlickBsdf;
 pub use lambert::NormalizedLambertBsdf;
 
 use math::ShadingNormalTangent;
