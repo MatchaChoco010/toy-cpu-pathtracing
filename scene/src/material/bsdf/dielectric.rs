@@ -6,7 +6,7 @@ use spectrum::{SampledSpectrum, SampledWavelengths};
 use crate::material::{
     bsdf::{BsdfSample, BsdfSampleType},
     common::{
-        abs_cos_theta, cos_phi, cos_theta, cos2_theta, fresnel_dielectric, refract, reflect, 
+        abs_cos_theta, cos_phi, cos_theta, cos2_theta, fresnel_dielectric, reflect, refract,
         same_hemisphere, sample_uniform_disk_polar, sin_phi, tan2_theta,
     },
 };
