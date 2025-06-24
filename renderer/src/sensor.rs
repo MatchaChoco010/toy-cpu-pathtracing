@@ -39,7 +39,6 @@ impl<G: ColorGamut, T: ToneMap, E: Eotf> Sensor<G, T, E> {
 
     /// スペクトラルサンプルを追加する。
     pub fn add_sample(&mut self, lambda: &SampledWavelengths, s: &SampledSpectrum) {
-        // オリジナルのDenselySampledSpectrum::add_sampleと完全に同じロジック
         let pdf = lambda.pdf();
         let count = if lambda.is_secondary_terminated() {
             1
@@ -56,7 +55,6 @@ impl<G: ColorGamut, T: ToneMap, E: Eotf> Sensor<G, T, E> {
                 i
             };
             
-            // オリジナルと完全に同じ処理
             self.densely_sampled_spectrum[i] +=
                 s.value(index) / pdf.value(index) / N_SPECTRUM_SAMPLES as f32;
         }
@@ -64,15 +62,11 @@ impl<G: ColorGamut, T: ToneMap, E: Eotf> Sensor<G, T, E> {
 
     /// 最終的なRGB値を取得する。
     pub fn to_rgb(&self) -> ColorImpl<G, T, E> {
-        // オリジナルのfinalize_spectrum_to_colorと完全に同じロジック
-        
-        // sppで除算（オリジナルと同じ）
         let mut averaged_spectrum = self.densely_sampled_spectrum;
         for i in 0..N_SPECTRUM_DENSELY_SAMPLES {
             averaged_spectrum[i] /= self.spp as f32;
         }
 
-        // オリジナルのinner_productと同じ積分を実行してXYZを計算
         let mut xyz = glam::Vec3::ZERO;
         for i in 0..N_SPECTRUM_DENSELY_SAMPLES {
             let lambda = LAMBDA_MIN + i as f32;
@@ -83,17 +77,11 @@ impl<G: ColorGamut, T: ToneMap, E: Eotf> Sensor<G, T, E> {
             xyz.z += spectrum_value * presets::z().value(lambda);
         }
 
-        // XYZからRGBに変換
         let xyz_color = color::Xyz::from(xyz);
         let rgb_color = xyz_color.xyz_to_rgb::<G>();
-
-        // exposureを適用（オリジナルのfinalize_spectrum_to_colorと同じタイミング）
         let exposed_color = rgb_color.apply_exposure(self.exposure);
-
-        // トーンマップを適用
         let tone_mapped = exposed_color.apply_tone_map(self.tone_map.clone());
-
-        // EOTFを適用
+        
         tone_mapped.apply_eotf::<E>()
     }
 }
