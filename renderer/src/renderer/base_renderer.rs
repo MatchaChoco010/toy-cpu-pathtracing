@@ -91,7 +91,6 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy>
         }
     }
 
-
     /// BSDFサンプリングと次のレイのトレースを行う。
     fn process_bsdf_sampling(
         scene: &scene::Scene<Id>,
@@ -155,7 +154,8 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy> Render
         } = self.args.clone();
         let mut sampler = S::new(spp, resolution, seed);
 
-        let mut sensor = Sensor::<GamutSrgb, T, eotf::GammaSrgb>::new(spp, self.exposure, self.tone_map.clone());
+        let mut sensor =
+            Sensor::<GamutSrgb, T, eotf::GammaSrgb>::new(spp, self.exposure, self.tone_map.clone());
 
         // spp数だけループする
         'sample_loop: for sample_index in 0..spp {
