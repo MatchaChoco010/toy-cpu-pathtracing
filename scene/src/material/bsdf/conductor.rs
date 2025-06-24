@@ -286,7 +286,12 @@ impl ConductorBsdf {
         // BSDF値: F / |cos(theta_i)|
         let f = fresnel / wi_cos_n.abs();
 
-        Some(BsdfSample::new(f, wi, 1.0, BsdfSampleType::Specular))
+        Some(BsdfSample::new(
+            f,
+            wi,
+            1.0,
+            BsdfSampleType::SpecularReflection,
+        ))
     }
 
     /// マイクロファセットサンプリング（Torrance-Sparrow model）。
@@ -310,7 +315,12 @@ impl ConductorBsdf {
         let f = self.evaluate_torrance_sparrow(wo, &wi, &wm);
         let pdf = self.pdf_microfacet(wo, &wi);
 
-        Some(BsdfSample::new(f, wi, pdf, BsdfSampleType::Glossy))
+        Some(BsdfSample::new(
+            f,
+            wi,
+            pdf,
+            BsdfSampleType::GlossyReflection,
+        ))
     }
 
     /// Torrance-Sparrow BRDF を評価する。

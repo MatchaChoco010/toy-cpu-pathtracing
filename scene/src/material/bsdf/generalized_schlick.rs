@@ -258,7 +258,12 @@ impl GeneralizedSchlickBsdf {
                 // BSDF値: F / |cos(theta_i)|
                 let f = fresnel / wi_cos_n.abs();
 
-                Some(BsdfSample::new(f, wi, 1.0, BsdfSampleType::Specular))
+                Some(BsdfSample::new(
+                    f,
+                    wi,
+                    1.0,
+                    BsdfSampleType::SpecularReflection,
+                ))
             }
             ScatterMode::RT => {
                 // 反射と透過
@@ -281,7 +286,7 @@ impl GeneralizedSchlickBsdf {
                         f,
                         wi,
                         pr / (pr + pt),
-                        BsdfSampleType::Specular,
+                        BsdfSampleType::SpecularReflection,
                     ))
                 } else if self.thin_surface {
                     // Thin surface: 反対方向への透過
@@ -298,7 +303,7 @@ impl GeneralizedSchlickBsdf {
                         f,
                         wi,
                         pt / (pr + pt),
-                        BsdfSampleType::Specular,
+                        BsdfSampleType::SpecularTransmission,
                     ))
                 } else {
                     // 通常の誘電体：Snellの法則による屈折
@@ -325,7 +330,7 @@ impl GeneralizedSchlickBsdf {
                             f,
                             wt,
                             pt / (pr + pt),
-                            BsdfSampleType::Specular,
+                            BsdfSampleType::SpecularTransmission,
                         ))
                     } else {
                         None
@@ -410,7 +415,12 @@ impl GeneralizedSchlickBsdf {
 
         let f_value = fresnel * d * g / (4.0 * cos_theta_i * cos_theta_o);
 
-        Some(BsdfSample::new(f_value, wi, pdf, BsdfSampleType::Glossy))
+        Some(BsdfSample::new(
+            f_value,
+            wi,
+            pdf,
+            BsdfSampleType::GlossyReflection,
+        ))
     }
 
     /// マイクロファセット透過サンプリング。
@@ -436,7 +446,12 @@ impl GeneralizedSchlickBsdf {
             // BTDF値
             let f_value = transmission / wi_cos_n.abs();
 
-            Some(BsdfSample::new(f_value, wi, pdf, BsdfSampleType::Glossy))
+            Some(BsdfSample::new(
+                f_value,
+                wi,
+                pdf,
+                BsdfSampleType::GlossyTransmission,
+            ))
         } else {
             // 通常の誘電体：Snellの法則による屈折
             let eta_val = self.eta.value(0);
@@ -471,7 +486,12 @@ impl GeneralizedSchlickBsdf {
             let ft = transmission * d * g * wi.dot(wm).abs() * wo.dot(wm).abs()
                 / (denom * cos_theta_i * cos_theta_o * eta * eta);
 
-            Some(BsdfSample::new(ft, wi, pdf, BsdfSampleType::Glossy))
+            Some(BsdfSample::new(
+                ft,
+                wi,
+                pdf,
+                BsdfSampleType::GlossyTransmission,
+            ))
         }
     }
 
