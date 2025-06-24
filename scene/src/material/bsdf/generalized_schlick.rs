@@ -26,6 +26,8 @@ pub struct GeneralizedSchlickBsdf {
     scatter_mode: ScatterMode,
     /// 屈折率（透過時に使用、ScatterMode::RTの場合のみ）
     eta: SampledSpectrum,
+    /// 入射方向が面の外側に向いているかどうか
+    entering: bool,
     /// Thin surfaceフラグ
     thin_surface: bool,
     /// X方向のroughness parameter (α_x)
@@ -44,6 +46,7 @@ impl GeneralizedSchlickBsdf {
     /// - `tint` - ティントパラメータ（1.0で白、0.0で最大ディップ）
     /// - `scatter_mode` - 散乱モード（ScatterMode::R or ScatterMode::RT）
     /// - `eta` - 屈折率（透過時に使用、ScatterMode::RTの場合のみ）
+    /// - `entering` - 入射方向が面の外側に向いているかどうか
     /// - `thin_surface` - Thin surfaceフラグ
     /// - `alpha_x` - X方向のroughness parameter
     /// - `alpha_y` - Y方向のroughness parameter
@@ -54,6 +57,7 @@ impl GeneralizedSchlickBsdf {
         tint: SampledSpectrum,
         scatter_mode: ScatterMode,
         eta: SampledSpectrum,
+        entering: bool,
         thin_surface: bool,
         alpha_x: f32,
         alpha_y: f32,
@@ -65,6 +69,7 @@ impl GeneralizedSchlickBsdf {
             tint,
             scatter_mode,
             eta,
+            entering,
             thin_surface,
             alpha_x,
             alpha_y,
