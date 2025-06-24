@@ -5,6 +5,7 @@ pub mod filter;
 pub mod renderer;
 pub mod sampler;
 pub mod scene;
+pub mod sensor;
 pub mod tone_map;
 
 use camera::Camera;
