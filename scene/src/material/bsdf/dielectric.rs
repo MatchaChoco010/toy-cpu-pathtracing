@@ -5,33 +5,27 @@ use spectrum::SampledSpectrum;
 
 use super::{BsdfSample, BsdfSampleType};
 
-/// 球面座標ヘルパー関数
-#[inline]
+/// 球面座標計算
 fn cos_theta(w: &Vector3<ShadingNormalTangent>) -> f32 {
     w.z()
 }
 
-#[inline]
 fn cos2_theta(w: &Vector3<ShadingNormalTangent>) -> f32 {
     w.z() * w.z()
 }
 
-#[inline]
 fn abs_cos_theta(w: &Vector3<ShadingNormalTangent>) -> f32 {
     w.z().abs()
 }
 
-#[inline]
 fn sin2_theta(w: &Vector3<ShadingNormalTangent>) -> f32 {
     (1.0 - cos2_theta(w)).max(0.0)
 }
 
-#[inline]
 fn tan2_theta(w: &Vector3<ShadingNormalTangent>) -> f32 {
     sin2_theta(w) / cos2_theta(w)
 }
 
-#[inline]
 fn cos_phi(w: &Vector3<ShadingNormalTangent>) -> f32 {
     let sin_theta = sin2_theta(w).sqrt();
     if sin_theta == 0.0 {
@@ -41,7 +35,6 @@ fn cos_phi(w: &Vector3<ShadingNormalTangent>) -> f32 {
     }
 }
 
-#[inline]
 fn sin_phi(w: &Vector3<ShadingNormalTangent>) -> f32 {
     let sin_theta = sin2_theta(w).sqrt();
     if sin_theta == 0.0 {
@@ -51,7 +44,6 @@ fn sin_phi(w: &Vector3<ShadingNormalTangent>) -> f32 {
     }
 }
 
-#[inline]
 fn same_hemisphere(w1: &Vector3<ShadingNormalTangent>, w2: &Vector3<ShadingNormalTangent>) -> bool {
     w1.z() * w2.z() > 0.0
 }
@@ -114,7 +106,7 @@ pub fn refract(
     }
 }
 
-#[inline]
+/// 反射ベクトルを計算
 fn reflect(
     wo: &Vector3<ShadingNormalTangent>,
     n: &Vector3<ShadingNormalTangent>,
@@ -122,14 +114,12 @@ fn reflect(
     *n * 2.0 * wo.dot(n) - *wo
 }
 
-/// 均等分布円盤サンプリング (Polar座標版)
+/// 極座標を使った単位円盤のサンプリング
 fn sample_uniform_disk_polar(u: glam::Vec2) -> glam::Vec2 {
     let r = u.x.sqrt();
     let theta = 2.0 * std::f32::consts::PI * u.y;
     glam::Vec2::new(r * theta.cos(), r * theta.sin())
 }
-
-
 
 /// 誘電体のBSDF計算を行う構造体。
 /// 完全鏡面とマイクロファセットをサポート。
