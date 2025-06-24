@@ -3,50 +3,13 @@
 use math::{ShadingNormalTangent, Vector3};
 use spectrum::SampledSpectrum;
 
-use super::{BsdfSample, BsdfSampleType};
-
-/// 球面座標計算
-fn cos_theta(w: &Vector3<ShadingNormalTangent>) -> f32 {
-    w.z()
-}
-
-fn cos2_theta(w: &Vector3<ShadingNormalTangent>) -> f32 {
-    w.z() * w.z()
-}
-
-fn abs_cos_theta(w: &Vector3<ShadingNormalTangent>) -> f32 {
-    w.z().abs()
-}
-
-fn sin2_theta(w: &Vector3<ShadingNormalTangent>) -> f32 {
-    (1.0 - cos2_theta(w)).max(0.0)
-}
-
-fn tan2_theta(w: &Vector3<ShadingNormalTangent>) -> f32 {
-    sin2_theta(w) / cos2_theta(w)
-}
-
-fn cos_phi(w: &Vector3<ShadingNormalTangent>) -> f32 {
-    let sin_theta = sin2_theta(w).sqrt();
-    if sin_theta == 0.0 {
-        1.0
-    } else {
-        (w.x() / sin_theta).clamp(-1.0, 1.0)
-    }
-}
-
-fn sin_phi(w: &Vector3<ShadingNormalTangent>) -> f32 {
-    let sin_theta = sin2_theta(w).sqrt();
-    if sin_theta == 0.0 {
-        0.0
-    } else {
-        (w.y() / sin_theta).clamp(-1.0, 1.0)
-    }
-}
-
-fn same_hemisphere(w1: &Vector3<ShadingNormalTangent>, w2: &Vector3<ShadingNormalTangent>) -> bool {
-    w1.z() * w2.z() > 0.0
-}
+use crate::material::{
+    bsdf::{BsdfSample, BsdfSampleType},
+    common::{
+        abs_cos_theta, cos_phi, cos_theta, cos2_theta, reflect, same_hemisphere,
+        sample_uniform_disk_polar, sin_phi, tan2_theta,
+    },
+};
 
 /// 誘電体のフレネル反射率を計算する。
 ///
@@ -104,21 +67,6 @@ pub fn refract(
     } else {
         Some(wt / wt_length_sq.sqrt())
     }
-}
-
-/// 反射ベクトルを計算
-fn reflect(
-    wo: &Vector3<ShadingNormalTangent>,
-    n: &Vector3<ShadingNormalTangent>,
-) -> Vector3<ShadingNormalTangent> {
-    *n * 2.0 * wo.dot(n) - *wo
-}
-
-/// 極座標を使った単位円盤のサンプリング
-fn sample_uniform_disk_polar(u: glam::Vec2) -> glam::Vec2 {
-    let r = u.x.sqrt();
-    let theta = 2.0 * std::f32::consts::PI * u.y;
-    glam::Vec2::new(r * theta.cos(), r * theta.sin())
 }
 
 /// 誘電体のBSDF計算を行う構造体。

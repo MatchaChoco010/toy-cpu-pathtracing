@@ -3,72 +3,13 @@
 use math::{ShadingNormalTangent, Vector3};
 use spectrum::SampledSpectrum;
 
-use super::{BsdfSample, BsdfSampleType};
-
-/// 球面座標計算
-fn cos2_theta(w: &Vector3<ShadingNormalTangent>) -> f32 {
-    w.z() * w.z()
-}
-
-fn tan2_theta(w: &Vector3<ShadingNormalTangent>) -> f32 {
-    let cos2 = cos2_theta(w);
-    if cos2 == 0.0 {
-        f32::INFINITY
-    } else {
-        (1.0 - cos2) / cos2
-    }
-}
-
-fn cos_phi(w: &Vector3<ShadingNormalTangent>) -> f32 {
-    let sin_theta = (1.0 - cos2_theta(w)).max(0.0).sqrt();
-    if sin_theta == 0.0 {
-        1.0
-    } else {
-        (w.x() / sin_theta).clamp(-1.0, 1.0)
-    }
-}
-
-fn sin_phi(w: &Vector3<ShadingNormalTangent>) -> f32 {
-    let sin_theta = (1.0 - cos2_theta(w)).max(0.0).sqrt();
-    if sin_theta == 0.0 {
-        0.0
-    } else {
-        (w.y() / sin_theta).clamp(-1.0, 1.0)
-    }
-}
-
-/// ハーフベクトルを計算
-fn half_vector(
-    wo: &Vector3<ShadingNormalTangent>,
-    wi: &Vector3<ShadingNormalTangent>,
-) -> Option<Vector3<ShadingNormalTangent>> {
-    let wm = *wo + *wi;
-    if wm.length_squared() == 0.0 {
-        None
-    } else {
-        Some(wm.normalize())
-    }
-}
-
-/// 反射ベクトルを計算
-fn reflect(
-    wo: &Vector3<ShadingNormalTangent>,
-    wm: &Vector3<ShadingNormalTangent>,
-) -> Vector3<ShadingNormalTangent> {
-    *wm * (2.0 * wo.dot(wm)) - *wo
-}
-
-/// 二つのベクトルが同じ半球にあるかチェック
-fn same_hemisphere(wo: &Vector3<ShadingNormalTangent>, wi: &Vector3<ShadingNormalTangent>) -> bool {
-    wo.z() * wi.z() > 0.0
-}
-
-/// 極座標を使った単位円盤のサンプリング
-fn sample_uniform_disk_polar(u: glam::Vec2) -> glam::Vec2 {
-    let r = u.x.sqrt();
-    let theta = 2.0 * std::f32::consts::PI * u.y;
-    glam::Vec2::new(r * theta.cos(), r * theta.sin())
-}
+use crate::material::{
+    bsdf::{BsdfSample, BsdfSampleType},
+    common::{
+        cos_phi, cos2_theta, half_vector, reflect, same_hemisphere, sample_uniform_disk_polar,
+        sin_phi, tan2_theta,
+    },
+};
 
 /// 簡単な複素数実装
 #[derive(Debug, Clone, Copy)]
