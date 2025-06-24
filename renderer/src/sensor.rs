@@ -2,21 +2,16 @@
 
 use std::marker::PhantomData;
 
-use color::{
-    eotf::Eotf,
-    gamut::ColorGamut,
-    tone_map::ToneMap,
-    ColorImpl,
-};
-use spectrum::{presets, SampledSpectrum, SampledWavelengths, LAMBDA_MIN, N_SPECTRUM_SAMPLES};
+use color::{ColorImpl, eotf::Eotf, gamut::ColorGamut, tone_map::ToneMap};
+use spectrum::{LAMBDA_MIN, N_SPECTRUM_SAMPLES, SampledSpectrum, SampledWavelengths, presets};
 
 // spectrum crateの内部定数を定義
 const N_SPECTRUM_DENSELY_SAMPLES: usize = (830.0 - 360.0) as usize;
 
 /// 寄与を蓄積するセンサー構造体。
 pub struct Sensor<G: ColorGamut, T: ToneMap, E: Eotf> {
-    /// 密にサンプリングされたスペクトル配列（XYZ値として蓄積）
-    densely_sampled_xyz: [glam::Vec3; N_SPECTRUM_DENSELY_SAMPLES],
+    /// 密にサンプリングされたスペクトル配列（オリジナルと同じ）
+    densely_sampled_spectrum: [f32; N_SPECTRUM_DENSELY_SAMPLES],
     /// 露光量。
     exposure: f32,
     /// サンプル数。
@@ -33,7 +28,7 @@ impl<G: ColorGamut, T: ToneMap, E: Eotf> Sensor<G, T, E> {
     /// 新しいセンサーを作成する。
     pub fn new(spp: u32, exposure: f32, tone_map: T) -> Self {
         Self {
-            densely_sampled_xyz: [glam::Vec3::ZERO; N_SPECTRUM_DENSELY_SAMPLES],
+            densely_sampled_spectrum: [0.0; N_SPECTRUM_DENSELY_SAMPLES],
             exposure,
             spp,
             tone_map,
@@ -44,62 +39,60 @@ impl<G: ColorGamut, T: ToneMap, E: Eotf> Sensor<G, T, E> {
 
     /// スペクトラルサンプルを追加する。
     pub fn add_sample(&mut self, lambda: &SampledWavelengths, s: &SampledSpectrum) {
-        // 元のDenselySampledSpectrum::add_sampleと同じロジックに従う
+        // オリジナルのDenselySampledSpectrum::add_sampleと完全に同じロジック
         let pdf = lambda.pdf();
         let count = if lambda.is_secondary_terminated() {
             1
         } else {
             N_SPECTRUM_SAMPLES
         };
-        
+
         for index in 0..count {
             let l = lambda.lambda(index);
-            // 密にサンプリングされたインデックスにマッピング（元の実装と同じ）
             let mut i = (l - LAMBDA_MIN).floor() as usize;
-            // 境界チェック（元の実装と同じ）
             i = if i == N_SPECTRUM_DENSELY_SAMPLES {
                 0
             } else {
                 i
             };
             
-            // 正規化された寄与値を計算（元の実装と同じ）
-            let normalized_contribution = s.value(index) / pdf.value(index) / N_SPECTRUM_SAMPLES as f32;
-            
-            // その波長でのcolor matching functionの値を取得
-            let lambda_for_cmf = LAMBDA_MIN + i as f32;
-            let x_val = presets::x().value(lambda_for_cmf);
-            let y_val = presets::y().value(lambda_for_cmf);
-            let z_val = presets::z().value(lambda_for_cmf);
-            
-            // XYZ値をその波長のインデックスに蓄積
-            self.densely_sampled_xyz[i].x += normalized_contribution * x_val;
-            self.densely_sampled_xyz[i].y += normalized_contribution * y_val;
-            self.densely_sampled_xyz[i].z += normalized_contribution * z_val;
+            // オリジナルと完全に同じ処理
+            self.densely_sampled_spectrum[i] +=
+                s.value(index) / pdf.value(index) / N_SPECTRUM_SAMPLES as f32;
         }
     }
 
     /// 最終的なRGB値を取得する。
     pub fn to_rgb(&self) -> ColorImpl<G, T, E> {
-        // オリジナルのinner_productと同じように、全波長のXYZ値を合計
-        let mut total_xyz = glam::Vec3::ZERO;
+        // オリジナルのfinalize_spectrum_to_colorと完全に同じロジック
+        
+        // sppで除算（オリジナルと同じ）
+        let mut averaged_spectrum = self.densely_sampled_spectrum;
         for i in 0..N_SPECTRUM_DENSELY_SAMPLES {
-            total_xyz += self.densely_sampled_xyz[i];
+            averaged_spectrum[i] /= self.spp as f32;
         }
-        
-        // sppで除算
-        total_xyz /= self.spp as f32;
-        
+
+        // オリジナルのinner_productと同じ積分を実行してXYZを計算
+        let mut xyz = glam::Vec3::ZERO;
+        for i in 0..N_SPECTRUM_DENSELY_SAMPLES {
+            let lambda = LAMBDA_MIN + i as f32;
+            let spectrum_value = averaged_spectrum[i];
+            
+            xyz.x += spectrum_value * presets::x().value(lambda);
+            xyz.y += spectrum_value * presets::y().value(lambda);
+            xyz.z += spectrum_value * presets::z().value(lambda);
+        }
+
         // XYZからRGBに変換
-        let xyz_color = color::Xyz::from(total_xyz);
+        let xyz_color = color::Xyz::from(xyz);
         let rgb_color = xyz_color.xyz_to_rgb::<G>();
-        
+
         // exposureを適用（オリジナルのfinalize_spectrum_to_colorと同じタイミング）
         let exposed_color = rgb_color.apply_exposure(self.exposure);
-        
+
         // トーンマップを適用
         let tone_mapped = exposed_color.apply_tone_map(self.tone_map.clone());
-        
+
         // EOTFを適用
         tone_mapped.apply_eotf::<E>()
     }
