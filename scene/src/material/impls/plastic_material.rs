@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use math::{Normal, Transform, Vector3, VertexNormalTangent};
-use spectrum::SampledWavelengths;
+use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::SpectrumParameter;
 use crate::{
@@ -104,8 +104,8 @@ impl PlasticMaterial {
     }
 
     /// 定数屈折率をスペクトラムに変換する。
-    fn get_eta(&self, _lambda: &SampledWavelengths) -> spectrum::SampledSpectrum {
-        spectrum::SampledSpectrum::constant(self.eta)
+    fn get_eta(&self, _lambda: &SampledWavelengths) -> SampledSpectrum {
+        SampledSpectrum::constant(self.eta)
     }
 }
 
@@ -128,19 +128,6 @@ impl BsdfSurfaceMaterial for PlasticMaterial {
         shading_point: &SurfaceInteraction<VertexNormalTangent>,
     ) -> MaterialSample {
         let eta = self.get_eta(lambda);
-        // 屈折率が波長依存の場合は最初の波長以外を打ち切る
-        if !eta.is_constant() {
-            lambda.terminate_secondary();
-        }
-
-        // プラスチックの光学特性を取得
-        let eta = eta.value(0); // 単一波長での屈折率を使用
-        let eta = if eta == 0.0 {
-            // 屈折率が0の場合は無効な値なので、デフォルトの1.0を使用
-            1.0
-        } else {
-            eta
-        };
 
         // 法線マップから法線を取得（ない場合はデフォルトのZ+法線）
         let normal_map = self
@@ -167,7 +154,7 @@ impl BsdfSurfaceMaterial for PlasticMaterial {
             roughness_value,
             roughness_value,
         );
-        let mut bsdf_result = match dielectric_bsdf.sample(&wo_normalmap, uv, uc) {
+        let mut bsdf_result = match dielectric_bsdf.sample(&wo_normalmap, uv, uc, lambda) {
             Some(result) => result,
             None => {
                 // BSDFサンプリング失敗の場合
@@ -201,13 +188,7 @@ impl BsdfSurfaceMaterial for PlasticMaterial {
         shading_point: &SurfaceInteraction<VertexNormalTangent>,
     ) -> MaterialEvaluationResult {
         // プラスチックの光学特性を取得
-        let eta = self.get_eta(lambda).value(0); // 単一波長での屈折率を使用
-        let eta = if eta == 0.0 {
-            // 屈折率が0の場合は無効な値なので、デフォルトの1.0を使用
-            1.0
-        } else {
-            eta
-        };
+        let eta = self.get_eta(lambda);
 
         // 法線マップから法線を取得（ない場合はデフォルトのZ+法線）
         let normal_map = self
@@ -257,13 +238,7 @@ impl BsdfSurfaceMaterial for PlasticMaterial {
         shading_point: &SurfaceInteraction<VertexNormalTangent>,
     ) -> f32 {
         // プラスチックの光学特性を取得
-        let eta = self.get_eta(lambda).value(0); // 単一波長での屈折率を使用
-        let eta = if eta == 0.0 {
-            // 屈折率が0の場合は無効な値なので、デフォルトの1.0を使用
-            1.0
-        } else {
-            eta
-        };
+        let eta = self.get_eta(lambda);
 
         // 法線マップから法線を取得（ない場合はデフォルトのZ+法線）
         let normal_map = self
@@ -297,8 +272,8 @@ impl BsdfSurfaceMaterial for PlasticMaterial {
         &self,
         _uv: glam::Vec2,
         _lambda: &SampledWavelengths,
-    ) -> spectrum::SampledSpectrum {
+    ) -> SampledSpectrum {
         // プラスチックの場合、アルベドは1.0（損失なし）
-        spectrum::SampledSpectrum::constant(1.0)
+        SampledSpectrum::constant(1.0)
     }
 }

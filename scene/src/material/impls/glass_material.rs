@@ -98,19 +98,6 @@ impl BsdfSurfaceMaterial for GlassMaterial {
         shading_point: &SurfaceInteraction<VertexNormalTangent>,
     ) -> MaterialSample {
         let eta = self.get_eta(lambda);
-        // 屈折率が波長依存の場合は最初の波長以外を打ち切る
-        if !eta.is_constant() {
-            lambda.terminate_secondary();
-        }
-
-        // ガラスの光学特性を取得
-        let eta = eta.value(0); // 単一波長での屈折率を使用
-        let eta = if eta == 0.0 {
-            // 屈折率が0の場合は無効な値なので、デフォルトの1.0を使用
-            1.0
-        } else {
-            eta
-        };
 
         // 法線マップから法線を取得（ない場合はデフォルトのZ+法線）
         let normal_map = self
@@ -137,7 +124,7 @@ impl BsdfSurfaceMaterial for GlassMaterial {
             roughness_value,
             roughness_value,
         );
-        let bsdf_result = match dielectric_bsdf.sample(&wo_normalmap, uv, uc) {
+        let bsdf_result = match dielectric_bsdf.sample(&wo_normalmap, uv, uc, lambda) {
             Some(result) => result,
             None => {
                 // BSDFサンプリング失敗の場合
@@ -165,13 +152,7 @@ impl BsdfSurfaceMaterial for GlassMaterial {
         shading_point: &SurfaceInteraction<VertexNormalTangent>,
     ) -> MaterialEvaluationResult {
         // ガラスの光学特性を取得
-        let eta = self.get_eta(lambda).value(0); // 単一波長での屈折率を使用
-        let eta = if eta == 0.0 {
-            // 屈折率が0の場合は無効な値なので、デフォルトの1.0を使用
-            1.0
-        } else {
-            eta
-        };
+        let eta = self.get_eta(lambda);
 
         // 法線マップから法線を取得（ない場合はデフォルトのZ+法線）
         let normal_map = self
@@ -215,13 +196,7 @@ impl BsdfSurfaceMaterial for GlassMaterial {
         shading_point: &SurfaceInteraction<VertexNormalTangent>,
     ) -> f32 {
         // ガラスの光学特性を取得
-        let eta = self.get_eta(lambda).value(0); // 単一波長での屈折率を使用
-        let eta = if eta == 0.0 {
-            // 屈折率が0の場合は無効な値なので、デフォルトの1.0を使用
-            1.0
-        } else {
-            eta
-        };
+        let eta = self.get_eta(lambda);
 
         // 法線マップから法線を取得（ない場合はデフォルトのZ+法線）
         let normal_map = self
