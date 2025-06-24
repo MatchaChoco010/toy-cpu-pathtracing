@@ -2,6 +2,7 @@
 
 mod conductor;
 mod dielectric;
+mod generalized_schlick;
 mod lambert;
 
 pub use conductor::{ConductorBsdf, fresnel_complex};
@@ -19,6 +20,15 @@ pub enum BsdfSampleType {
     Specular,
     /// 光沢反射（例：マイクロファセットBSDF）
     Glossy,
+}
+
+/// 散乱モードを表す列挙型。
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ScatterMode {
+    /// 反射のみ
+    R,
+    /// 反射と透過
+    RT,
 }
 
 // Bsdfのサンプリング結果を表す構造体。
