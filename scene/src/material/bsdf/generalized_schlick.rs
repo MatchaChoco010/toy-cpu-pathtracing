@@ -435,7 +435,7 @@ impl GeneralizedSchlickBsdf {
             let eta_val = self.eta.value(0);
             let eta = eta_val; // 空気から材料への屈折
 
-            let wm_refract = wm;
+            let wm_refract = if self.entering { wm } else { &-*wm };
             let wi = refract(wo, wm_refract, eta)?;
 
             if same_hemisphere(wo, &wi) || wi.z().abs() == 0.0 {
