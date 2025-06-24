@@ -1,14 +1,15 @@
 //! 全レンダラーの基底となるベースレンダラーの実装。
 
-use color::{ColorSrgb, eotf, tone_map::ToneMap};
+use color::{ColorSrgb, tone_map::ToneMap};
 use math::{Ray, Render, Transform, VertexNormalTangent};
 use scene::{Intersection, MaterialSample, SceneId, SurfaceInteraction};
-use spectrum::{DenselySampledSpectrum, SampledSpectrum, SampledWavelengths, SpectrumTrait};
+use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::{
     filter::Filter,
     renderer::{Renderer, RendererArgs, RenderingStrategy},
     sampler::Sampler,
+    sensor::Sensor,
 };
 
 /// BSDFサンプリングの結果を管理する構造体。
@@ -90,27 +91,6 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy>
         }
     }
 
-    /// スペクトルからsRGB色空間への最終変換を行う。
-    fn finalize_spectrum_to_color(
-        mut output: DenselySampledSpectrum,
-        spp: u32,
-        tone_map: T,
-        exposure: f32,
-    ) -> ColorSrgb<T> {
-        // sppでoutputを除算
-        output /= spp as f32;
-
-        // outputのスペクトルをXYZに変換する。
-        let xyz = output.to_xyz();
-        // XYZをRGBに変換する。
-        let rgb = xyz.xyz_to_rgb();
-        // exposureを適用する。
-        let rgb = rgb.apply_exposure(exposure);
-        // ToneMapを適用する。
-        let rgb = rgb.apply_tone_map(tone_map);
-        // ガンマ補正のEOTFを適用する。
-        rgb.apply_eotf::<eotf::GammaSrgb>()
-    }
 
     /// BSDFサンプリングと次のレイのトレースを行う。
     fn process_bsdf_sampling(
@@ -175,7 +155,7 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy> Render
         } = self.args.clone();
         let mut sampler = S::new(spp, resolution, seed);
 
-        let mut output = DenselySampledSpectrum::zero();
+        let mut sensor = Sensor::new(spp, self.exposure, self.tone_map.clone());
 
         // spp数だけループする
         'sample_loop: for sample_index in 0..spp {
@@ -200,7 +180,7 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy> Render
                 Some(intersect) => intersect,
                 None => {
                     // ヒットしなかった場合はsample_contribution = 0のまま終了
-                    output.add_sample(&lambda, sample_contribution);
+                    sensor.add_sample(&lambda, &sample_contribution);
                     continue 'sample_loop;
                 }
             };
@@ -280,10 +260,10 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy> Render
                 }
             }
 
-            // 蓄積した寄与をoutputに追加
-            output.add_sample(&lambda, sample_contribution);
+            // 蓄積した寄与をsensorに追加
+            sensor.add_sample(&lambda, &sample_contribution);
         }
 
-        Self::finalize_spectrum_to_color(output, spp, self.tone_map.clone(), self.exposure)
+        sensor.to_rgb()
     }
 }
