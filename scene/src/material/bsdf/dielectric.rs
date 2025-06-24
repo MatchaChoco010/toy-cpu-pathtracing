@@ -311,7 +311,7 @@ impl DielectricBsdf {
             SampledSpectrum::constant(f_value),
             wi,
             pdf,
-            BsdfSampleType::Glossy,
+            BsdfSampleType::GlossyReflection,
         ))
     }
 
@@ -350,7 +350,7 @@ impl DielectricBsdf {
             SampledSpectrum::constant(ft),
             wi,
             pdf,
-            BsdfSampleType::Glossy,
+            BsdfSampleType::GlossyTransmission,
         ))
     }
 
@@ -377,7 +377,7 @@ impl DielectricBsdf {
             SampledSpectrum::constant(f_value),
             wi,
             pdf,
-            BsdfSampleType::Glossy,
+            BsdfSampleType::GlossyTransmission,
         ))
     }
 
@@ -449,7 +449,7 @@ impl DielectricBsdf {
                     f,
                     wi,
                     pr / (pr + pt),
-                    BsdfSampleType::Specular,
+                    BsdfSampleType::SpecularReflection,
                 ))
             } else {
                 // Thin surface: 透過方向は入射方向の反対（wi = -wo）
@@ -465,7 +465,7 @@ impl DielectricBsdf {
                     f,
                     wi,
                     pt / (pr + pt),
-                    BsdfSampleType::Specular,
+                    BsdfSampleType::SpecularTransmission,
                 ))
             }
         } else {
@@ -484,7 +484,7 @@ impl DielectricBsdf {
                     f,
                     wi,
                     pr / (pr + pt),
-                    BsdfSampleType::Specular,
+                    BsdfSampleType::SpecularReflection,
                 ))
             } else {
                 // 通常の誘電体: Snellの法則による屈折
@@ -499,7 +499,7 @@ impl DielectricBsdf {
                         f,
                         wt,
                         pt / (pr + pt),
-                        BsdfSampleType::Specular,
+                        BsdfSampleType::SpecularTransmission,
                     ))
                 } else {
                     None

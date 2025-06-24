@@ -85,12 +85,20 @@ impl MaterialSample {
 
     /// Specularのサンプリングかどうか。
     pub fn is_specular(&self) -> bool {
-        self.sample_type == BsdfSampleType::Specular
+        matches!(
+            self.sample_type,
+            BsdfSampleType::SpecularReflection | BsdfSampleType::SpecularTransmission
+        )
     }
 
     /// 非Specularのサンプリングかどうか。
     pub fn is_non_specular(&self) -> bool {
-        self.sample_type == BsdfSampleType::Diffuse || self.sample_type == BsdfSampleType::Glossy
+        matches!(
+            self.sample_type,
+            BsdfSampleType::Diffuse
+                | BsdfSampleType::GlossyReflection
+                | BsdfSampleType::GlossyTransmission
+        )
     }
 
     /// サンプリングが成功したかどうか。
