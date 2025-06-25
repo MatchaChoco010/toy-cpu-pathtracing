@@ -89,9 +89,9 @@ impl SimpleClearcoatPbrMaterial {
         thickness: f32,
         cos_theta: f32,
     ) -> SampledSpectrum {
-        let sigma = -tint_color.clone().log() / 0.001;
-        let l = thickness / (cos_theta.max(1e-4));
-        (-sigma * l).exp()
+        // 簡単化して、単純なattenuationを計算
+        let attenuation_factor = (-thickness / cos_theta.max(1e-4) * 100.0).exp();
+        tint_color * attenuation_factor + (SampledSpectrum::constant(1.0) - tint_color) * attenuation_factor
     }
 }
 
@@ -208,13 +208,13 @@ impl BsdfSurfaceMaterial for SimpleClearcoatPbrMaterial {
                 normal_map,
             );
 
-            if substrate_sample.failed {
+            if !substrate_sample.is_sampled {
                 return substrate_sample;
             }
 
             // attenuationを計算
             let cos_wo = wo_normalmap.z();
-            let cos_wi = substrate_sample.wi_local.z();
+            let cos_wi = substrate_sample.wi.z();
             let attenuation_i = Self::compute_attenuation(
                 &clearcoat_tint_color_spectrum,
                 clearcoat_thickness_value,
@@ -229,67 +229,9 @@ impl BsdfSurfaceMaterial for SimpleClearcoatPbrMaterial {
 
             MaterialSample::new(
                 substrate_sample.f * attenuation,
-                substrate_sample.wi_local,
+                substrate_sample.wi,
                 substrate_sample.pdf * (1.0 - clearcoat_fresnel),
                 substrate_sample.sample_type,
-                normal_map,
-            )
-        }
-    }
-
-    /// clearcoatなしでサンプリングを行う
-    fn sample_without_clearcoat(
-        &self,
-        base_color_spectrum: &SampledSpectrum,
-        metallic_value: f32,
-        roughness_value: f32,
-        ior_value: f32,
-        wo_normalmap: &Vector3<math::ShadingNormalTangent>,
-        uc: f32,
-        uv: glam::Vec2,
-        lambda: &mut SampledWavelengths,
-        transform_inv: &Transform<ShadingNormalTangent, VertexNormalTangent>,
-        normal_map: Normal<VertexNormalTangent>,
-    ) -> MaterialSample {
-        // roughnessからalpha値を計算
-        let alpha = Self::roughness_to_alpha(roughness_value);
-
-        if metallic_value >= 1.0 {
-            // 完全金属
-            self.sample_metallic(
-                &base_color_spectrum,
-                alpha,
-                &wo_normalmap,
-                uv,
-                lambda,
-                &transform_inv,
-                normal_map,
-            )
-        } else if metallic_value <= 0.0 {
-            // 完全非金属
-            self.sample_dielectric(
-                &base_color_spectrum,
-                ior_value,
-                alpha,
-                &wo_normalmap,
-                uc,
-                uv,
-                lambda,
-                &transform_inv,
-                normal_map,
-            )
-        } else {
-            // 金属と非金属をミックス
-            self.sample_mixed(
-                &base_color_spectrum,
-                metallic_value,
-                ior_value,
-                alpha,
-                &wo_normalmap,
-                uc,
-                uv,
-                lambda,
-                &transform_inv,
                 normal_map,
             )
         }
@@ -401,46 +343,6 @@ impl BsdfSurfaceMaterial for SimpleClearcoatPbrMaterial {
         }
     }
 
-    /// clearcoatなしでevaluateを行う
-    fn evaluate_without_clearcoat(
-        &self,
-        base_color_spectrum: &SampledSpectrum,
-        metallic_value: f32,
-        roughness_value: f32,
-        ior_value: f32,
-        wo_normalmap: &Vector3<math::ShadingNormalTangent>,
-        wi_normalmap: &Vector3<math::ShadingNormalTangent>,
-    ) -> SampledSpectrum {
-        // roughnessからalpha値を計算
-        let alpha = Self::roughness_to_alpha(roughness_value);
-
-        if metallic_value >= 1.0 {
-            // 完全金属
-            self.evaluate_metallic(&base_color_spectrum, alpha, &wo_normalmap, &wi_normalmap)
-        } else if metallic_value <= 0.0 {
-            // 完全非金属
-            self.evaluate_dielectric(
-                &base_color_spectrum,
-                ior_value,
-                alpha,
-                &wo_normalmap,
-                &wi_normalmap,
-            )
-        } else {
-            // 金属と非金属をミックス
-            let metallic_f =
-                self.evaluate_metallic(&base_color_spectrum, alpha, &wo_normalmap, &wi_normalmap);
-            let dielectric_f = self.evaluate_dielectric(
-                &base_color_spectrum,
-                ior_value,
-                alpha,
-                &wo_normalmap,
-                &wi_normalmap,
-            );
-            metallic_f * metallic_value + dielectric_f * (1.0 - metallic_value)
-        }
-    }
-
     fn pdf(
         &self,
         _lambda: &SampledWavelengths,
@@ -519,6 +421,115 @@ impl BsdfSurfaceMaterial for SimpleClearcoatPbrMaterial {
         clearcoat_pdf * clearcoat_fresnel + substrate_pdf * (1.0 - clearcoat_fresnel)
     }
 
+    fn sample_albedo_spectrum(
+        &self,
+        uv: glam::Vec2,
+        lambda: &SampledWavelengths,
+    ) -> SampledSpectrum {
+        // ベースカラーをアルベドとして返す
+        self.base_color.sample(uv).sample(lambda)
+    }
+}
+
+impl SimpleClearcoatPbrMaterial {
+    /// clearcoatなしでサンプリングを行う
+    fn sample_without_clearcoat(
+        &self,
+        base_color_spectrum: &SampledSpectrum,
+        metallic_value: f32,
+        roughness_value: f32,
+        ior_value: f32,
+        wo_normalmap: &Vector3<math::ShadingNormalTangent>,
+        uc: f32,
+        uv: glam::Vec2,
+        lambda: &mut SampledWavelengths,
+        transform_inv: &Transform<ShadingNormalTangent, VertexNormalTangent>,
+        normal_map: Normal<VertexNormalTangent>,
+    ) -> MaterialSample {
+        // roughnessからalpha値を計算
+        let alpha = Self::roughness_to_alpha(roughness_value);
+
+        if metallic_value >= 1.0 {
+            // 完全金属
+            self.sample_metallic(
+                &base_color_spectrum,
+                alpha,
+                &wo_normalmap,
+                uv,
+                lambda,
+                &transform_inv,
+                normal_map,
+            )
+        } else if metallic_value <= 0.0 {
+            // 完全非金属
+            self.sample_dielectric(
+                &base_color_spectrum,
+                ior_value,
+                alpha,
+                &wo_normalmap,
+                uc,
+                uv,
+                lambda,
+                &transform_inv,
+                normal_map,
+            )
+        } else {
+            // 金属と非金属をミックス
+            self.sample_mixed(
+                &base_color_spectrum,
+                metallic_value,
+                ior_value,
+                alpha,
+                &wo_normalmap,
+                uc,
+                uv,
+                lambda,
+                &transform_inv,
+                normal_map,
+            )
+        }
+    }
+
+    /// clearcoatなしでevaluateを行う
+    fn evaluate_without_clearcoat(
+        &self,
+        base_color_spectrum: &SampledSpectrum,
+        metallic_value: f32,
+        roughness_value: f32,
+        ior_value: f32,
+        wo_normalmap: &Vector3<math::ShadingNormalTangent>,
+        wi_normalmap: &Vector3<math::ShadingNormalTangent>,
+    ) -> SampledSpectrum {
+        // roughnessからalpha値を計算
+        let alpha = Self::roughness_to_alpha(roughness_value);
+
+        if metallic_value >= 1.0 {
+            // 完全金属
+            self.evaluate_metallic(&base_color_spectrum, alpha, &wo_normalmap, &wi_normalmap)
+        } else if metallic_value <= 0.0 {
+            // 完全非金属
+            self.evaluate_dielectric(
+                &base_color_spectrum,
+                ior_value,
+                alpha,
+                &wo_normalmap,
+                &wi_normalmap,
+            )
+        } else {
+            // 金属と非金属をミックス
+            let metallic_f =
+                self.evaluate_metallic(&base_color_spectrum, alpha, &wo_normalmap, &wi_normalmap);
+            let dielectric_f = self.evaluate_dielectric(
+                &base_color_spectrum,
+                ior_value,
+                alpha,
+                &wo_normalmap,
+                &wi_normalmap,
+            );
+            metallic_f * metallic_value + dielectric_f * (1.0 - metallic_value)
+        }
+    }
+
     /// clearcoatなしでpdfを計算する
     fn pdf_without_clearcoat(
         &self,
@@ -558,17 +569,6 @@ impl BsdfSurfaceMaterial for SimpleClearcoatPbrMaterial {
         }
     }
 
-    fn sample_albedo_spectrum(
-        &self,
-        uv: glam::Vec2,
-        lambda: &SampledWavelengths,
-    ) -> SampledSpectrum {
-        // ベースカラーをアルベドとして返す
-        self.base_color.sample(uv).sample(lambda)
-    }
-}
-
-impl SimpleClearcoatPbrMaterial {
     /// 金属マテリアルのサンプリング
     fn sample_metallic(
         &self,

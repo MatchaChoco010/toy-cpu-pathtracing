@@ -20,5 +20,5 @@ pub use traits::{BsdfSurfaceMaterial, EmissiveSurfaceMaterial, Material, Surface
 // 具体的なマテリアル実装
 pub use impls::{
     EmissiveMaterial, GlassMaterial, GlassType, LambertMaterial, MetalMaterial, MetalType,
-    PlasticMaterial, SimplePbrMaterial,
+    PlasticMaterial, SimpleClearcoatPbrMaterial, SimplePbrMaterial,
 };
