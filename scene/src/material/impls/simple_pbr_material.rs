@@ -338,7 +338,7 @@ impl SimplePbrMaterial {
             alpha,
         );
 
-        let fresnel = generalized_schlick.fresnel(&wo_normalmap).average();
+        let fresnel = generalized_schlick.fresnel(wo_normalmap).average();
 
         if uc < fresnel {
             // Specular反射をサンプリング
@@ -358,8 +358,8 @@ impl SimplePbrMaterial {
             }
         } else {
             // Diffuse反射をサンプリング
-            let lambert_bsdf = NormalizedLambertBsdf::new();
-            match lambert_bsdf.sample(base_color, wo_normalmap, uv) {
+            let lambert_bsdf = NormalizedLambertBsdf::new(base_color.clone());
+            match lambert_bsdf.sample(wo_normalmap, uv) {
                 Some(bsdf_result) => {
                     let wi_shading = transform_inv * &bsdf_result.wi;
                     MaterialSample::new(
@@ -475,8 +475,8 @@ impl SimplePbrMaterial {
 
         let fresnel = generalized_schlick.fresnel(wo_normalmap).average();
 
-        let lambert_bsdf = NormalizedLambertBsdf::new();
-        let lambert_reflection = lambert_bsdf.evaluate(base_color, wo_normalmap, wi_normalmap);
+        let lambert_bsdf = NormalizedLambertBsdf::new(base_color.clone());
+        let lambert_reflection = lambert_bsdf.evaluate(wo_normalmap, wi_normalmap);
 
         direct_reflection + (1.0 - fresnel) * lambert_reflection
     }
@@ -538,7 +538,7 @@ impl SimplePbrMaterial {
 
         let fresnel = generalized_schlick.fresnel(wo_normalmap).average();
 
-        let lambert_bsdf = NormalizedLambertBsdf::new();
+        let lambert_bsdf = NormalizedLambertBsdf::new(SampledSpectrum::constant(1.0));
         let lambert_pdf = lambert_bsdf.pdf(wo_normalmap, wi_normalmap);
 
         fresnel * direct_pdf + (1.0 - fresnel) * lambert_pdf
