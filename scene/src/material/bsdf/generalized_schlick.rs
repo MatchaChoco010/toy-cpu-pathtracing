@@ -220,13 +220,8 @@ impl GeneralizedSchlickBsdf {
         wo: &Vector3<ShadingNormalTangent>,
         uv: glam::Vec2,
         uc: f32,
-        lambda: &mut SampledWavelengths,
+        wavelengths: &mut SampledWavelengths,
     ) -> Option<BsdfSample> {
-        // 屈折率が波長依存の場合は最初の波長以外を打ち切る
-        if !self.eta.is_constant() {
-            lambda.terminate_secondary();
-        }
-
         let wo_cos_n = wo.z();
         if wo_cos_n == 0.0 {
             return None;
@@ -234,15 +229,20 @@ impl GeneralizedSchlickBsdf {
 
         if self.effectively_smooth() {
             // 完全鏡面反射/透過
-            self.sample_specular(wo, uc)
+            self.sample_specular(wo, uc, wavelengths)
         } else {
             // マイクロファセットサンプリング
-            self.sample_microfacet(wo, uv, uc)
+            self.sample_microfacet(wo, uv, uc, wavelengths)
         }
     }
 
     /// 完全鏡面反射/透過サンプリング。
-    fn sample_specular(&self, wo: &Vector3<ShadingNormalTangent>, uc: f32) -> Option<BsdfSample> {
+    fn sample_specular(
+        &self,
+        wo: &Vector3<ShadingNormalTangent>,
+        uc: f32,
+        wavelengths: &mut SampledWavelengths,
+    ) -> Option<BsdfSample> {
         let wo_cos_n = wo.z();
 
         // フレネル反射率を計算
@@ -309,7 +309,11 @@ impl GeneralizedSchlickBsdf {
                         BsdfSampleType::SpecularTransmission,
                     ))
                 } else {
-                    // 通常の誘電体：Snellの法則による屈折
+                    // 通常の誘電体：Snellの法則による屈折（波長制限）
+                    if !self.eta.is_constant() {
+                        wavelengths.terminate_secondary();
+                    }
+
                     let eta_val = self.eta.value(0);
                     let (eta_i, eta_t) = if self.thin_surface {
                         (1.0, eta_val) // 空気(1.0) → 誘電体(n): eta = n
@@ -349,6 +353,7 @@ impl GeneralizedSchlickBsdf {
         wo: &Vector3<ShadingNormalTangent>,
         uv: glam::Vec2,
         uc: f32,
+        wavelengths: &mut SampledWavelengths,
     ) -> Option<BsdfSample> {
         // 可視法線をサンプリング
         let wm = self.sample_visible_normal(wo, uv);
@@ -372,7 +377,11 @@ impl GeneralizedSchlickBsdf {
                     // 反射
                     self.sample_microfacet_reflection(wo, &wm, fresnel, pr / (pr + pt))
                 } else {
-                    // 透過
+                    // 透過（波長制限）
+                    if !self.eta.is_constant() {
+                        wavelengths.terminate_secondary();
+                    }
+
                     self.sample_microfacet_transmission(
                         wo,
                         &wm,

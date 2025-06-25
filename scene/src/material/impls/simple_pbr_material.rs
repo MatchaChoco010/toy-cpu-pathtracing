@@ -338,7 +338,7 @@ impl SimplePbrMaterial {
             alpha,
         );
 
-        let fresnel = generalized_schlick.fresnel(&wo_normalmap).average();
+        let fresnel = generalized_schlick.fresnel(wo_normalmap).average();
 
         if uc < fresnel {
             // Specular反射をサンプリング
