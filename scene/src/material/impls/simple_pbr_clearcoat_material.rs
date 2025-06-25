@@ -1,4 +1,6 @@
-//! シンプルなPBRマテリアル実装。
+//! Babylon.jsに似たクリアコートの計算を行うシンプルなPBRマテリアル実装。
+//! クリアコートで反射しなかった光は、減衰して下層で反射してまた減衰して出ていく。
+//! 下層からまた上層で反射して戻るような層の間での反射は考慮しない。
 
 use std::sync::Arc;
 
@@ -6,13 +8,12 @@ use math::{Normal, ShadingNormalTangent, Transform, Vector3, VertexNormalTangent
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::{
+    material::bsdf::{GeneralizedSchlickBsdf, NormalizedLambertBsdf, ScatterMode},
     BsdfSurfaceMaterial, FloatParameter, Material, MaterialEvaluationResult, MaterialSample,
     NormalParameter, SpectrumParameter, SurfaceInteraction, SurfaceMaterial,
-    material::bsdf::{GeneralizedSchlickBsdf, NormalizedLambertBsdf, ScatterMode},
 };
 
-/// シンプルなPBRマテリアル。
-/// metellicパラメータで金属と非金属の結果をミックスして返す。
+/// シンプルなクリアコート付きPBRマテリアル。
 pub struct SimpleClearcoatPbrMaterial {
     /// ベースカラー
     base_color: SpectrumParameter,
@@ -92,13 +93,14 @@ impl SimpleClearcoatPbrMaterial {
         // Beer-Lambertの式: attenuation = exp(-sigma * L)
         // sigma = -log(tint_color) / 0.001
         // L = thickness / max(cos_theta, 1e-4)
+        // tint_colorは1mmあたりの色付けを表しているものとする。
 
         // sigma = -log(tint_color) / 0.001を計算
         let log_tint = tint_color.log();
-        let sigma = log_tint * (-1.0 / 0.001);
+        let sigma = -1.0 * log_tint / 0.001;
 
         let l = thickness / cos_theta.max(1e-4);
-        (sigma * l).exp()
+        (-1.0 * sigma * l).exp()
     }
 }
 
