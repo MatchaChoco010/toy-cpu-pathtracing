@@ -79,24 +79,21 @@ pub fn sample_uniform_disk_polar(u: glam::Vec2) -> glam::Vec2 {
     glam::Vec2::new(r * theta.cos(), r * theta.sin())
 }
 
-/// 誘電体のフレネル反射率を計算する（スペクトル対応）。
+/// 誘電体のフレネル反射率を計算する。
 ///
 /// # Arguments
 /// - `cos_theta_i` - 入射角のコサイン値
-/// - `eta` - 屈折率の比（透過側/入射側、スペクトル依存）
+/// - `eta` - 屈折率の比（透過側/入射側）
 pub fn fresnel_dielectric(cos_theta_i: f32, eta: &SampledSpectrum) -> SampledSpectrum {
     let cos_theta_i = cos_theta_i.clamp(0.0, 1.0);
 
-    // Snellの法則で透過角を計算
     let sin2_theta_i = 1.0 - cos_theta_i * cos_theta_i;
     let sin2_theta_t_spectrum =
         SampledSpectrum::constant(sin2_theta_i) / (eta.clone() * eta.clone());
 
-    // 全反射判定とcos_theta_t計算をSampledSpectrumで処理
     let one = SampledSpectrum::one();
     let cos_theta_t_spectrum = (one - sin2_theta_t_spectrum).clamp(0.0, 1.0).sqrt();
 
-    // フレネル方程式をSampledSpectrumで計算
     let cos_theta_i_spectrum = SampledSpectrum::constant(cos_theta_i);
 
     let r_parl = (eta.clone() * cos_theta_i_spectrum.clone() - cos_theta_t_spectrum.clone())

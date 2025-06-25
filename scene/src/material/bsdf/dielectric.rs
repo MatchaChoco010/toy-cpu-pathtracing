@@ -249,9 +249,8 @@ impl DielectricBsdf {
         } else {
             SampledSpectrum::one() / self.eta.clone() // 誘電体(n) → 空気(1.0): eta = 1/n
         };
-        let eta_scalar = eta_spectrum.value(0); // 屈折計算用
+        let eta_scalar = eta_spectrum.value(0);
 
-        // フレネル反射率を計算
         let wo_dot_wm = wo.dot(wm);
         let fresnel = fresnel_dielectric(wo_dot_wm.abs(), &eta_spectrum);
         let pr = fresnel.average();
@@ -438,9 +437,8 @@ impl DielectricBsdf {
         } else {
             SampledSpectrum::one() / self.eta.clone() // 誘電体(n) → 空気(1.0): eta = 1/n
         };
-        let etap_scalar = eta_spectrum.value(0); // 屈折計算用
+        let etap_scalar = eta_spectrum.value(0);
 
-        // フレネル反射率を計算
         let fresnel = fresnel_dielectric(wo_cos_n.abs(), &eta_spectrum);
 
         if self.thin_surface {
@@ -573,7 +571,7 @@ impl DielectricBsdf {
         } else {
             SampledSpectrum::one() / self.eta.clone() // 誘電体(n) → 空気(1.0): eta = 1/n
         };
-        let eta_scalar = eta_spectrum.value(0); // 屈折計算用
+        let eta_scalar = eta_spectrum.value(0);
 
         // Generalized half vectorを計算
         let wm = match self.compute_generalized_half_vector(wo, wi, eta_scalar) {
@@ -581,7 +579,6 @@ impl DielectricBsdf {
             None => return SampledSpectrum::zero(),
         };
 
-        // フレネル反射率を計算
         let fresnel = fresnel_dielectric(wo.dot(wm).abs(), &eta_spectrum);
 
         // 反射か透過かを判定
@@ -620,7 +617,7 @@ impl DielectricBsdf {
         } else {
             SampledSpectrum::one() / self.eta.clone() // 誘電体(n) → 空気(1.0): eta = 1/n
         };
-        let eta_scalar = eta_spectrum.value(0); // 屈折計算用
+        let eta_scalar = eta_spectrum.value(0);
 
         // Generalized half vectorを計算
         let wm = match self.compute_generalized_half_vector(wo, wi, eta_scalar) {
@@ -628,7 +625,6 @@ impl DielectricBsdf {
             None => return 0.0,
         };
 
-        // フレネル反射率を計算
         let fresnel = fresnel_dielectric(wo.dot(wm).abs(), &eta_spectrum);
         let pr = fresnel.average();
         let pt = 1.0 - pr;
