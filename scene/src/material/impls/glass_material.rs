@@ -183,7 +183,7 @@ impl BsdfSurfaceMaterial for GlassMaterial {
 
         MaterialEvaluationResult {
             f,
-            pdf: 1.0, // 単一BSDFなので選択確率は1.0
+            pdf: 1.0,
             normal: normal_map,
         }
     }
