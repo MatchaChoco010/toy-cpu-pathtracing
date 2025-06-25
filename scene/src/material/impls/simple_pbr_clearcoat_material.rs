@@ -91,7 +91,8 @@ impl SimpleClearcoatPbrMaterial {
     ) -> SampledSpectrum {
         // 簡単化して、単純なattenuationを計算
         let attenuation_factor = (-thickness / cos_theta.max(1e-4) * 100.0).exp();
-        tint_color * attenuation_factor + (SampledSpectrum::constant(1.0) - tint_color) * attenuation_factor
+        tint_color * attenuation_factor
+            + (SampledSpectrum::constant(1.0) - tint_color) * attenuation_factor
     }
 }
 
@@ -121,8 +122,10 @@ impl BsdfSurfaceMaterial for SimpleClearcoatPbrMaterial {
         let ior_value = self.ior.sample(shading_point.uv);
         let clearcoat_ior_value = self.clearcoat_ior.sample(shading_point.uv);
         let clearcoat_roughness_value = self.clearcoat_roughness.sample(shading_point.uv);
-        let clearcoat_tint_color_spectrum =
-            self.clearcoat_tint_color.sample(shading_point.uv).sample(lambda);
+        let clearcoat_tint_color_spectrum = self
+            .clearcoat_tint_color
+            .sample(shading_point.uv)
+            .sample(lambda);
         let clearcoat_thickness_value = self.clearcoat_thickness.sample(shading_point.uv);
 
         // 法線マップから法線を取得
@@ -251,8 +254,10 @@ impl BsdfSurfaceMaterial for SimpleClearcoatPbrMaterial {
         let ior_value = self.ior.sample(shading_point.uv);
         let clearcoat_ior_value = self.clearcoat_ior.sample(shading_point.uv);
         let clearcoat_roughness_value = self.clearcoat_roughness.sample(shading_point.uv);
-        let clearcoat_tint_color_spectrum =
-            self.clearcoat_tint_color.sample(shading_point.uv).sample(lambda);
+        let clearcoat_tint_color_spectrum = self
+            .clearcoat_tint_color
+            .sample(shading_point.uv)
+            .sample(lambda);
         let clearcoat_thickness_value = self.clearcoat_thickness.sample(shading_point.uv);
 
         // 法線マップから法線を取得
@@ -334,7 +339,8 @@ impl BsdfSurfaceMaterial for SimpleClearcoatPbrMaterial {
         let attenuation = attenuation_i * attenuation_o;
 
         // 全体のf値を計算
-        let f = clearcoat_f * clearcoat_fresnel + substrate_f * attenuation * (1.0 - clearcoat_fresnel);
+        let f =
+            clearcoat_f * clearcoat_fresnel + substrate_f * attenuation * (1.0 - clearcoat_fresnel);
 
         MaterialEvaluationResult {
             f,
@@ -452,39 +458,39 @@ impl SimpleClearcoatPbrMaterial {
         if metallic_value >= 1.0 {
             // 完全金属
             self.sample_metallic(
-                &base_color_spectrum,
+                base_color_spectrum,
                 alpha,
-                &wo_normalmap,
+                wo_normalmap,
                 uv,
                 lambda,
-                &transform_inv,
+                transform_inv,
                 normal_map,
             )
         } else if metallic_value <= 0.0 {
             // 完全非金属
             self.sample_dielectric(
-                &base_color_spectrum,
+                base_color_spectrum,
                 ior_value,
                 alpha,
-                &wo_normalmap,
+                wo_normalmap,
                 uc,
                 uv,
                 lambda,
-                &transform_inv,
+                transform_inv,
                 normal_map,
             )
         } else {
             // 金属と非金属をミックス
             self.sample_mixed(
-                &base_color_spectrum,
+                base_color_spectrum,
                 metallic_value,
                 ior_value,
                 alpha,
-                &wo_normalmap,
+                wo_normalmap,
                 uc,
                 uv,
                 lambda,
-                &transform_inv,
+                transform_inv,
                 normal_map,
             )
         }
@@ -505,26 +511,26 @@ impl SimpleClearcoatPbrMaterial {
 
         if metallic_value >= 1.0 {
             // 完全金属
-            self.evaluate_metallic(&base_color_spectrum, alpha, &wo_normalmap, &wi_normalmap)
+            self.evaluate_metallic(base_color_spectrum, alpha, wo_normalmap, wi_normalmap)
         } else if metallic_value <= 0.0 {
             // 完全非金属
             self.evaluate_dielectric(
-                &base_color_spectrum,
+                base_color_spectrum,
                 ior_value,
                 alpha,
-                &wo_normalmap,
-                &wi_normalmap,
+                wo_normalmap,
+                wi_normalmap,
             )
         } else {
             // 金属と非金属をミックス
             let metallic_f =
-                self.evaluate_metallic(&base_color_spectrum, alpha, &wo_normalmap, &wi_normalmap);
+                self.evaluate_metallic(base_color_spectrum, alpha, wo_normalmap, wi_normalmap);
             let dielectric_f = self.evaluate_dielectric(
-                &base_color_spectrum,
+                base_color_spectrum,
                 ior_value,
                 alpha,
-                &wo_normalmap,
-                &wi_normalmap,
+                wo_normalmap,
+                wi_normalmap,
             );
             metallic_f * metallic_value + dielectric_f * (1.0 - metallic_value)
         }
@@ -545,25 +551,25 @@ impl SimpleClearcoatPbrMaterial {
 
         if metallic_value >= 1.0 {
             // 完全金属
-            self.pdf_metallic(alpha, &wo_normalmap, &wi_normalmap)
+            self.pdf_metallic(alpha, wo_normalmap, wi_normalmap)
         } else if metallic_value <= 0.0 {
             // 完全非金属
             self.pdf_dielectric(
-                &base_color_spectrum,
+                base_color_spectrum,
                 ior_value,
                 alpha,
-                &wo_normalmap,
-                &wi_normalmap,
+                wo_normalmap,
+                wi_normalmap,
             )
         } else {
             // 金属と非金属をミックス
-            let metallic_pdf = self.pdf_metallic(alpha, &wo_normalmap, &wi_normalmap);
+            let metallic_pdf = self.pdf_metallic(alpha, wo_normalmap, wi_normalmap);
             let dielectric_pdf = self.pdf_dielectric(
-                &base_color_spectrum,
+                base_color_spectrum,
                 ior_value,
                 alpha,
-                &wo_normalmap,
-                &wi_normalmap,
+                wo_normalmap,
+                wi_normalmap,
             );
             metallic_pdf * metallic_value + dielectric_pdf * (1.0 - metallic_value)
         }

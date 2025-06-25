@@ -10,36 +10,41 @@ use spectrum::{RgbAlbedoSpectrum, presets};
 
 use crate::{camera::Camera, filter::Filter};
 
-pub fn load_scene_16<Id: scene::SceneId, F: Filter>(scene: &mut scene::Scene<Id>, camera: &mut Camera<F>) {
+pub fn load_scene_16<Id: scene::SceneId, F: Filter>(
+    scene: &mut scene::Scene<Id>,
+    camera: &mut Camera<F>,
+) {
     // clearcoat PBR bunnyのシーン
 
     // clearcoat PBR bunny
     let geom = scene.load_obj("./renderer/assets/bunny.obj");
-    
+
     // 銀色のベースカラー
-    let base_color_spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.8, 0.8, 0.8));
+    let base_color_spectrum =
+        RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.8, 0.8, 0.8));
     let base_color_param = SpectrumParameter::constant(base_color_spectrum);
-    
+
     // metallic = 1.0 (完全金属)
     let metallic_param = FloatParameter::constant(1.0);
-    
+
     // roughness
     let roughness_param = FloatParameter::constant(0.1);
-    
+
     // ior
     let ior_param = FloatParameter::constant(1.5);
-    
+
     // clearcoat設定
     let clearcoat_ior_param = FloatParameter::constant(1.5);
     let clearcoat_roughness_param = FloatParameter::constant(0.08);
-    
+
     // 青いtint
-    let clearcoat_tint_spectrum = RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.7, 0.8, 1.0));
+    let clearcoat_tint_spectrum =
+        RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.7, 0.8, 1.0));
     let clearcoat_tint_param = SpectrumParameter::constant(clearcoat_tint_spectrum);
-    
+
     // thickness（0.001m = 1mm程度）
     let clearcoat_thickness_param = FloatParameter::constant(0.001);
-    
+
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
         surface_material: SimpleClearcoatPbrMaterial::new(
