@@ -13,7 +13,8 @@ pub use material::{
     BsdfSample, BsdfSampleType, BsdfSurfaceMaterial, ConductorBsdf, DielectricBsdf,
     EmissiveMaterial, EmissiveSurfaceMaterial, FloatParameter, GlassMaterial, GlassType,
     LambertMaterial, Material, MetalMaterial, MetalType, NormalParameter, NormalizedLambertBsdf,
-    PlasticMaterial, SimpleClearcoatPbrMaterial, SimplePbrMaterial, SpectrumParameter, SurfaceMaterial, UniformEdf,
+    PlasticMaterial, SimpleClearcoatPbrMaterial, SimplePbrMaterial, SpectrumParameter,
+    SurfaceMaterial, UniformEdf,
 };
 pub use primitive::{CreatePrimitiveDesc, Intersection, PrimitiveBvh, PrimitiveIndex};
 pub use samples::{
