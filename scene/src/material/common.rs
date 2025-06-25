@@ -1,6 +1,7 @@
 //! BSDFで共通して使用される汎用的な計算関数群。
 
 use math::{ShadingNormalTangent, Vector3};
+use spectrum::SampledSpectrum;
 
 /// 球面座標計算
 pub fn cos_theta(w: &Vector3<ShadingNormalTangent>) -> f32 {
@@ -78,28 +79,32 @@ pub fn sample_uniform_disk_polar(u: glam::Vec2) -> glam::Vec2 {
     glam::Vec2::new(r * theta.cos(), r * theta.sin())
 }
 
-/// 誘電体のフレネル反射率を計算する。
+/// 誘電体のフレネル反射率を計算する（スペクトル対応）。
 ///
 /// # Arguments
 /// - `cos_theta_i` - 入射角のコサイン値
-/// - `eta` - 屈折率の比（透過側/入射側）
-pub fn fresnel_dielectric(cos_theta_i: f32, eta: f32) -> f32 {
+/// - `eta` - 屈折率の比（透過側/入射側、スペクトル依存）
+pub fn fresnel_dielectric(cos_theta_i: f32, eta: &SampledSpectrum) -> SampledSpectrum {
+    let cos_theta_i = cos_theta_i.clamp(0.0, 1.0);
+
     // Snellの法則で透過角を計算
     let sin2_theta_i = 1.0 - cos_theta_i * cos_theta_i;
-    let sin2_theta_t = sin2_theta_i / (eta * eta);
+    let sin2_theta_t_spectrum =
+        SampledSpectrum::constant(sin2_theta_i) / (eta.clone() * eta.clone());
 
-    // 全反射の場合
-    if sin2_theta_t >= 1.0 {
-        return 1.0;
-    }
+    // 全反射判定とcos_theta_t計算をSampledSpectrumで処理
+    let one = SampledSpectrum::one();
+    let cos_theta_t_spectrum = (one - sin2_theta_t_spectrum).clamp(0.0, 1.0).sqrt();
 
-    let cos_theta_t = (1.0 - sin2_theta_t).max(0.0).sqrt();
+    // フレネル方程式をSampledSpectrumで計算
+    let cos_theta_i_spectrum = SampledSpectrum::constant(cos_theta_i);
 
-    // フレネル方程式
-    let r_parl = (eta * cos_theta_i - cos_theta_t) / (eta * cos_theta_i + cos_theta_t);
-    let r_perp = (cos_theta_i - eta * cos_theta_t) / (cos_theta_i + eta * cos_theta_t);
+    let r_parl = (eta.clone() * cos_theta_i_spectrum.clone() - cos_theta_t_spectrum.clone())
+        / (eta.clone() * cos_theta_i_spectrum.clone() + cos_theta_t_spectrum.clone());
+    let r_perp = (cos_theta_i_spectrum.clone() - eta.clone() * cos_theta_t_spectrum.clone())
+        / (cos_theta_i_spectrum + eta.clone() * cos_theta_t_spectrum);
 
-    (r_parl * r_parl + r_perp * r_perp) * 0.5
+    (r_parl.clone() * r_parl + r_perp.clone() * r_perp) * 0.5
 }
 
 /// 屈折方向を計算する。
