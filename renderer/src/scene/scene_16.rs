@@ -4,7 +4,7 @@ use color::{ColorSrgb, tone_map::NoneToneMap};
 use math::{Point3, Transform, Vector3};
 use scene::{
     CreatePrimitiveDesc, EmissiveMaterial, FloatParameter, LambertMaterial, NormalParameter,
-    SimplePbrClearcoatMaterial, SpectrumParameter, SpectrumType,
+    SimpleClearcoatPbrMaterial, SpectrumParameter,
 };
 use spectrum::{RgbAlbedoSpectrum, presets};
 
@@ -42,7 +42,7 @@ pub fn load_scene_16<Id: scene::SceneId, F: Filter>(scene: &mut scene::Scene<Id>
     
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
-        surface_material: SimplePbrClearcoatMaterial::new(
+        surface_material: SimpleClearcoatPbrMaterial::new(
             base_color_param,
             metallic_param,
             roughness_param,
