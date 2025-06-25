@@ -389,7 +389,7 @@ impl SimplePbrMaterial {
         transform_inv: &Transform<ShadingNormalTangent, VertexNormalTangent>,
         normal_map: Normal<VertexNormalTangent>,
     ) -> MaterialSample {
-        if uc < metallic {
+        if uc <= metallic {
             // 金属として扱う
             self.sample_metallic(
                 base_color,
