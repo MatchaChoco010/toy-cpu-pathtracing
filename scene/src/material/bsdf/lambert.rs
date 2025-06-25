@@ -17,26 +17,25 @@ fn sample_cosine_hemisphere(uv: glam::Vec2) -> Vector3<ShadingNormalTangent> {
 
 /// 正規化ランバート反射の純粋なBSDF計算を行う構造体。
 /// パラメータは外部から与えられ、SurfaceInteractionに依存しない。
-#[derive(Default)]
-pub struct NormalizedLambertBsdf;
+pub struct NormalizedLambertBsdf {
+    /// 反射率スペクトル
+    albedo: SampledSpectrum,
+}
 impl NormalizedLambertBsdf {
     /// 新しいNormalizedLambertBsdfを作成する。
-    pub fn new() -> Self {
-        Self
+    ///
+    /// # Arguments
+    /// - `albedo` - 反射率スペクトル
+    pub fn new(albedo: SampledSpectrum) -> Self {
+        Self { albedo }
     }
 
     /// BSDF方向サンプリングを行う。
     ///
     /// # Arguments
-    /// - `albedo` - 反射率スペクトル
     /// - `wo` - 出射方向（ノーマルマップ接空間）
     /// - `uv` - ランダムサンプル
-    pub fn sample(
-        &self,
-        albedo: &SampledSpectrum,
-        wo: &Vector3<ShadingNormalTangent>,
-        uv: glam::Vec2,
-    ) -> Option<BsdfSample> {
+    pub fn sample(&self, wo: &Vector3<ShadingNormalTangent>, uv: glam::Vec2) -> Option<BsdfSample> {
         let wo_cos_n = wo.z();
         if wo_cos_n == 0.0 {
             return None;
@@ -61,7 +60,7 @@ impl NormalizedLambertBsdf {
         }
 
         // BSDFの値を計算
-        let f = albedo.clone() / PI;
+        let f = self.albedo.clone() / PI;
 
         // PDFを計算
         let pdf = wi_cos_n.abs() / PI;
@@ -72,12 +71,10 @@ impl NormalizedLambertBsdf {
     /// BSDF値を評価する。
     ///
     /// # Arguments
-    /// - `albedo` - 反射率スペクトル
     /// - `wo` - 出射方向（ノーマルマップ接空間）
     /// - `wi` - 入射方向（ノーマルマップ接空間）
     pub fn evaluate(
         &self,
-        albedo: &SampledSpectrum,
         wo: &Vector3<ShadingNormalTangent>,
         wi: &Vector3<ShadingNormalTangent>,
     ) -> SampledSpectrum {
@@ -94,7 +91,7 @@ impl NormalizedLambertBsdf {
         }
 
         // BSDFの値を計算（標準ランバート）
-        albedo.clone() / PI
+        self.albedo.clone() / PI
     }
 
     /// BSDF PDFを計算する。
