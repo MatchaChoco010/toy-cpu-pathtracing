@@ -170,7 +170,8 @@ impl BsdfSurfaceMaterial for LambertMaterial {
         let wi_normalmap = &transform * wi;
 
         // BSDF PDF計算（ノーマルマップタンジェント空間で実行）
-        let bsdf = NormalizedLambertBsdf::new(spectrum::SampledSpectrum::constant(1.0));
+        let albedo = self.albedo.sample(shading_point.uv).sample(_lambda);
+        let bsdf = NormalizedLambertBsdf::new(albedo);
         bsdf.pdf(&wo_normalmap, &wi_normalmap)
     }
 

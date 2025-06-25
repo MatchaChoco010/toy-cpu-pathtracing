@@ -216,6 +216,7 @@ impl BsdfSurfaceMaterial for SimplePbrMaterial {
         shading_point: &SurfaceInteraction<VertexNormalTangent>,
     ) -> f32 {
         // パラメータをサンプリング
+        let base_color_spectrum = self.base_color.sample(shading_point.uv).sample(_lambda);
         let metallic_value = self.metallic.sample(shading_point.uv);
         let roughness_value = self.roughness.sample(shading_point.uv);
         let ior_value = self.ior.sample(shading_point.uv);
@@ -241,12 +242,23 @@ impl BsdfSurfaceMaterial for SimplePbrMaterial {
             self.pdf_metallic(alpha, &wo_normalmap, &wi_normalmap)
         } else if metallic_value <= 0.0 {
             // 完全非金属
-            self.pdf_dielectric(ior_value, alpha, &wo_normalmap, &wi_normalmap)
+            self.pdf_dielectric(
+                &base_color_spectrum,
+                ior_value,
+                alpha,
+                &wo_normalmap,
+                &wi_normalmap,
+            )
         } else {
             // 金属と非金属をミックス
             let metallic_pdf = self.pdf_metallic(alpha, &wo_normalmap, &wi_normalmap);
-            let dielectric_pdf =
-                self.pdf_dielectric(ior_value, alpha, &wo_normalmap, &wi_normalmap);
+            let dielectric_pdf = self.pdf_dielectric(
+                &base_color_spectrum,
+                ior_value,
+                alpha,
+                &wo_normalmap,
+                &wi_normalmap,
+            );
             metallic_pdf * metallic_value + dielectric_pdf * (1.0 - metallic_value)
         }
     }
@@ -511,6 +523,7 @@ impl SimplePbrMaterial {
     /// 非金属マテリアルのPDF（GeneralizedSchlick + Lambertレイヤー）
     fn pdf_dielectric(
         &self,
+        base_color: &SampledSpectrum,
         ior: f32,
         alpha: f32,
         wo_normalmap: &Vector3<math::ShadingNormalTangent>,
@@ -538,7 +551,7 @@ impl SimplePbrMaterial {
 
         let fresnel = generalized_schlick.fresnel(wo_normalmap).average();
 
-        let lambert_bsdf = NormalizedLambertBsdf::new(SampledSpectrum::constant(1.0));
+        let lambert_bsdf = NormalizedLambertBsdf::new(base_color.clone());
         let lambert_pdf = lambert_bsdf.pdf(wo_normalmap, wi_normalmap);
 
         fresnel * direct_pdf + (1.0 - fresnel) * lambert_pdf
