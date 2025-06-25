@@ -597,7 +597,6 @@ impl GeneralizedSchlickBsdf {
                 return SampledSpectrum::zero();
             }
 
-            // フレネル透過率を計算
             let fresnel = self.generalized_schlick_fresnel(wo.z().abs());
             let transmission = SampledSpectrum::one() - fresnel;
 
@@ -612,7 +611,7 @@ impl GeneralizedSchlickBsdf {
             } else {
                 SampledSpectrum::one() / self.eta.clone() // 誘電体(n) → 空気(1.0): eta = 1/n
             };
-            let eta_scalar = eta_spectrum.value(0); // 屈折計算用
+            let eta_scalar = eta_spectrum.value(0);
 
             // Generalized half vectorを計算
             let wm = match self.compute_generalized_half_vector(wo, wi, eta_scalar) {
@@ -620,7 +619,6 @@ impl GeneralizedSchlickBsdf {
                 None => return SampledSpectrum::zero(),
             };
 
-            // フレネル透過率を計算
             let fresnel_dielectric_spectrum = fresnel_dielectric(wo.dot(wm).abs(), &eta_spectrum);
             let transmission = SampledSpectrum::one() - fresnel_dielectric_spectrum;
 
@@ -631,8 +629,6 @@ impl GeneralizedSchlickBsdf {
 
             let numerator = d * transmission * g * wi.dot(wm).abs() * wo.dot(wm).abs();
             let denominator = denom * abs_cos_theta(wi) * abs_cos_theta(wo);
-
-            
 
             numerator / denominator / (eta_scalar * eta_scalar)
         }
@@ -716,7 +712,6 @@ impl GeneralizedSchlickBsdf {
                     // 反射PDF
                     let pdf_refl = self.pdf_reflection(wo, wi);
 
-                    // フレネル反射率で重み付け
                     let eta_spectrum = if self.entering {
                         self.eta.clone()
                     } else {
@@ -731,7 +726,6 @@ impl GeneralizedSchlickBsdf {
                     // 透過PDF
                     let pdf_trans = self.pdf_transmission(wo, wi);
 
-                    // フレネル透過率で重み付け
                     let eta_spectrum = if self.entering {
                         self.eta.clone()
                     } else {
