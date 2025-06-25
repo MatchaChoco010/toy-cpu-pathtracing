@@ -56,10 +56,11 @@ pub fn load_scene_15<Id: SceneId, F: Filter>(scene: &mut Scene<Id>, camera: &mut
             .rotate(glam::Quat::from_euler(
                 glam::EulerRot::XYZ,
                 0.0,
-                std::f32::consts::FRAC_PI_2,
+                120_f32.to_radians(),
                 0.0,
             ))
-            .scale(glam::vec3(2.5, 2.5, 2.5)),
+            .scale(glam::vec3(2.5, 2.5, 2.5))
+            .translate(glam::vec3(0.0, 0.0, 0.5)),
     });
 
     // コーネルボックスの背景壁
