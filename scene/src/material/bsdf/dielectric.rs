@@ -182,9 +182,9 @@ impl DielectricBsdf {
         }
 
         if self.effectively_smooth() {
-            self.sample_perfect_specular(wo, glam::Vec2::new(uc, uv.x))
+            self.sample_specular(wo, glam::Vec2::new(uc, uv.x))
         } else {
-            self.sample_rough_dielectric(wo, uv, uc)
+            self.sample_microfacet(wo, uv, uc)
         }
     }
 
@@ -235,8 +235,8 @@ impl DielectricBsdf {
         Some(wm)
     }
 
-    /// Rough dielectric BSDFのサンプリングを行う
-    fn sample_rough_dielectric(
+    /// Microfacet dielectric BSDFのサンプリングを行う
+    fn sample_microfacet(
         &self,
         wo: &Vector3<ShadingNormalTangent>,
         u: glam::Vec2,
@@ -267,22 +267,22 @@ impl DielectricBsdf {
 
             if uc < pr / (pr + pt) {
                 // 反射
-                self.sample_rough_reflection(wo, &wm, pr, pr / (pr + pt))
+                self.sample_microfacet_reflection(wo, &wm, pr, pr / (pr + pt))
             } else {
                 // Thin surface透過
-                self.sample_rough_transmission_thin_surface(wo, &wm, pt, pt / (pr + pt), eta)
+                self.sample_specular_transmission_thin_surface(wo, &wm, pt, pt / (pr + pt), eta)
             }
         } else if uc < pr / (pr + pt) {
             // 反射
-            self.sample_rough_reflection(wo, &wm, pr, pr / (pr + pt))
+            self.sample_microfacet_reflection(wo, &wm, pr, pr / (pr + pt))
         } else {
             // 透過
-            self.sample_rough_transmission(wo, &wm, pt, pt / (pr + pt), eta)
+            self.sample_microfacet_transmission(wo, &wm, pt, pt / (pr + pt), eta)
         }
     }
 
     /// Rough dielectric反射のサンプリング
-    fn sample_rough_reflection(
+    fn sample_microfacet_reflection(
         &self,
         wo: &Vector3<ShadingNormalTangent>,
         wm: &Vector3<ShadingNormalTangent>,
@@ -316,7 +316,7 @@ impl DielectricBsdf {
     }
 
     /// Rough dielectric透過のサンプリング
-    fn sample_rough_transmission(
+    fn sample_microfacet_transmission(
         &self,
         wo: &Vector3<ShadingNormalTangent>,
         wm: &Vector3<ShadingNormalTangent>,
@@ -355,7 +355,7 @@ impl DielectricBsdf {
     }
 
     /// Rough dielectric thin surface透過のサンプリング
-    fn sample_rough_transmission_thin_surface(
+    fn sample_specular_transmission_thin_surface(
         &self,
         wo: &Vector3<ShadingNormalTangent>,
         _wm: &Vector3<ShadingNormalTangent>,
@@ -405,7 +405,7 @@ impl DielectricBsdf {
     }
 
     /// 完全鏡面反射・透過サンプリング。
-    fn sample_perfect_specular(
+    fn sample_specular(
         &self,
         wo: &Vector3<ShadingNormalTangent>,
         uv: glam::Vec2,
@@ -519,7 +519,7 @@ impl DielectricBsdf {
         if self.effectively_smooth() {
             SampledSpectrum::zero() // 完全鏡面の場合は0
         } else {
-            self.evaluate_rough_dielectric(wo, wi)
+            self.evaluate_microfacet(wo, wi)
         }
     }
 
@@ -534,12 +534,12 @@ impl DielectricBsdf {
         if self.effectively_smooth() {
             0.0 // 完全鏡面の場合は0
         } else {
-            self.pdf_rough_dielectric(wo, wi)
+            self.pdf_microfacet(wo, wi)
         }
     }
 
-    /// Rough dielectric BSDFの評価を行う
-    fn evaluate_rough_dielectric(
+    /// Microfacet dielectric BSDFの評価を行う
+    fn evaluate_microfacet(
         &self,
         wo: &Vector3<ShadingNormalTangent>,
         wi: &Vector3<ShadingNormalTangent>,
@@ -590,8 +590,8 @@ impl DielectricBsdf {
         }
     }
 
-    /// Rough dielectric BSDFのPDFを計算する
-    fn pdf_rough_dielectric(
+    /// Microfacet dielectric BSDFのPDFを計算する
+    fn pdf_microfacet(
         &self,
         wo: &Vector3<ShadingNormalTangent>,
         wi: &Vector3<ShadingNormalTangent>,

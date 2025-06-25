@@ -263,15 +263,15 @@ impl ConductorBsdf {
 
         if self.effectively_smooth() {
             // 完全鏡面反射
-            self.sample_perfect_specular(wo)
+            self.sample_specular(wo)
         } else {
             // マイクロファセットサンプリング
-            self.sample_microfacet(wo, uv)
+            self.sample_microfacet_reflection(wo, uv)
         }
     }
 
     /// 完全鏡面反射サンプリング。
-    fn sample_perfect_specular(&self, wo: &Vector3<ShadingNormalTangent>) -> Option<BsdfSample> {
+    fn sample_specular(&self, wo: &Vector3<ShadingNormalTangent>) -> Option<BsdfSample> {
         // 完全鏡面反射: wi = (-wo.x, -wo.y, wo.z)
         let wi = Vector3::new(-wo.x(), -wo.y(), wo.z());
         let wi_cos_n = wi.z();
@@ -295,7 +295,7 @@ impl ConductorBsdf {
     }
 
     /// マイクロファセットサンプリング（Torrance-Sparrow model）。
-    fn sample_microfacet(
+    fn sample_microfacet_reflection(
         &self,
         wo: &Vector3<ShadingNormalTangent>,
         uv: glam::Vec2,

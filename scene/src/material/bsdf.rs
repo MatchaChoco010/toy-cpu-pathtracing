@@ -7,6 +7,7 @@ mod lambert;
 
 pub use conductor::{ConductorBsdf, fresnel_complex};
 pub use dielectric::DielectricBsdf;
+pub use generalized_schlick::GeneralizedSchlickBsdf;
 pub use lambert::NormalizedLambertBsdf;
 
 use math::ShadingNormalTangent;
@@ -27,6 +28,7 @@ pub enum BsdfSampleType {
 }
 
 /// 散乱モードを表す列挙型。
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ScatterMode {
     /// 反射のみ

@@ -1,7 +1,7 @@
 //! Adobe Fresnel Modelの一般化されたSchlick BSDF実装。
 
 use math::{ShadingNormalTangent, Vector3};
-use spectrum::SampledSpectrum;
+use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::material::{
     bsdf::{BsdfSample, BsdfSampleType, ScatterMode},
@@ -214,12 +214,19 @@ impl GeneralizedSchlickBsdf {
     /// - `wo` - 出射方向（ノーマルマップ接空間）
     /// - `uv` - ランダムサンプル
     /// - `uc` - 反射/透過選択用の追加ランダム値
+    /// - `lambda` - 波長サンプリング情報
     pub fn sample(
         &self,
         wo: &Vector3<ShadingNormalTangent>,
         uv: glam::Vec2,
         uc: f32,
+        lambda: &mut SampledWavelengths,
     ) -> Option<BsdfSample> {
+        // 屈折率が波長依存の場合は最初の波長以外を打ち切る
+        if !self.eta.is_constant() {
+            lambda.terminate_secondary();
+        }
+
         let wo_cos_n = wo.z();
         if wo_cos_n == 0.0 {
             return None;
@@ -227,7 +234,7 @@ impl GeneralizedSchlickBsdf {
 
         if self.effectively_smooth() {
             // 完全鏡面反射/透過
-            self.sample_perfect_specular(wo, uc)
+            self.sample_specular(wo, uc)
         } else {
             // マイクロファセットサンプリング
             self.sample_microfacet(wo, uv, uc)
@@ -235,11 +242,7 @@ impl GeneralizedSchlickBsdf {
     }
 
     /// 完全鏡面反射/透過サンプリング。
-    fn sample_perfect_specular(
-        &self,
-        wo: &Vector3<ShadingNormalTangent>,
-        uc: f32,
-    ) -> Option<BsdfSample> {
+    fn sample_specular(&self, wo: &Vector3<ShadingNormalTangent>, uc: f32) -> Option<BsdfSample> {
         let wo_cos_n = wo.z();
 
         // フレネル反射率を計算
@@ -357,7 +360,7 @@ impl GeneralizedSchlickBsdf {
         match self.scatter_mode {
             ScatterMode::R => {
                 // 反射のみ
-                self.sample_microfacet_reflection(wo, &wm, fresnel)
+                self.sample_microfacet_reflection(wo, &wm, fresnel, 1.0)
             }
             ScatterMode::RT => {
                 // 反射と透過
@@ -367,13 +370,13 @@ impl GeneralizedSchlickBsdf {
 
                 if uc < pr / (pr + pt) {
                     // 反射
-                    self.sample_microfacet_reflection(wo, &wm, fresnel * (pr / (pr + pt)))
+                    self.sample_microfacet_reflection(wo, &wm, fresnel, pr / (pr + pt))
                 } else {
                     // 透過
                     self.sample_microfacet_transmission(
                         wo,
                         &wm,
-                        (SampledSpectrum::one() - fresnel) * (pt / (pr + pt)),
+                        SampledSpectrum::one() - fresnel,
                         pt / (pr + pt),
                     )
                 }
@@ -387,6 +390,7 @@ impl GeneralizedSchlickBsdf {
         wo: &Vector3<ShadingNormalTangent>,
         wm: &Vector3<ShadingNormalTangent>,
         fresnel: SampledSpectrum,
+        prob: f32,
     ) -> Option<BsdfSample> {
         // 鏡面反射方向を計算
         let wi = reflect(wo, wm);
@@ -401,7 +405,7 @@ impl GeneralizedSchlickBsdf {
         if cos_theta_dot < 1e-6 {
             return None;
         }
-        let pdf = self.visible_normal_distribution(wo, wm) / (4.0 * cos_theta_dot);
+        let pdf = self.visible_normal_distribution(wo, wm) / (4.0 * cos_theta_dot) * prob;
 
         // BRDF値計算
         let d = self.microfacet_distribution(wm);
@@ -704,10 +708,10 @@ impl GeneralizedSchlickBsdf {
                     // 反射PDF
                     let pdf_refl = self.pdf_reflection(wo, wi);
 
-                    // フレネル反射率の平均値で重み付け
-                    let fresnel = self.generalized_schlick_fresnel(wo.z().abs());
-                    let avg_fresnel = fresnel.average();
-                    let pr = avg_fresnel;
+                    // フレネル反射率で重み付け
+                    let eta_val = self.eta.value(0);
+                    let fresnel = fresnel_dielectric(wo.z().abs(), eta_val);
+                    let pr = fresnel;
                     let pt = 1.0 - pr;
 
                     pdf_refl * pr / (pr + pt)
@@ -715,10 +719,10 @@ impl GeneralizedSchlickBsdf {
                     // 透過PDF
                     let pdf_trans = self.pdf_transmission(wo, wi);
 
-                    // フレネル透過率の平均値で重み付け
-                    let fresnel = self.generalized_schlick_fresnel(wo.z().abs());
-                    let avg_fresnel = fresnel.average();
-                    let pr = avg_fresnel;
+                    // フレネル透過率で重み付け
+                    let eta_val = self.eta.value(0);
+                    let fresnel = fresnel_dielectric(wo.z().abs(), eta_val);
+                    let pr = fresnel;
                     let pt = 1.0 - pr;
 
                     pdf_trans * pt / (pr + pt)
@@ -788,5 +792,11 @@ impl GeneralizedSchlickBsdf {
 
             self.visible_normal_distribution(wo, &wm) * dwm_dwi
         }
+    }
+
+    /// fresnel反射率を取得する。
+    pub fn fresnel(&self, wo: &Vector3<ShadingNormalTangent>) -> SampledSpectrum {
+        let cos_theta = wo.z().abs();
+        self.generalized_schlick_fresnel(cos_theta)
     }
 }
