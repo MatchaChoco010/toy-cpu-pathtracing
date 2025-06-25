@@ -17,8 +17,6 @@ pub struct LambertMaterial {
     albedo: SpectrumParameter,
     /// ノーマルマップパラメータ
     normal: NormalParameter,
-    /// 内部でBSDF計算を行う構造体
-    bsdf: NormalizedLambertBsdf,
 }
 
 impl LambertMaterial {
@@ -28,11 +26,7 @@ impl LambertMaterial {
     /// - `albedo` - 反射率パラメータ
     /// - `normal` - ノーマルマップパラメータ
     pub fn new(albedo: SpectrumParameter, normal: NormalParameter) -> Material {
-        Arc::new(Self {
-            albedo,
-            normal,
-            bsdf: NormalizedLambertBsdf::new(),
-        })
+        Arc::new(Self { albedo, normal })
     }
 }
 impl SurfaceMaterial for LambertMaterial {
@@ -69,7 +63,8 @@ impl BsdfSurfaceMaterial for LambertMaterial {
         let wo_normalmap = &transform * wo;
 
         // BSDFサンプリング（ノーマルマップタンジェント空間で実行）
-        let bsdf_result = match self.bsdf.sample(&albedo, &wo_normalmap, uv) {
+        let bsdf = NormalizedLambertBsdf::new(albedo);
+        let bsdf_result = match bsdf.sample(&wo_normalmap, uv) {
             Some(result) => result,
             None => {
                 // BSDFサンプリング失敗の場合
@@ -135,7 +130,8 @@ impl BsdfSurfaceMaterial for LambertMaterial {
         }
 
         // BSDF評価（ノーマルマップタンジェント空間で実行）
-        let f = self.bsdf.evaluate(&albedo, &wo_normalmap, &wi_normalmap);
+        let bsdf = NormalizedLambertBsdf::new(albedo);
+        let f = bsdf.evaluate(&wo_normalmap, &wi_normalmap);
 
         MaterialEvaluationResult {
             f,
@@ -174,7 +170,9 @@ impl BsdfSurfaceMaterial for LambertMaterial {
         let wi_normalmap = &transform * wi;
 
         // BSDF PDF計算（ノーマルマップタンジェント空間で実行）
-        self.bsdf.pdf(&wo_normalmap, &wi_normalmap)
+        let albedo = self.albedo.sample(shading_point.uv).sample(_lambda);
+        let bsdf = NormalizedLambertBsdf::new(albedo);
+        bsdf.pdf(&wo_normalmap, &wi_normalmap)
     }
 
     fn sample_albedo_spectrum(
