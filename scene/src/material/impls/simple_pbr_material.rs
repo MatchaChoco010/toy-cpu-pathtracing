@@ -342,11 +342,7 @@ impl SimplePbrMaterial {
 
         if uc < fresnel {
             // Specular反射をサンプリング
-            let uc = if fresnel == 1.0 {
-                uc
-            } else {
-                (uc - fresnel) / (1.0 - fresnel)
-            };
+            let uc = uc / fresnel;
             match generalized_schlick.sample(wo_normalmap, uv, uc, lambda) {
                 Some(bsdf_result) => {
                     let wi_shading = transform_inv * &bsdf_result.wi;
