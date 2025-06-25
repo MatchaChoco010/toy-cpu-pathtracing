@@ -89,10 +89,16 @@ impl SimpleClearcoatPbrMaterial {
         thickness: f32,
         cos_theta: f32,
     ) -> SampledSpectrum {
-        // 簡単化して、単純なattenuationを計算
-        let attenuation_factor = (-thickness / cos_theta.max(1e-4) * 100.0).exp();
-        tint_color * attenuation_factor
-            + (SampledSpectrum::constant(1.0) - tint_color) * attenuation_factor
+        // Beer-Lambertの式: attenuation = exp(-sigma * L)
+        // sigma = -log(tint_color) / 0.001
+        // L = thickness / max(cos_theta, 1e-4)
+
+        // sigma = -log(tint_color) / 0.001を計算
+        let log_tint = tint_color.log();
+        let sigma = log_tint * (-1.0 / 0.001);
+
+        let l = thickness / cos_theta.max(1e-4);
+        (sigma * l).exp()
     }
 }
 
@@ -143,7 +149,7 @@ impl BsdfSurfaceMaterial for SimpleClearcoatPbrMaterial {
 
         // clearcoat thicknessが0の場合はclearcoatをスキップ
         if clearcoat_thickness_value <= 0.0 {
-            return self.sample_without_clearcoat(
+            return self.sample_base_material(
                 &base_color_spectrum,
                 metallic_value,
                 roughness_value,
@@ -198,7 +204,7 @@ impl BsdfSurfaceMaterial for SimpleClearcoatPbrMaterial {
         } else {
             // 下層をサンプリング
             let uc_adjusted = (uc - clearcoat_fresnel) / (1.0 - clearcoat_fresnel);
-            let substrate_sample = self.sample_without_clearcoat(
+            let substrate_sample = self.sample_base_material(
                 &base_color_spectrum,
                 metallic_value,
                 roughness_value,
@@ -275,7 +281,7 @@ impl BsdfSurfaceMaterial for SimpleClearcoatPbrMaterial {
 
         // clearcoat thicknessが0の場合はclearcoatをスキップ
         if clearcoat_thickness_value <= 0.0 {
-            let f = self.evaluate_without_clearcoat(
+            let f = self.evaluate_base_material(
                 &base_color_spectrum,
                 metallic_value,
                 roughness_value,
@@ -314,7 +320,7 @@ impl BsdfSurfaceMaterial for SimpleClearcoatPbrMaterial {
         let clearcoat_f = clearcoat_bsdf.evaluate(&wo_normalmap, &wi_normalmap);
 
         // 下層のf値を計算
-        let substrate_f = self.evaluate_without_clearcoat(
+        let substrate_f = self.evaluate_base_material(
             &base_color_spectrum,
             metallic_value,
             roughness_value,
@@ -380,7 +386,7 @@ impl BsdfSurfaceMaterial for SimpleClearcoatPbrMaterial {
 
         // clearcoat thicknessが0の場合はclearcoatをスキップ
         if clearcoat_thickness_value <= 0.0 {
-            return self.pdf_without_clearcoat(
+            return self.pdf_base_material(
                 &base_color_spectrum,
                 metallic_value,
                 roughness_value,
@@ -414,7 +420,7 @@ impl BsdfSurfaceMaterial for SimpleClearcoatPbrMaterial {
         let clearcoat_pdf = clearcoat_bsdf.pdf(&wo_normalmap, &wi_normalmap);
 
         // 下層のPDFを計算
-        let substrate_pdf = self.pdf_without_clearcoat(
+        let substrate_pdf = self.pdf_base_material(
             &base_color_spectrum,
             metallic_value,
             roughness_value,
@@ -438,8 +444,8 @@ impl BsdfSurfaceMaterial for SimpleClearcoatPbrMaterial {
 }
 
 impl SimpleClearcoatPbrMaterial {
-    /// clearcoatなしでサンプリングを行う
-    fn sample_without_clearcoat(
+    /// ベースマテリアルでサンプリングを行う
+    fn sample_base_material(
         &self,
         base_color_spectrum: &SampledSpectrum,
         metallic_value: f32,
@@ -496,8 +502,8 @@ impl SimpleClearcoatPbrMaterial {
         }
     }
 
-    /// clearcoatなしでevaluateを行う
-    fn evaluate_without_clearcoat(
+    /// ベースマテリアルでevaluateを行う
+    fn evaluate_base_material(
         &self,
         base_color_spectrum: &SampledSpectrum,
         metallic_value: f32,
@@ -536,8 +542,8 @@ impl SimpleClearcoatPbrMaterial {
         }
     }
 
-    /// clearcoatなしでpdfを計算する
-    fn pdf_without_clearcoat(
+    /// ベースマテリアルでpdfを計算する
+    fn pdf_base_material(
         &self,
         base_color_spectrum: &SampledSpectrum,
         metallic_value: f32,
