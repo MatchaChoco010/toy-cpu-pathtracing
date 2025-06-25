@@ -24,6 +24,14 @@ pub struct SimpleClearcoatPbrMaterial {
     normal: NormalParameter,
     /// 屈折率（非金属部分の計算に使用）
     ior: FloatParameter,
+    /// クリアコートの屈折率
+    clearcoat_ior: FloatParameter,
+    /// クリアコートの粗さ
+    clearcoat_roughness: FloatParameter,
+    /// クリアコートの色付け
+    clearcoat_tint_color: SpectrumParameter,
+    /// クリアコートの厚さ（単位: m）
+    clearcoat_thickness: FloatParameter,
 }
 
 impl SimpleClearcoatPbrMaterial {
@@ -35,12 +43,20 @@ impl SimpleClearcoatPbrMaterial {
     /// - `roughness` - 表面の粗さパラメータ
     /// - `normal` - ノーマルマップパラメータ
     /// - `ior` - 屈折率（非金属部分の計算に使用）
+    /// - `clearcoat_ior` - クリアコートの屈折率
+    /// - `clearcoat_roughness` - クリアコートの粗さ
+    /// - `clearcoat_tint_color` - クリアコートの色付け
+    /// - `clearcoat_thickness` - クリアコートの厚さ（単位: m）
     pub fn new(
         base_color: SpectrumParameter,
         metallic: FloatParameter,
         roughness: FloatParameter,
         normal: NormalParameter,
         ior: FloatParameter,
+        clearcoat_ior: FloatParameter,
+        clearcoat_roughness: FloatParameter,
+        clearcoat_tint_color: SpectrumParameter,
+        clearcoat_thickness: FloatParameter,
     ) -> Material {
         Arc::new(Self {
             base_color,
@@ -48,6 +64,10 @@ impl SimpleClearcoatPbrMaterial {
             roughness,
             normal,
             ior,
+            clearcoat_ior,
+            clearcoat_roughness,
+            clearcoat_tint_color,
+            clearcoat_thickness,
         })
     }
 
@@ -61,6 +81,17 @@ impl SimpleClearcoatPbrMaterial {
     fn compute_dielectric_r0(ior: f32) -> f32 {
         let r = (ior - 1.0) / (ior + 1.0);
         r * r
+    }
+
+    /// Beer-Lambert attenuationを計算する。
+    fn compute_attenuation(
+        tint_color: &SampledSpectrum,
+        thickness: f32,
+        cos_theta: f32,
+    ) -> SampledSpectrum {
+        let sigma = -tint_color.clone().log() / 0.001;
+        let l = thickness / (cos_theta.max(1e-4));
+        (-sigma * l).exp()
     }
 }
 
