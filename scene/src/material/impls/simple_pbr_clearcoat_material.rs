@@ -119,6 +119,11 @@ impl BsdfSurfaceMaterial for SimpleClearcoatPbrMaterial {
         let metallic_value = self.metallic.sample(shading_point.uv);
         let roughness_value = self.roughness.sample(shading_point.uv);
         let ior_value = self.ior.sample(shading_point.uv);
+        let clearcoat_ior_value = self.clearcoat_ior.sample(shading_point.uv);
+        let clearcoat_roughness_value = self.clearcoat_roughness.sample(shading_point.uv);
+        let clearcoat_tint_color_spectrum =
+            self.clearcoat_tint_color.sample(shading_point.uv).sample(lambda);
+        let clearcoat_thickness_value = self.clearcoat_thickness.sample(shading_point.uv);
 
         // 法線マップから法線を取得
         let normal_map = self
@@ -133,6 +138,119 @@ impl BsdfSurfaceMaterial for SimpleClearcoatPbrMaterial {
         // ベクトルをノーマルマップタンジェント空間に変換
         let wo_normalmap = &transform * wo;
 
+        // clearcoat thicknessが0の場合はclearcoatをスキップ
+        if clearcoat_thickness_value <= 0.0 {
+            return self.sample_without_clearcoat(
+                &base_color_spectrum,
+                metallic_value,
+                roughness_value,
+                ior_value,
+                &wo_normalmap,
+                uc,
+                uv,
+                lambda,
+                &transform_inv,
+                normal_map,
+            );
+        }
+
+        // clearcoatの処理
+        let clearcoat_alpha = Self::roughness_to_alpha(clearcoat_roughness_value);
+        let clearcoat_r0_value = Self::compute_dielectric_r0(clearcoat_ior_value);
+        let clearcoat_r0 = SampledSpectrum::constant(clearcoat_r0_value);
+        let clearcoat_r90 = SampledSpectrum::constant(1.0);
+        let clearcoat_tint = SampledSpectrum::constant(1.0);
+
+        let clearcoat_bsdf = GeneralizedSchlickBsdf::new(
+            clearcoat_r0,
+            clearcoat_r90,
+            5.0,
+            clearcoat_tint,
+            ScatterMode::R,
+            SampledSpectrum::constant(clearcoat_ior_value),
+            true,
+            false,
+            clearcoat_alpha,
+            clearcoat_alpha,
+        );
+
+        let clearcoat_fresnel = clearcoat_bsdf.fresnel(&wo_normalmap).average();
+
+        if uc < clearcoat_fresnel {
+            // clearcoat層をサンプリング
+            let uc_adjusted = uc / clearcoat_fresnel;
+            match clearcoat_bsdf.sample(&wo_normalmap, uv, uc_adjusted, lambda) {
+                Some(bsdf_result) => {
+                    let wi_shading = &transform_inv * &bsdf_result.wi;
+                    MaterialSample::new(
+                        bsdf_result.f,
+                        wi_shading,
+                        bsdf_result.pdf * clearcoat_fresnel,
+                        bsdf_result.sample_type,
+                        normal_map,
+                    )
+                }
+                None => MaterialSample::failed(normal_map),
+            }
+        } else {
+            // 下層をサンプリング
+            let uc_adjusted = (uc - clearcoat_fresnel) / (1.0 - clearcoat_fresnel);
+            let substrate_sample = self.sample_without_clearcoat(
+                &base_color_spectrum,
+                metallic_value,
+                roughness_value,
+                ior_value,
+                &wo_normalmap,
+                uc_adjusted,
+                uv,
+                lambda,
+                &transform_inv,
+                normal_map,
+            );
+
+            if substrate_sample.failed {
+                return substrate_sample;
+            }
+
+            // attenuationを計算
+            let cos_wo = wo_normalmap.z();
+            let cos_wi = substrate_sample.wi_local.z();
+            let attenuation_i = Self::compute_attenuation(
+                &clearcoat_tint_color_spectrum,
+                clearcoat_thickness_value,
+                cos_wo,
+            );
+            let attenuation_o = Self::compute_attenuation(
+                &clearcoat_tint_color_spectrum,
+                clearcoat_thickness_value,
+                cos_wi,
+            );
+            let attenuation = attenuation_i * attenuation_o;
+
+            MaterialSample::new(
+                substrate_sample.f * attenuation,
+                substrate_sample.wi_local,
+                substrate_sample.pdf * (1.0 - clearcoat_fresnel),
+                substrate_sample.sample_type,
+                normal_map,
+            )
+        }
+    }
+
+    /// clearcoatなしでサンプリングを行う
+    fn sample_without_clearcoat(
+        &self,
+        base_color_spectrum: &SampledSpectrum,
+        metallic_value: f32,
+        roughness_value: f32,
+        ior_value: f32,
+        wo_normalmap: &Vector3<math::ShadingNormalTangent>,
+        uc: f32,
+        uv: glam::Vec2,
+        lambda: &mut SampledWavelengths,
+        transform_inv: &Transform<ShadingNormalTangent, VertexNormalTangent>,
+        normal_map: Normal<VertexNormalTangent>,
+    ) -> MaterialSample {
         // roughnessからalpha値を計算
         let alpha = Self::roughness_to_alpha(roughness_value);
 
