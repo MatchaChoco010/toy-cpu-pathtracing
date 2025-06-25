@@ -8,7 +8,7 @@ use spectrum::{SampledSpectrum, SampledWavelengths};
 use crate::{
     BsdfSurfaceMaterial, FloatParameter, Material, MaterialEvaluationResult, MaterialSample,
     NormalParameter, SpectrumParameter, SurfaceInteraction, SurfaceMaterial,
-    material::bsdf::{BsdfSampleType, GeneralizedSchlickBsdf, NormalizedLambertBsdf, ScatterMode},
+    material::bsdf::{GeneralizedSchlickBsdf, NormalizedLambertBsdf, ScatterMode},
 };
 
 /// シンプルなPBRマテリアル。
@@ -52,7 +52,6 @@ impl SimplePbrMaterial {
     }
 
     /// roughnessからalpha値を計算する。
-    /// pbrt-v4のissue #479に従い、より知覚的に均一なroughness^2を使用。
     fn roughness_to_alpha(roughness: f32) -> f32 {
         roughness * roughness
     }
@@ -113,6 +112,7 @@ impl BsdfSurfaceMaterial for SimplePbrMaterial {
                 alpha,
                 &wo_normalmap,
                 uv,
+                lambda,
                 &transform_inv,
                 normal_map,
             )
@@ -125,6 +125,7 @@ impl BsdfSurfaceMaterial for SimplePbrMaterial {
                 &wo_normalmap,
                 uc,
                 uv,
+                lambda,
                 &transform_inv,
                 normal_map,
             )
@@ -138,6 +139,7 @@ impl BsdfSurfaceMaterial for SimplePbrMaterial {
                 &wo_normalmap,
                 uc,
                 uv,
+                lambda,
                 &transform_inv,
                 normal_map,
             )
@@ -201,7 +203,7 @@ impl BsdfSurfaceMaterial for SimplePbrMaterial {
 
         MaterialEvaluationResult {
             f,
-            pdf: 1.0,
+            pdf: 1.0, // evaluateは決定論的なレイヤー評価
             normal: normal_map,
         }
     }
@@ -267,6 +269,7 @@ impl SimplePbrMaterial {
         alpha: f32,
         wo_normalmap: &Vector3<math::ShadingNormalTangent>,
         uv: glam::Vec2,
+        lambda: &mut SampledWavelengths,
         transform_inv: &Transform<ShadingNormalTangent, VertexNormalTangent>,
         normal_map: Normal<VertexNormalTangent>,
     ) -> MaterialSample {
@@ -288,7 +291,7 @@ impl SimplePbrMaterial {
             alpha,
         );
 
-        match generalized_schlick.sample(wo_normalmap, uv, 0.0) {
+        match generalized_schlick.sample(wo_normalmap, uv, 0.0, lambda) {
             Some(bsdf_result) => {
                 let wi_shading = transform_inv * &bsdf_result.wi;
                 MaterialSample::new(
@@ -303,7 +306,7 @@ impl SimplePbrMaterial {
         }
     }
 
-    /// 非金属マテリアルのサンプリング
+    /// 非金属マテリアルのサンプリング（GeneralizedSchlick + Lambertレイヤー）
     fn sample_dielectric(
         &self,
         base_color: &SampledSpectrum,
@@ -312,10 +315,11 @@ impl SimplePbrMaterial {
         wo_normalmap: &Vector3<math::ShadingNormalTangent>,
         uc: f32,
         uv: glam::Vec2,
+        lambda: &mut SampledWavelengths,
         transform_inv: &Transform<ShadingNormalTangent, VertexNormalTangent>,
         normal_map: Normal<VertexNormalTangent>,
     ) -> MaterialSample {
-        // 非金属用GeneralizedSchlickBsdf
+        // 非金属用GeneralizedSchlickBsdf（反射・透過）
         let r0_value = Self::compute_dielectric_r0(ior);
         let r0 = SampledSpectrum::constant(r0_value);
         let r90 = SampledSpectrum::constant(1.0);
@@ -326,47 +330,52 @@ impl SimplePbrMaterial {
             r90,
             5.0,
             tint,
-            ScatterMode::RT,
+            ScatterMode::R,
             SampledSpectrum::constant(ior),
-            true,  // entering
-            false, // thin_surface
+            true,
+            false,
             alpha,
             alpha,
         );
 
-        match generalized_schlick.sample(wo_normalmap, uv, uc) {
-            Some(bsdf_result) => {
-                // 透過の場合はLambertBsdfを適用
-                if wo_normalmap.dot(bsdf_result.wi) < 0.0 {
-                    // 透過サンプル - LambertBsdfでサンプルし直す
-                    let lambert_bsdf = NormalizedLambertBsdf::new();
-                    match lambert_bsdf.sample(base_color, wo_normalmap, uv) {
-                        Some(lambert_sample) => {
-                            let wi_shading = transform_inv * &lambert_sample.wi;
-                            let f_combined = bsdf_result.f * lambert_sample.f;
-                            MaterialSample::new(
-                                f_combined,
-                                wi_shading,
-                                lambert_sample.pdf,
-                                BsdfSampleType::Diffuse,
-                                normal_map,
-                            )
-                        }
-                        None => MaterialSample::failed(normal_map),
-                    }
-                } else {
-                    // 反射サンプル
+        let fresnel = generalized_schlick.fresnel(&wo_normalmap).average();
+
+        if uc < fresnel {
+            // Specular反射をサンプリング
+            let uc = if fresnel == 1.0 {
+                uc
+            } else {
+                (uc - fresnel) / (1.0 - fresnel)
+            };
+            match generalized_schlick.sample(wo_normalmap, uv, uc, lambda) {
+                Some(bsdf_result) => {
                     let wi_shading = transform_inv * &bsdf_result.wi;
                     MaterialSample::new(
                         bsdf_result.f,
                         wi_shading,
-                        bsdf_result.pdf,
+                        bsdf_result.pdf * fresnel,
                         bsdf_result.sample_type,
                         normal_map,
                     )
                 }
+                None => MaterialSample::failed(normal_map),
             }
-            None => MaterialSample::failed(normal_map),
+        } else {
+            // Diffuse反射をサンプリング
+            let lambert_bsdf = NormalizedLambertBsdf::new();
+            match lambert_bsdf.sample(base_color, wo_normalmap, uv) {
+                Some(bsdf_result) => {
+                    let wi_shading = transform_inv * &bsdf_result.wi;
+                    MaterialSample::new(
+                        bsdf_result.f * (1.0 - fresnel),
+                        wi_shading,
+                        bsdf_result.pdf * (1.0 - fresnel),
+                        bsdf_result.sample_type,
+                        normal_map,
+                    )
+                }
+                None => MaterialSample::failed(normal_map),
+            }
         }
     }
 
@@ -380,6 +389,7 @@ impl SimplePbrMaterial {
         wo_normalmap: &Vector3<math::ShadingNormalTangent>,
         uc: f32,
         uv: glam::Vec2,
+        lambda: &mut SampledWavelengths,
         transform_inv: &Transform<ShadingNormalTangent, VertexNormalTangent>,
         normal_map: Normal<VertexNormalTangent>,
     ) -> MaterialSample {
@@ -390,6 +400,7 @@ impl SimplePbrMaterial {
                 alpha,
                 wo_normalmap,
                 uv,
+                lambda,
                 transform_inv,
                 normal_map,
             )
@@ -402,6 +413,7 @@ impl SimplePbrMaterial {
                 wo_normalmap,
                 (uc - metallic) / (1.0 - metallic),
                 uv,
+                lambda,
                 transform_inv,
                 normal_map,
             )
@@ -436,7 +448,7 @@ impl SimplePbrMaterial {
         generalized_schlick.evaluate(wo_normalmap, wi_normalmap)
     }
 
-    /// 非金属マテリアルの評価
+    /// 非金属マテリアルの評価（GeneralizedSchlick + Lambertレイヤー）
     fn evaluate_dielectric(
         &self,
         base_color: &SampledSpectrum,
@@ -445,34 +457,32 @@ impl SimplePbrMaterial {
         wo_normalmap: &Vector3<math::ShadingNormalTangent>,
         wi_normalmap: &Vector3<math::ShadingNormalTangent>,
     ) -> SampledSpectrum {
-        let is_reflection = wo_normalmap.dot(wi_normalmap) > 0.0;
+        let r0_value = Self::compute_dielectric_r0(ior);
+        let r0 = SampledSpectrum::constant(r0_value);
+        let r90 = SampledSpectrum::constant(1.0);
+        let tint = SampledSpectrum::constant(1.0);
 
-        if is_reflection {
-            // 反射：GeneralizedSchlickBsdf
-            let r0_value = Self::compute_dielectric_r0(ior);
-            let r0 = SampledSpectrum::constant(r0_value);
-            let r90 = SampledSpectrum::constant(1.0);
-            let tint = SampledSpectrum::constant(1.0);
+        let generalized_schlick = GeneralizedSchlickBsdf::new(
+            r0,
+            r90,
+            5.0,
+            tint,
+            ScatterMode::R,
+            SampledSpectrum::constant(ior),
+            true,
+            false,
+            alpha,
+            alpha,
+        );
 
-            let generalized_schlick = GeneralizedSchlickBsdf::new(
-                r0,
-                r90,
-                5.0,
-                tint,
-                ScatterMode::R,
-                SampledSpectrum::constant(ior),
-                true,
-                false,
-                alpha,
-                alpha,
-            );
+        let direct_reflection = generalized_schlick.evaluate(wo_normalmap, wi_normalmap);
 
-            generalized_schlick.evaluate(wo_normalmap, wi_normalmap)
-        } else {
-            // 透過：LambertBsdf
-            let lambert_bsdf = NormalizedLambertBsdf::new();
-            lambert_bsdf.evaluate(base_color, wo_normalmap, wi_normalmap)
-        }
+        let fresnel = generalized_schlick.fresnel(wo_normalmap).average();
+
+        let lambert_bsdf = NormalizedLambertBsdf::new();
+        let lambert_reflection = lambert_bsdf.evaluate(base_color, wo_normalmap, wi_normalmap);
+
+        direct_reflection + (1.0 - fresnel) * lambert_reflection
     }
 
     /// 金属マテリアルのPDF
@@ -502,7 +512,7 @@ impl SimplePbrMaterial {
         generalized_schlick.pdf(wo_normalmap, wi_normalmap)
     }
 
-    /// 非金属マテリアルのPDF
+    /// 非金属マテリアルのPDF（GeneralizedSchlick + Lambertレイヤー）
     fn pdf_dielectric(
         &self,
         ior: f32,
@@ -510,33 +520,31 @@ impl SimplePbrMaterial {
         wo_normalmap: &Vector3<math::ShadingNormalTangent>,
         wi_normalmap: &Vector3<math::ShadingNormalTangent>,
     ) -> f32 {
-        let is_reflection = wo_normalmap.dot(wi_normalmap) > 0.0;
+        let r0_value = Self::compute_dielectric_r0(ior);
+        let r0 = SampledSpectrum::constant(r0_value);
+        let r90 = SampledSpectrum::constant(1.0);
+        let tint = SampledSpectrum::constant(1.0);
 
-        if is_reflection {
-            // 反射：GeneralizedSchlickBsdf
-            let r0_value = Self::compute_dielectric_r0(ior);
-            let r0 = SampledSpectrum::constant(r0_value);
-            let r90 = SampledSpectrum::constant(1.0);
-            let tint = SampledSpectrum::constant(1.0);
+        let generalized_schlick = GeneralizedSchlickBsdf::new(
+            r0,
+            r90,
+            5.0,
+            tint,
+            ScatterMode::R,
+            SampledSpectrum::constant(ior),
+            true,
+            false,
+            alpha,
+            alpha,
+        );
 
-            let generalized_schlick = GeneralizedSchlickBsdf::new(
-                r0,
-                r90,
-                5.0,
-                tint,
-                ScatterMode::R,
-                SampledSpectrum::constant(ior),
-                true,
-                false,
-                alpha,
-                alpha,
-            );
+        let direct_pdf = generalized_schlick.pdf(wo_normalmap, wi_normalmap);
 
-            generalized_schlick.pdf(wo_normalmap, wi_normalmap)
-        } else {
-            // 透過：LambertBsdf
-            let lambert_bsdf = NormalizedLambertBsdf::new();
-            lambert_bsdf.pdf(wo_normalmap, wi_normalmap)
-        }
+        let fresnel = generalized_schlick.fresnel(wo_normalmap).average();
+
+        let lambert_bsdf = NormalizedLambertBsdf::new();
+        let lambert_pdf = lambert_bsdf.pdf(wo_normalmap, wi_normalmap);
+
+        fresnel * direct_pdf + (1.0 - fresnel) * lambert_pdf
     }
 }
