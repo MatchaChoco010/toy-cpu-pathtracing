@@ -13,7 +13,7 @@ use crate::material::Material;
 pub struct MaterialEvaluationResult {
     /// BSDF値
     pub f: SampledSpectrum,
-    /// レイヤー選択PDF（レイヤーマテリアルでの確率的BSDF選択用）
+    /// 確率的評価を行うBSDFの評価確率密度関数値
     pub pdf: f32,
     /// 選択されたレイヤーの法線マップ（シェーディング接空間）
     pub normal: Normal<VertexNormalTangent>,
