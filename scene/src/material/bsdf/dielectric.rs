@@ -26,22 +26,6 @@ pub struct DielectricBsdf {
     alpha_y: f32,
 }
 impl DielectricBsdf {
-    /// 誘電体のスペクトル依存フレネル反射率を計算する。
-    fn fresnel_dielectric_spectral(&self, cos_theta_i: f32, eta: f32) -> SampledSpectrum {
-        // 単一の屈折率値でスペクトル全体を計算
-        if self.eta.is_constant() {
-            SampledSpectrum::constant(fresnel_dielectric(cos_theta_i, eta))
-        } else {
-            // スペクトル依存の場合は各波長で計算
-            let mut values = [0.0; spectrum::N_SPECTRUM_SAMPLES];
-            for i in 0..spectrum::N_SPECTRUM_SAMPLES {
-                let eta_val = self.eta.value(i);
-                values[i] = fresnel_dielectric(cos_theta_i, eta_val);
-            }
-            SampledSpectrum::from(values)
-        }
-    }
-
     /// 表面が事実上滑らかかどうかを判定する。
     fn effectively_smooth(&self) -> bool {
         self.alpha_x.max(self.alpha_y) < 1e-3
@@ -258,19 +242,18 @@ impl DielectricBsdf {
         let wm = self.sample_visible_normal(wo, u);
 
         // 屈折率を計算
-        let eta_val = self.eta.value(0);
-        let (eta_i, eta_t) = if self.thin_surface {
-            (1.0, eta_val) // 空気(1.0) → 誘電体(n): eta = n
+        let eta_spectrum = if self.thin_surface {
+            self.eta.clone() // 空気(1.0) → 誘電体(n): eta = n
         } else if self.entering {
-            (1.0, eta_val) // 空気(1.0) → 誘電体(n): eta = n
+            self.eta.clone() // 空気(1.0) → 誘電体(n): eta = n
         } else {
-            (eta_val, 1.0) // 誘電体(n) → 空気(1.0): eta = 1/n
+            SampledSpectrum::one() / self.eta.clone() // 誘電体(n) → 空気(1.0): eta = 1/n
         };
-        let eta = eta_t / eta_i;
+        let eta_scalar = eta_spectrum.value(0); // 屈折計算用
 
-        // フレネル反射率を計算（スペクトル依存）
+        // フレネル反射率を計算
         let wo_dot_wm = wo.dot(wm);
-        let fresnel = self.fresnel_dielectric_spectral(wo_dot_wm.abs(), eta);
+        let fresnel = fresnel_dielectric(wo_dot_wm.abs(), &eta_spectrum);
         let pr = fresnel.average();
         let pt = 1.0 - pr;
 
@@ -288,7 +271,7 @@ impl DielectricBsdf {
                     &wm,
                     SampledSpectrum::one() - fresnel,
                     pt / (pr + pt),
-                    eta,
+                    eta_scalar,
                 )
             }
         } else if uc < pr / (pr + pt) {
@@ -304,7 +287,7 @@ impl DielectricBsdf {
                 &wm,
                 SampledSpectrum::one() - fresnel,
                 pt / (pr + pt),
-                eta,
+                eta_scalar,
             )
         }
     }
@@ -448,18 +431,17 @@ impl DielectricBsdf {
         };
 
         // 屈折率を計算
-        let eta_val = self.eta.value(0);
-        let (eta_i, eta_t) = if self.thin_surface {
-            (1.0, eta_val) // 空気(1.0) → 誘電体(n): eta = n
+        let eta_spectrum = if self.thin_surface {
+            self.eta.clone() // 空気(1.0) → 誘電体(n): eta = n
         } else if self.entering {
-            (1.0, eta_val) // 空気(1.0) → 誘電体(n): eta = n
+            self.eta.clone() // 空気(1.0) → 誘電体(n): eta = n
         } else {
-            (eta_val, 1.0) // 誘電体(n) → 空気(1.0): eta = 1/n
+            SampledSpectrum::one() / self.eta.clone() // 誘電体(n) → 空気(1.0): eta = 1/n
         };
-        let etap = eta_t / eta_i;
+        let etap_scalar = eta_spectrum.value(0); // 屈折計算用
 
-        // フレネル反射率を計算（スペクトル依存）
-        let fresnel = self.fresnel_dielectric_spectral(wo_cos_n.abs(), etap);
+        // フレネル反射率を計算
+        let fresnel = fresnel_dielectric(wo_cos_n.abs(), &eta_spectrum);
 
         if self.thin_surface {
             // Thin surfaceの場合は累積係数を計算
@@ -523,14 +505,14 @@ impl DielectricBsdf {
                     wavelengths.terminate_secondary();
                 }
 
-                if let Some(wt) = refract(wo, &n, etap) {
+                if let Some(wt) = refract(wo, &n, etap_scalar) {
                     let wt_cos_n = wt.z();
                     if wt_cos_n == 0.0 {
                         return None;
                     }
 
                     let transmission = SampledSpectrum::one() - fresnel;
-                    let f = transmission / (etap.powi(2) * wt_cos_n.abs());
+                    let f = transmission / (etap_scalar.powi(2) * wt_cos_n.abs());
                     Some(BsdfSample::new(
                         f,
                         wt,
@@ -584,24 +566,23 @@ impl DielectricBsdf {
         let cos_theta_i = cos_theta(wi);
 
         // 屈折率を計算
-        let eta_val = self.eta.value(0);
-        let (eta_i, eta_t) = if self.thin_surface {
-            (1.0, eta_val) // 空気(1.0) → 誘電体(n): eta = n
+        let eta_spectrum = if self.thin_surface {
+            self.eta.clone() // 空気(1.0) → 誘電体(n): eta = n
         } else if self.entering {
-            (1.0, eta_val) // 空気(1.0) → 誘電体(n): eta = n
+            self.eta.clone() // 空気(1.0) → 誘電体(n): eta = n
         } else {
-            (eta_val, 1.0) // 誘電体(n) → 空気(1.0): eta = 1/n
+            SampledSpectrum::one() / self.eta.clone() // 誘電体(n) → 空気(1.0): eta = 1/n
         };
-        let eta = eta_t / eta_i;
+        let eta_scalar = eta_spectrum.value(0); // 屈折計算用
 
         // Generalized half vectorを計算
-        let wm = match self.compute_generalized_half_vector(wo, wi, eta) {
+        let wm = match self.compute_generalized_half_vector(wo, wi, eta_scalar) {
             Some(wm) => wm,
             None => return SampledSpectrum::zero(),
         };
 
-        // フレネル反射率を計算（スペクトル依存）
-        let fresnel = self.fresnel_dielectric_spectral(wo.dot(wm).abs(), eta);
+        // フレネル反射率を計算
+        let fresnel = fresnel_dielectric(wo.dot(wm).abs(), &eta_spectrum);
 
         // 反射か透過かを判定
         let reflect = cos_theta_i * cos_theta_o > 0.0;
@@ -609,18 +590,16 @@ impl DielectricBsdf {
         if reflect {
             let d = self.microfacet_distribution(&wm);
             let g = self.masking_shadowing_g(wo, wi);
-            
+
             fresnel * d * g / (4.0 * abs_cos_theta(wi) * abs_cos_theta(wo))
         } else {
-            let denom = (wi.dot(wm) + wo.dot(wm) / eta).powi(2);
+            let denom = (wi.dot(wm) + wo.dot(wm) / eta_scalar).powi(2);
             let d = self.microfacet_distribution(&wm);
             let g = self.masking_shadowing_g(wo, wi);
             let transmission = SampledSpectrum::one() - fresnel;
 
-            
-
             transmission * d * g * wi.dot(wm).abs() * wo.dot(wm).abs()
-                / (denom * abs_cos_theta(wi) * abs_cos_theta(wo) * eta * eta)
+                / (denom * abs_cos_theta(wi) * abs_cos_theta(wo) * eta_scalar * eta_scalar)
         }
     }
 
@@ -634,24 +613,23 @@ impl DielectricBsdf {
         let cos_theta_i = cos_theta(wi);
 
         // 屈折率を計算
-        let eta_val = self.eta.value(0);
-        let (eta_i, eta_t) = if self.thin_surface {
-            (1.0, eta_val) // 空気(1.0) → 誘電体(n): eta = n
+        let eta_spectrum = if self.thin_surface {
+            self.eta.clone() // 空気(1.0) → 誘電体(n): eta = n
         } else if self.entering {
-            (1.0, eta_val) // 空気(1.0) → 誘電体(n): eta = n
+            self.eta.clone() // 空気(1.0) → 誘電体(n): eta = n
         } else {
-            (eta_val, 1.0) // 誘電体(n) → 空気(1.0): eta = 1/n
+            SampledSpectrum::one() / self.eta.clone() // 誘電体(n) → 空気(1.0): eta = 1/n
         };
-        let eta = eta_t / eta_i;
+        let eta_scalar = eta_spectrum.value(0); // 屈折計算用
 
         // Generalized half vectorを計算
-        let wm = match self.compute_generalized_half_vector(wo, wi, eta) {
+        let wm = match self.compute_generalized_half_vector(wo, wi, eta_scalar) {
             Some(wm) => wm,
             None => return 0.0,
         };
 
-        // フレネル反射率を計算（スペクトル依存）
-        let fresnel = self.fresnel_dielectric_spectral(wo.dot(wm).abs(), eta);
+        // フレネル反射率を計算
+        let fresnel = fresnel_dielectric(wo.dot(wm).abs(), &eta_spectrum);
         let pr = fresnel.average();
         let pt = 1.0 - pr;
 
@@ -665,7 +643,7 @@ impl DielectricBsdf {
             // Thin surface透過PDF
             pt / (pr + pt)
         } else {
-            let denom = (wi.dot(wm) + wo.dot(wm) / eta).powi(2);
+            let denom = (wi.dot(wm) + wo.dot(wm) / eta_scalar).powi(2);
             let dwm_dwi = wi.dot(wm).abs() / denom;
 
             self.visible_normal_distribution(wo, &wm) * dwm_dwi * pt / (pr + pt)

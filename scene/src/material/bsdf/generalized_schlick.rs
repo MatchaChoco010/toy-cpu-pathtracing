@@ -605,37 +605,36 @@ impl GeneralizedSchlickBsdf {
             transmission / wi.z().abs()
         } else {
             // 通常の誘電体：適切な屈折BTDF
-            let eta_val = self.eta.value(0);
-            let (eta_i, eta_t) = if self.thin_surface {
-                (1.0, eta_val) // 空気(1.0) → 誘電体(n): eta = n
+            let eta_spectrum = if self.thin_surface {
+                self.eta.clone() // 空気(1.0) → 誘電体(n): eta = n
             } else if self.entering {
-                (1.0, eta_val) // 空気(1.0) → 誘電体(n): eta = n
+                self.eta.clone() // 空気(1.0) → 誘電体(n): eta = n
             } else {
-                (eta_val, 1.0) // 誘電体(n) → 空気(1.0): eta = 1/n
+                SampledSpectrum::one() / self.eta.clone() // 誘電体(n) → 空気(1.0): eta = 1/n
             };
-            let eta = eta_t / eta_i;
+            let eta_scalar = eta_spectrum.value(0); // 屈折計算用
 
             // Generalized half vectorを計算
-            let wm = match self.compute_generalized_half_vector(wo, wi, eta) {
+            let wm = match self.compute_generalized_half_vector(wo, wi, eta_scalar) {
                 Some(wm) => wm,
                 None => return SampledSpectrum::zero(),
             };
 
             // フレネル透過率を計算
-            let fresnel_dielectric_val = fresnel_dielectric(wo.dot(wm).abs(), eta);
-            let transmission = 1.0 - fresnel_dielectric_val;
+            let fresnel_dielectric_spectrum = fresnel_dielectric(wo.dot(wm).abs(), &eta_spectrum);
+            let transmission = SampledSpectrum::one() - fresnel_dielectric_spectrum;
 
             // マイクロファセットBTDF
-            let denom = (wi.dot(wm) + wo.dot(wm) / eta).powi(2);
+            let denom = (wi.dot(wm) + wo.dot(wm) / eta_scalar).powi(2);
             let d = self.microfacet_distribution(&wm);
             let g = self.masking_shadowing_g(wo, wi);
 
             let numerator = d * transmission * g * wi.dot(wm).abs() * wo.dot(wm).abs();
             let denominator = denom * abs_cos_theta(wi) * abs_cos_theta(wo);
 
-            let ft = numerator / denominator / (eta * eta);
+            
 
-            SampledSpectrum::constant(ft)
+            numerator / denominator / (eta_scalar * eta_scalar)
         }
     }
 
@@ -718,9 +717,13 @@ impl GeneralizedSchlickBsdf {
                     let pdf_refl = self.pdf_reflection(wo, wi);
 
                     // フレネル反射率で重み付け
-                    let eta_val = self.eta.value(0);
-                    let fresnel = fresnel_dielectric(wo.z().abs(), eta_val);
-                    let pr = fresnel;
+                    let eta_spectrum = if self.entering {
+                        self.eta.clone()
+                    } else {
+                        SampledSpectrum::one() / self.eta.clone()
+                    };
+                    let fresnel_spectrum = fresnel_dielectric(wo.z().abs(), &eta_spectrum);
+                    let pr = fresnel_spectrum.average();
                     let pt = 1.0 - pr;
 
                     pdf_refl * pr / (pr + pt)
@@ -729,9 +732,13 @@ impl GeneralizedSchlickBsdf {
                     let pdf_trans = self.pdf_transmission(wo, wi);
 
                     // フレネル透過率で重み付け
-                    let eta_val = self.eta.value(0);
-                    let fresnel = fresnel_dielectric(wo.z().abs(), eta_val);
-                    let pr = fresnel;
+                    let eta_spectrum = if self.entering {
+                        self.eta.clone()
+                    } else {
+                        SampledSpectrum::one() / self.eta.clone()
+                    };
+                    let fresnel_spectrum = fresnel_dielectric(wo.z().abs(), &eta_spectrum);
+                    let pr = fresnel_spectrum.average();
                     let pt = 1.0 - pr;
 
                     pdf_trans * pt / (pr + pt)
