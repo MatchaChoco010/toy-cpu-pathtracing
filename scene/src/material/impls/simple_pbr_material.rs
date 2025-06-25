@@ -203,7 +203,7 @@ impl BsdfSurfaceMaterial for SimplePbrMaterial {
 
         MaterialEvaluationResult {
             f,
-            pdf: 1.0, // evaluateは決定論的なレイヤー評価
+            pdf: 1.0,
             normal: normal_map,
         }
     }
@@ -338,7 +338,7 @@ impl SimplePbrMaterial {
             alpha,
         );
 
-        let fresnel = generalized_schlick.fresnel(&wo_normalmap).average();
+        let fresnel = generalized_schlick.fresnel(wo_normalmap).average();
 
         if uc < fresnel {
             // Specular反射をサンプリング
