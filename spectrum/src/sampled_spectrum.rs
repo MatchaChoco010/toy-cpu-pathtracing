@@ -219,6 +219,15 @@ impl SampledSpectrum {
         result
     }
 
+    /// 自然対数を計算する。
+    pub fn log(&self) -> Self {
+        let mut result = self.clone();
+        for i in 0..N_SPECTRUM_SAMPLES {
+            result.values[i] = self.values[i].max(1e-10).ln();
+        }
+        result
+    }
+
     /// 最初の波長以外を0にする。
     pub fn terminate_secondary(&mut self) {
         if self.is_zero() {
