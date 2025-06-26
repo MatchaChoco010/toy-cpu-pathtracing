@@ -1,12 +1,12 @@
 //! シーン16: Cornell box with clearcoat PBR bunny
 
-use color::{ColorSrgb, tone_map::NoneToneMap};
+use color::{tone_map::NoneToneMap, ColorSrgb};
 use math::{Point3, Transform, Vector3};
 use scene::{
     CreatePrimitiveDesc, EmissiveMaterial, FloatParameter, LambertMaterial, NormalParameter,
     SimpleClearcoatPbrMaterial, SpectrumParameter,
 };
-use spectrum::{RgbAlbedoSpectrum, presets};
+use spectrum::{presets, RgbAlbedoSpectrum};
 
 use crate::{camera::Camera, filter::Filter};
 
@@ -28,7 +28,7 @@ pub fn load_scene_16<Id: scene::SceneId, F: Filter>(
     let metallic_param = FloatParameter::constant(1.0);
 
     // roughness
-    let roughness_param = FloatParameter::constant(0.1);
+    let roughness_param = FloatParameter::constant(0.4);
 
     // ior
     let ior_param = FloatParameter::constant(1.5);
