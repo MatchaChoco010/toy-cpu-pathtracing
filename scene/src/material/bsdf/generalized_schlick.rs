@@ -272,11 +272,6 @@ impl GeneralizedSchlickBsdf {
             }
             ScatterMode::T => {
                 // 透過のみ
-                let pt = 1.0 - fresnel.average();
-                if pt == 0.0 {
-                    return None;
-                }
-
                 if self.thin_surface {
                     // Thin surface: 反対方向への透過
                     let wi = Vector3::new(-wo.x(), -wo.y(), -wo.z());
