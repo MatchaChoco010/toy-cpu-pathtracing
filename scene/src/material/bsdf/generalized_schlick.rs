@@ -221,6 +221,7 @@ impl GeneralizedSchlickBsdf {
         uv: glam::Vec2,
         uc: f32,
         wavelengths: &mut SampledWavelengths,
+        mode: ScatterMode,
     ) -> Option<BsdfSample> {
         let wo_cos_n = wo.z();
         if wo_cos_n == 0.0 {
@@ -229,10 +230,10 @@ impl GeneralizedSchlickBsdf {
 
         if self.effectively_smooth() {
             // 完全鏡面反射/透過
-            self.sample_specular(wo, uc, wavelengths)
+            self.sample_specular(wo, uc, wavelengths, mode)
         } else {
             // マイクロファセットサンプリング
-            self.sample_microfacet(wo, uv, uc, wavelengths)
+            self.sample_microfacet(wo, uv, uc, wavelengths, mode)
         }
     }
 
@@ -242,13 +243,14 @@ impl GeneralizedSchlickBsdf {
         wo: &Vector3<ShadingNormalTangent>,
         uc: f32,
         wavelengths: &mut SampledWavelengths,
+        mode: ScatterMode,
     ) -> Option<BsdfSample> {
         let wo_cos_n = wo.z();
 
         // フレネル反射率を計算
         let fresnel = self.generalized_schlick_fresnel(wo_cos_n.abs());
 
-        match self.scatter_mode {
+        match mode {
             ScatterMode::R => {
                 // 反射のみ
                 let wi = Vector3::new(-wo.x(), -wo.y(), wo.z());
@@ -267,6 +269,59 @@ impl GeneralizedSchlickBsdf {
                     1.0,
                     BsdfSampleType::SpecularReflection,
                 ))
+            }
+            ScatterMode::T => {
+                // 透過のみ
+                if self.thin_surface {
+                    // Thin surface: 反対方向への透過
+                    let wi = Vector3::new(-wo.x(), -wo.y(), -wo.z());
+                    let wi_cos_n = wi.z();
+
+                    if wi_cos_n == 0.0 {
+                        return None;
+                    }
+
+                    let transmission = SampledSpectrum::one() - fresnel;
+                    let f = transmission / wi_cos_n.abs();
+                    Some(BsdfSample::new(
+                        f,
+                        wi,
+                        1.0,
+                        BsdfSampleType::SpecularTransmission,
+                    ))
+                } else {
+                    // 通常の誘電体：Snellの法則による屈折（波長制限）
+                    if !self.eta.is_constant() {
+                        wavelengths.terminate_secondary();
+                    }
+
+                    let eta_val = self.eta.value(0);
+                    let (eta_i, eta_t) = if self.entering {
+                        (1.0, eta_val)
+                    } else {
+                        (eta_val, 1.0)
+                    };
+                    let eta = eta_t / eta_i;
+                    let n = Vector3::new(0.0, 0.0, 1.0);
+
+                    if let Some(wt) = refract(wo, &n, eta) {
+                        let wt_cos_n = wt.z();
+                        if wt_cos_n == 0.0 {
+                            return None;
+                        }
+
+                        let transmission = SampledSpectrum::one() - fresnel;
+                        let f = transmission / (eta * eta * wt_cos_n.abs());
+                        Some(BsdfSample::new(
+                            f,
+                            wt,
+                            1.0,
+                            BsdfSampleType::SpecularTransmission,
+                        ))
+                    } else {
+                        None
+                    }
+                }
             }
             ScatterMode::RT => {
                 // 反射と透過
@@ -354,6 +409,7 @@ impl GeneralizedSchlickBsdf {
         uv: glam::Vec2,
         uc: f32,
         wavelengths: &mut SampledWavelengths,
+        mode: ScatterMode,
     ) -> Option<BsdfSample> {
         // 可視法線をサンプリング
         let wm = self.sample_visible_normal(wo, uv);
@@ -362,10 +418,17 @@ impl GeneralizedSchlickBsdf {
         let wo_dot_wm = wo.dot(wm);
         let fresnel = self.generalized_schlick_fresnel(wo_dot_wm.abs());
 
-        match self.scatter_mode {
+        match mode {
             ScatterMode::R => {
                 // 反射のみ
                 self.sample_microfacet_reflection(wo, &wm, fresnel, 1.0)
+            }
+            ScatterMode::T => {
+                // 透過のみ
+                if !self.eta.is_constant() {
+                    wavelengths.terminate_secondary();
+                }
+                self.sample_microfacet_transmission(wo, &wm, SampledSpectrum::one() - fresnel, 1.0)
             }
             ScatterMode::RT => {
                 // 反射と透過
@@ -549,6 +612,13 @@ impl GeneralizedSchlickBsdf {
                 // 反射のみ評価
                 self.evaluate_reflection(wo, wi)
             }
+            ScatterMode::T => {
+                if is_reflection {
+                    return SampledSpectrum::zero();
+                }
+                // 透過のみ評価
+                self.evaluate_transmission(wo, wi)
+            }
             ScatterMode::RT => {
                 if is_reflection {
                     // 反射評価
@@ -706,6 +776,13 @@ impl GeneralizedSchlickBsdf {
                 }
                 // 反射PDFのみ
                 self.pdf_reflection(wo, wi)
+            }
+            ScatterMode::T => {
+                if is_reflection {
+                    return 0.0;
+                }
+                // 透過PDFのみ
+                self.pdf_transmission(wo, wi)
             }
             ScatterMode::RT => {
                 if is_reflection {
