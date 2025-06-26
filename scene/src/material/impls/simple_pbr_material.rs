@@ -303,7 +303,7 @@ impl SimplePbrMaterial {
             alpha,
         );
 
-        match generalized_schlick.sample(wo_normalmap, uv, 0.0, lambda) {
+        match generalized_schlick.sample(wo_normalmap, uv, 0.0, lambda, ScatterMode::R) {
             Some(bsdf_result) => {
                 let wi_shading = transform_inv * &bsdf_result.wi;
                 MaterialSample::new(
@@ -355,7 +355,7 @@ impl SimplePbrMaterial {
         if uc < fresnel {
             // Specular反射をサンプリング
             let uc = uc / fresnel;
-            match generalized_schlick.sample(wo_normalmap, uv, uc, lambda) {
+            match generalized_schlick.sample(wo_normalmap, uv, uc, lambda, ScatterMode::R) {
                 Some(bsdf_result) => {
                     let wi_shading = transform_inv * &bsdf_result.wi;
                     MaterialSample::new(

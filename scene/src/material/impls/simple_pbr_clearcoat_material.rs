@@ -8,9 +8,9 @@ use math::{Normal, ShadingNormalTangent, Transform, Vector3, VertexNormalTangent
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::{
-    material::bsdf::{GeneralizedSchlickBsdf, NormalizedLambertBsdf, ScatterMode},
     BsdfSurfaceMaterial, FloatParameter, Material, MaterialEvaluationResult, MaterialSample,
     NormalParameter, SpectrumParameter, SurfaceInteraction, SurfaceMaterial,
+    material::bsdf::{GeneralizedSchlickBsdf, NormalizedLambertBsdf, ScatterMode},
 };
 
 /// シンプルなクリアコート付きPBRマテリアル。
@@ -190,7 +190,7 @@ impl BsdfSurfaceMaterial for SimpleClearcoatPbrMaterial {
         if uc < clearcoat_fresnel {
             // clearcoat層をサンプリング
             let uc_adjusted = uc / clearcoat_fresnel;
-            match clearcoat_bsdf.sample(&wo_normalmap, uv, uc_adjusted, lambda) {
+            match clearcoat_bsdf.sample(&wo_normalmap, uv, uc_adjusted, lambda, ScatterMode::R) {
                 Some(bsdf_result) => {
                     let wi_shading = &transform_inv * &bsdf_result.wi;
                     MaterialSample::new(
@@ -612,7 +612,7 @@ impl SimpleClearcoatPbrMaterial {
             alpha,
         );
 
-        match generalized_schlick.sample(wo_normalmap, uv, 0.0, lambda) {
+        match generalized_schlick.sample(wo_normalmap, uv, 0.0, lambda, ScatterMode::R) {
             Some(bsdf_result) => {
                 let wi_shading = transform_inv * &bsdf_result.wi;
                 MaterialSample::new(
@@ -664,7 +664,7 @@ impl SimpleClearcoatPbrMaterial {
         if uc < fresnel {
             // Specular反射をサンプリング
             let uc = uc / fresnel;
-            match generalized_schlick.sample(wo_normalmap, uv, uc, lambda) {
+            match generalized_schlick.sample(wo_normalmap, uv, uc, lambda, ScatterMode::R) {
                 Some(bsdf_result) => {
                     let wi_shading = transform_inv * &bsdf_result.wi;
                     MaterialSample::new(
