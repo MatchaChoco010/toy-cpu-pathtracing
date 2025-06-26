@@ -21,29 +21,29 @@ pub fn load_scene_16<Id: scene::SceneId, F: Filter>(
 
     // 銀色のベースカラー
     let base_color_spectrum =
-        RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.8, 0.8, 0.8));
+        RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.95, 0.95, 0.95));
     let base_color_param = SpectrumParameter::constant(base_color_spectrum);
 
     // metallic = 1.0 (完全金属)
     let metallic_param = FloatParameter::constant(1.0);
 
     // roughness
-    let roughness_param = FloatParameter::constant(0.4);
+    let roughness_param = FloatParameter::constant(0.5);
 
     // ior
     let ior_param = FloatParameter::constant(1.5);
 
     // clearcoat設定
     let clearcoat_ior_param = FloatParameter::constant(1.5);
-    let clearcoat_roughness_param = FloatParameter::constant(0.08);
+    let clearcoat_roughness_param = FloatParameter::constant(0.01);
 
     // 青いtint
     let clearcoat_tint_spectrum =
         RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.7, 0.8, 1.0));
     let clearcoat_tint_param = SpectrumParameter::constant(clearcoat_tint_spectrum);
 
-    // thickness（0.001m = 1mm程度）
-    let clearcoat_thickness_param = FloatParameter::constant(0.001);
+    // thickness（0.001m = 0.5mm程度）
+    let clearcoat_thickness_param = FloatParameter::constant(0.0005);
 
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
