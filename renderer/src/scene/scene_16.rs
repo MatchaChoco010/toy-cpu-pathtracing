@@ -1,12 +1,12 @@
 //! シーン16: Cornell box with clearcoat PBR bunny
 
-use color::{tone_map::NoneToneMap, ColorSrgb};
+use color::{ColorSrgb, tone_map::NoneToneMap};
 use math::{Point3, Transform, Vector3};
 use scene::{
     CreatePrimitiveDesc, EmissiveMaterial, FloatParameter, LambertMaterial, NormalParameter,
     SimpleClearcoatPbrMaterial, SpectrumParameter,
 };
-use spectrum::{presets, RgbAlbedoSpectrum};
+use spectrum::{RgbAlbedoSpectrum, presets};
 
 use crate::{camera::Camera, filter::Filter};
 

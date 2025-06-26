@@ -433,12 +433,7 @@ impl GeneralizedSchlickBsdf {
                 if !self.eta.is_constant() {
                     wavelengths.terminate_secondary();
                 }
-                self.sample_microfacet_transmission(
-                    wo,
-                    &wm,
-                    SampledSpectrum::one() - fresnel,
-                    1.0,
-                )
+                self.sample_microfacet_transmission(wo, &wm, SampledSpectrum::one() - fresnel, 1.0)
             }
             ScatterMode::RT => {
                 // 反射と透過
