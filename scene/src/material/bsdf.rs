@@ -33,6 +33,8 @@ pub enum BsdfSampleType {
 pub enum ScatterMode {
     /// 反射のみ
     R,
+    /// 透過のみ
+    T,
     /// 反射と透過
     RT,
 }
