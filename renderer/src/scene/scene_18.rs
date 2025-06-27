@@ -1,16 +1,16 @@
-//! シーン17: Cornell box with rough clearcoat PBR dragon
+//! シーン18: Cornell box with clearcoat thickness map PBR dragon
 
-use color::{ColorSrgb, tone_map::NoneToneMap};
+use color::{tone_map::NoneToneMap, ColorSrgb};
 use math::{Point3, Transform, Vector3};
 use scene::{
-    CreatePrimitiveDesc, EmissiveMaterial, FloatParameter, LambertMaterial, NormalParameter,
-    SimpleClearcoatPbrMaterial, SpectrumParameter,
+    CreatePrimitiveDesc, EmissiveMaterial, FloatParameter, FloatTexture, LambertMaterial,
+    NormalParameter, SimpleClearcoatPbrMaterial, SpectrumParameter,
 };
-use spectrum::{RgbAlbedoSpectrum, presets};
+use spectrum::{presets, RgbAlbedoSpectrum};
 
 use crate::{camera::Camera, filter::Filter};
 
-pub fn load_scene_17<Id: scene::SceneId, F: Filter>(
+pub fn load_scene_18<Id: scene::SceneId, F: Filter>(
     scene: &mut scene::Scene<Id>,
     camera: &mut Camera<F>,
 ) {
@@ -35,15 +35,20 @@ pub fn load_scene_17<Id: scene::SceneId, F: Filter>(
 
     // clearcoat設定
     let clearcoat_ior_param = FloatParameter::constant(1.5);
-    let clearcoat_roughness_param = FloatParameter::constant(0.75);
+    let clearcoat_roughness_param = FloatParameter::constant(0.01);
 
     // 青いtint
     let clearcoat_tint_spectrum =
         RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.7, 0.8, 1.0));
     let clearcoat_tint_param = SpectrumParameter::constant(clearcoat_tint_spectrum);
 
-    // thickness（0.8mm）
-    let clearcoat_thickness_param = FloatParameter::constant(0.8);
+    // thickness
+    let thickness_texture = FloatTexture::load(
+        "./renderer/assets/dragon-material/ClearcoatThickness.png",
+        false,
+    )
+    .expect("Failed to load clearcoat thickness texture");
+    let clearcoat_thickness_param = FloatParameter::texture(thickness_texture);
 
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,

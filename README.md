@@ -29,3 +29,5 @@ A simple CPU path tracing implementation in Rust.
 ![Scene 16](pictures/scene16.mis.png)
 
 ![Scene 17](pictures/scene17.mis.png)
+
+![Scene 18](pictures/scene18.mis.png)
