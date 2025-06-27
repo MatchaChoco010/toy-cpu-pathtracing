@@ -31,7 +31,7 @@ pub struct SimpleClearcoatPbrMaterial {
     clearcoat_roughness: FloatParameter,
     /// クリアコートの色付け
     clearcoat_tint_color: SpectrumParameter,
-    /// クリアコートの厚さ（単位: m）
+    /// クリアコートの厚さ（単位: mm）
     clearcoat_thickness: FloatParameter,
 }
 
@@ -47,7 +47,7 @@ impl SimpleClearcoatPbrMaterial {
     /// - `clearcoat_ior` - クリアコートの屈折率
     /// - `clearcoat_roughness` - クリアコートの粗さ
     /// - `clearcoat_tint_color` - クリアコートの色付け
-    /// - `clearcoat_thickness` - クリアコートの厚さ（単位: m）
+    /// - `clearcoat_thickness` - クリアコートの厚さ（単位: mm）
     pub fn new(
         base_color: SpectrumParameter,
         metallic: FloatParameter,
@@ -93,13 +93,16 @@ impl SimpleClearcoatPbrMaterial {
         // Beer-Lambertの式: attenuation = exp(-sigma * L)
         // sigma = -log(tint_color) / 0.001
         // L = thickness / max(cos_theta, 1e-4)
-        // tint_colorは1mmあたりの色付けを表しているものとする。
+        // tint_colorは1mmの厚みで指定された色だけ吸収されることを表す。
+        // thicknessは mm 単位で指定され、内部で m 単位に変換される。
 
         // sigma = -log(tint_color) / 0.001を計算
         let log_tint = tint_color.log();
         let sigma = -1.0 * log_tint / 0.001;
 
-        let l = thickness / cos_theta.max(1e-4);
+        // thickness を mm から m に変換
+        let thickness_m = thickness * 0.001;
+        let l = thickness_m / cos_theta.max(1e-4);
         (-1.0 * sigma * l).exp()
     }
 }
