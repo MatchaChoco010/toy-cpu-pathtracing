@@ -8,6 +8,7 @@ color.workspace = true
 glam.workspace = true
 image.workspace = true
 math.workspace = true
+rand.workspace = true
 spectrum.workspace = true
 tobj.workspace = true
 util_macros.workspace = true
