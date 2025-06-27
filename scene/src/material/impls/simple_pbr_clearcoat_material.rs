@@ -185,7 +185,9 @@ impl BsdfSurfaceMaterial for SimpleClearcoatPbrMaterial {
             clearcoat_alpha,
         );
 
-        let clearcoat_fresnel = clearcoat_bsdf.fresnel(&wo_normalmap).average();
+        let clearcoat_fresnel = clearcoat_bsdf
+            .directional_albedo(&wo_normalmap, lambda)
+            .average();
 
         if uc < clearcoat_fresnel {
             // clearcoat層をサンプリング
@@ -318,7 +320,9 @@ impl BsdfSurfaceMaterial for SimpleClearcoatPbrMaterial {
             clearcoat_alpha,
         );
 
-        let clearcoat_fresnel = clearcoat_bsdf.fresnel(&wo_normalmap).average();
+        let clearcoat_fresnel = clearcoat_bsdf
+            .directional_albedo(&wo_normalmap, lambda)
+            .average();
         let clearcoat_f = clearcoat_bsdf.evaluate(&wo_normalmap, &wi_normalmap);
 
         // 下層のf値を計算
@@ -359,13 +363,13 @@ impl BsdfSurfaceMaterial for SimpleClearcoatPbrMaterial {
 
     fn pdf(
         &self,
-        _lambda: &SampledWavelengths,
+        lambda: &SampledWavelengths,
         wo: &Vector3<VertexNormalTangent>,
         wi: &Vector3<VertexNormalTangent>,
         shading_point: &SurfaceInteraction<VertexNormalTangent>,
     ) -> f32 {
         // パラメータをサンプリング
-        let base_color_spectrum = self.base_color.sample(shading_point.uv).sample(_lambda);
+        let base_color_spectrum = self.base_color.sample(shading_point.uv).sample(lambda);
         let metallic_value = self.metallic.sample(shading_point.uv);
         let roughness_value = self.roughness.sample(shading_point.uv);
         let ior_value = self.ior.sample(shading_point.uv);
@@ -418,7 +422,9 @@ impl BsdfSurfaceMaterial for SimpleClearcoatPbrMaterial {
             clearcoat_alpha,
         );
 
-        let clearcoat_fresnel = clearcoat_bsdf.fresnel(&wo_normalmap).average();
+        let clearcoat_fresnel = clearcoat_bsdf
+            .directional_albedo(&wo_normalmap, lambda)
+            .average();
         let clearcoat_pdf = clearcoat_bsdf.pdf(&wo_normalmap, &wi_normalmap);
 
         // 下層のPDFを計算

@@ -1084,6 +1084,7 @@ dependencies = [
  "glam",
  "image",
  "math",
+ "rand 0.9.1",
  "spectrum",
  "tobj",
  "util_macros",
