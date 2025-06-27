@@ -1,6 +1,7 @@
 //! Adobe Fresnel Modelの一般化されたSchlick BSDF実装。
 
 use math::{ShadingNormalTangent, Vector3};
+use rand::{prelude::*, rng};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::material::{
@@ -885,5 +886,34 @@ impl GeneralizedSchlickBsdf {
     pub fn fresnel(&self, wo: &Vector3<ShadingNormalTangent>) -> SampledSpectrum {
         let cos_theta = wo.z().abs();
         self.generalized_schlick_fresnel(cos_theta)
+    }
+
+    /// 方向性アルベドを計算する。
+    /// 半球に渡ってBSDFを積分したエネルギーを64サンプルのモンテカルロ法で求める。
+    pub fn directional_albedo(
+        &self,
+        wo: &Vector3<ShadingNormalTangent>,
+        wavelengths: &SampledWavelengths,
+    ) -> SampledSpectrum {
+        const SAMPLE_COUNT: usize = 64;
+        let mut sum = SampledSpectrum::zero();
+        let mut local_wavelengths = wavelengths.clone();
+        let mut rng = rng();
+
+        for _ in 0..SAMPLE_COUNT {
+            // 0..1のランダムサンプルを生成
+            let uc: f32 = rng.random();
+            let uv = glam::Vec2::new(rng.random(), rng.random());
+
+            if let Some(sample) = self.sample(wo, uv, uc, &mut local_wavelengths, ScatterMode::R) {
+                // wi.z() = cos(theta_i)
+                let cos_theta_i = sample.wi.z().abs();
+                if cos_theta_i > 0.0 && sample.pdf > 0.0 {
+                    sum += sample.f * cos_theta_i / sample.pdf;
+                }
+            }
+        }
+
+        sum / SAMPLE_COUNT as f32
     }
 }
