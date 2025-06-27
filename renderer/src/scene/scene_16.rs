@@ -42,8 +42,8 @@ pub fn load_scene_16<Id: scene::SceneId, F: Filter>(
         RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.7, 0.8, 1.0));
     let clearcoat_tint_param = SpectrumParameter::constant(clearcoat_tint_spectrum);
 
-    // thickness（0.001m = 0.8mm程度）
-    let clearcoat_thickness_param = FloatParameter::constant(0.0008);
+    // thickness（0.8mm）
+    let clearcoat_thickness_param = FloatParameter::constant(0.8);
 
     scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
         geometry_index: geom,
