@@ -85,6 +85,7 @@ impl GeneralizedSchlickBsdf {
     /// 一般化されたSchlick Fresnelモデルを計算する。
     /// Adobe Fresnel Modelの式：
     /// F(θ) ≈ r₀ + (r₉₀ - r₀)(1 - cos θ)^α - a cos θ (1 - cos θ)^6
+    /// https://renderwonk.com/publications/wp-generalization-adobe/gen-adobe.pdf
     ///
     /// # Arguments
     /// - `cos_theta` - 入射角のコサイン値
@@ -890,6 +891,7 @@ impl GeneralizedSchlickBsdf {
 
     /// 方向性アルベドを計算する。
     /// 半球に渡ってBSDFを積分したエネルギーを64サンプルのモンテカルロ法で求める。
+    /// https://blog.selfshadow.com/publications/s2020-shading-course/materialx/s2020_pbs_materialx_slides.pdf
     pub fn directional_albedo(
         &self,
         wo: &Vector3<ShadingNormalTangent>,

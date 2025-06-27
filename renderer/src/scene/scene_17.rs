@@ -1,4 +1,4 @@
-//! シーン16: Cornell box with clearcoat PBR dragon
+//! シーン17: Cornell box with rough clearcoat PBR dragon
 
 use color::{ColorSrgb, tone_map::NoneToneMap};
 use math::{Point3, Transform, Vector3};
@@ -10,7 +10,7 @@ use spectrum::{RgbAlbedoSpectrum, presets};
 
 use crate::{camera::Camera, filter::Filter};
 
-pub fn load_scene_16<Id: scene::SceneId, F: Filter>(
+pub fn load_scene_17<Id: scene::SceneId, F: Filter>(
     scene: &mut scene::Scene<Id>,
     camera: &mut Camera<F>,
 ) {
@@ -35,7 +35,7 @@ pub fn load_scene_16<Id: scene::SceneId, F: Filter>(
 
     // clearcoat設定
     let clearcoat_ior_param = FloatParameter::constant(1.5);
-    let clearcoat_roughness_param = FloatParameter::constant(0.01);
+    let clearcoat_roughness_param = FloatParameter::constant(0.75);
 
     // 青いtint
     let clearcoat_tint_spectrum =
