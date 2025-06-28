@@ -260,38 +260,21 @@ impl EnvironmentLight {
         let y = ((v * self.texture_height as f32).floor() as usize)
             .min(self.texture_height as usize - 1);
 
-        // CDFから確率密度を計算（逆関数法の逆処理）
+        // 記事のDistribution2D::getPDF実装に従う
+        let pixel_rgb = self.texture_data[y][x];
+        let luminance = 0.299 * pixel_rgb[0] + 0.587 * pixel_rgb[1] + 0.114 * pixel_rgb[2];
+        let sin_theta = theta.sin().max(1e-8);
+        let pixel_weight = luminance * sin_theta;
 
-        // 1. 周辺確率密度 p_marginal(y) を計算
-        let p_marginal = if y == 0 {
-            self.marginal_cdf[0]
-        } else {
-            self.marginal_cdf[y] - self.marginal_cdf[y - 1]
-        };
+        // テクスチャ座標でのPDF密度
+        let pdf_texture = pixel_weight / self.total_weight;
 
-        // 2. 条件付き確率密度 p_conditional(x|y) を計算
-        let p_conditional = if x == 0 {
-            self.conditional_cdf[y][0]
-        } else {
-            self.conditional_cdf[y][x] - self.conditional_cdf[y][x - 1]
-        };
+        // テクスチャ座標から立体角への変換
+        let texture_to_solid_angle_jacobian = (self.texture_width as f32)
+            * (self.texture_height as f32)
+            / (2.0 * std::f32::consts::PI * std::f32::consts::PI * sin_theta);
 
-        // 3. 2D確率密度 p(x,y) = p_marginal(y) * p_conditional(x|y)
-        let p_2d = p_marginal * p_conditional;
-
-        // 4. テクスチャ座標から球面座標へのヤコビアン
-        let du_dtheta = 1.0 / std::f32::consts::PI;
-        let dv_dphi = 1.0 / (2.0 * std::f32::consts::PI);
-        let jacobian_uv_to_spherical = du_dtheta * dv_dphi;
-
-        // 5. 球面座標から方向ベクトルへのヤコビアン（立体角）
-        let jacobian_spherical_to_direction = theta.sin();
-
-        // 6. テクスチャ解像度によるスケーリング
-        let texture_scale = (self.texture_width * self.texture_height) as f32;
-
-        // 7. 最終的なPDF（cosine項は含めない）
-        p_2d * texture_scale / (jacobian_uv_to_spherical * jacobian_spherical_to_direction)
+        pdf_texture * texture_to_solid_angle_jacobian
     }
 }
 impl<Id: SceneId> Primitive<Id> for EnvironmentLight {
