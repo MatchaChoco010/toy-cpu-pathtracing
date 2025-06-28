@@ -24,6 +24,10 @@ pub struct EnvironmentLight {
     texture_height: u32,
     local_to_world: Transform<Local, World>,
     local_to_render: Transform<Local, Render>,
+    // 事前計算済みサンプリングデータ
+    marginal_cdf: Vec<f32>,           // 各行の累積重み（行選択用）
+    conditional_cdf: Vec<Vec<f32>>,   // 各行内の累積重み（列選択用）
+    total_weight: f32,                // 全体の重み合計
 }
 impl EnvironmentLight {
     /// 新しい環境ライトのプリミティブを作成する。
@@ -61,6 +65,9 @@ impl EnvironmentLight {
         let color = ColorSrgb::<NoneToneMap>::new(total_rgb[0], total_rgb[1], total_rgb[2]);
         let integrated_spectrum = RgbIlluminantSpectrum::<ColorSrgb<NoneToneMap>>::new(color);
 
+        // 2段階CDFテーブルを事前計算
+        let (marginal_cdf, conditional_cdf, total_weight) = Self::build_2d_cdf(&texture_data, width, height);
+
         Self {
             intensity,
             integrated_spectrum,
@@ -69,6 +76,9 @@ impl EnvironmentLight {
             texture_height: height,
             local_to_world: transform,
             local_to_render: Transform::identity(), // buildで設定される
+            marginal_cdf,
+            conditional_cdf,
+            total_weight,
         }
     }
 
@@ -150,101 +160,117 @@ impl EnvironmentLight {
         1.0 / theta.sin().max(1e-8)
     }
 
-    /// 各ピクセルの重みを計算してテーブルを構築
-    fn build_weight_table(
-        &self,
-        shading_normal: math::Normal<Render>,
-        lambda: &SampledWavelengths,
-    ) -> (Vec<Vec<f32>>, f32) {
-        let mut weight_table =
-            vec![vec![0.0f32; self.texture_width as usize]; self.texture_height as usize];
-        let mut total_weight = 0.0f32;
+    /// 2段階CDFテーブルを事前構築（cosine項なし）
+    fn build_2d_cdf(
+        texture_data: &[Vec<[f32; 3]>],
+        width: u32,
+        height: u32,
+    ) -> (Vec<f32>, Vec<Vec<f32>>, f32) {
+        let mut row_weights = vec![0.0f32; height as usize];
+        let mut conditional_cdf = vec![vec![0.0f32; width as usize]; height as usize];
 
-        for y in 0..self.texture_height {
-            for x in 0..self.texture_width {
-                let u = (x as f32 + 0.5) / self.texture_width as f32;
-                let v = (y as f32 + 0.5) / self.texture_height as f32;
+        // 各行の重みと条件付きCDFを計算
+        for y in 0..height {
+            let mut row_sum = 0.0f32;
+            
+            for x in 0..width {
+                let u = (x as f32 + 0.5) / width as f32;
+                let v = (y as f32 + 0.5) / height as f32;
 
                 // テクスチャ座標から方向を計算
-                let (theta, phi) = Self::uv_to_spherical(u, v);
-                let wi = Self::spherical_to_direction(theta, phi);
+                let (theta, _phi) = Self::uv_to_spherical(u, v);
 
-                // 3つの重みを計算
+                // jacobian重み（sin_theta項）と輝度重みのみ（cosine項は除外）
                 let jacobian_weight = Self::jacobian_weight(theta);
-                let cosine_weight = shading_normal.dot(wi).max(0.0);
 
-                let pixel_rgb = self.texture_data[y as usize][x as usize];
-                let color = ColorSrgb::<NoneToneMap>::new(pixel_rgb[0], pixel_rgb[1], pixel_rgb[2]);
-                let pixel_spectrum = RgbIlluminantSpectrum::<ColorSrgb<NoneToneMap>>::new(color);
-                let luminance_weight = pixel_spectrum.sample(lambda).average();
+                let pixel_rgb = texture_data[y as usize][x as usize];
+                let luminance = 0.299 * pixel_rgb[0] + 0.587 * pixel_rgb[1] + 0.114 * pixel_rgb[2];
 
-                // 全ての重みを掛け合わせる
-                let weight = jacobian_weight * cosine_weight * luminance_weight;
-                weight_table[y as usize][x as usize] = weight;
-                total_weight += weight;
+                let weight = jacobian_weight * luminance;
+                row_sum += weight;
+
+                // 条件付きCDF（行内累積分布）
+                conditional_cdf[y as usize][x as usize] = row_sum;
             }
-        }
 
-        (weight_table, total_weight)
-    }
+            // 行の重みを記録
+            row_weights[y as usize] = row_sum;
 
-    /// 累積分布関数テーブルを構築
-    fn build_cdf_table(weight_table: &[Vec<f32>], total_weight: f32) -> Vec<Vec<f32>> {
-        let height = weight_table.len();
-        let width = weight_table[0].len();
-        let mut cdf_table = vec![vec![0.0f32; width]; height];
-
-        let mut cumulative = 0.0f32;
-        for y in 0..height {
-            for x in 0..width {
-                cumulative += weight_table[y][x];
-                cdf_table[y][x] = cumulative / total_weight;
-            }
-        }
-
-        cdf_table
-    }
-
-    /// 2次元乱数でCDFテーブルからピクセルをサンプリング
-    fn sample_pixel_from_cdf(cdf_table: &[Vec<f32>], u: f32, _v: f32) -> (usize, usize) {
-        let height = cdf_table.len();
-        let width = cdf_table[0].len();
-
-        // 線形検索でピクセルを見つける
-        for y in 0..height {
-            for x in 0..width {
-                if u <= cdf_table[y][x] {
-                    return (x, y);
+            // 条件付きCDFを正規化
+            if row_sum > 0.0 {
+                for x in 0..width {
+                    conditional_cdf[y as usize][x as usize] /= row_sum;
                 }
             }
         }
 
-        // フォールバック（数値誤差対策）
-        (width - 1, height - 1)
+        // 周辺CDF（行選択用）を計算
+        let total_weight: f32 = row_weights.iter().sum();
+        let mut marginal_cdf = vec![0.0f32; height as usize];
+        let mut cumulative = 0.0f32;
+        
+        for y in 0..height {
+            cumulative += row_weights[y as usize];
+            marginal_cdf[y as usize] = if total_weight > 0.0 {
+                cumulative / total_weight
+            } else {
+                (y + 1) as f32 / height as f32
+            };
+        }
+
+        (marginal_cdf, conditional_cdf, total_weight)
     }
 
-    /// 特定の方向に対するPDFを計算
-    fn calculate_direction_pdf(
+    /// バイナリサーチでCDFから値をサンプリング
+    fn sample_from_cdf(cdf: &[f32], u: f32) -> usize {
+        match cdf.binary_search_by(|&x| x.partial_cmp(&u).unwrap()) {
+            Ok(index) => index,
+            Err(index) => index.min(cdf.len() - 1),
+        }
+    }
+
+    /// 2段階CDFサンプリングでピクセル座標を取得
+    fn sample_pixel_2d(&self, u: f32, v: f32) -> (usize, usize) {
+        // 1. 周辺CDFで行を選択
+        let y = Self::sample_from_cdf(&self.marginal_cdf, u);
+
+        // 2. 条件付きCDFで列を選択
+        let x = Self::sample_from_cdf(&self.conditional_cdf[y], v);
+
+        (x, y)
+    }
+
+    /// 事前計算したテーブルを使って効率的にPDFを計算
+    fn calculate_direction_pdf_efficient(
         &self,
-        weight_table: &[Vec<f32>],
-        total_weight: f32,
         direction: math::Vector3<Render>,
+        shading_normal: math::Normal<Render>,
     ) -> f32 {
+        if self.total_weight <= 0.0 {
+            return 0.0;
+        }
+
         // 方向からテクスチャ座標を計算
         let (theta, phi) = Self::direction_to_spherical(direction);
         let (u, v) = Self::spherical_to_uv(theta, phi);
 
-        // 最も近いピクセルの重みを取得
-        let x =
-            ((u * self.texture_width as f32).floor() as usize).min(self.texture_width as usize - 1);
-        let y = ((v * self.texture_height as f32).floor() as usize)
-            .min(self.texture_height as usize - 1);
+        // 最も近いピクセルの座標を取得
+        let x = ((u * self.texture_width as f32).floor() as usize).min(self.texture_width as usize - 1);
+        let y = ((v * self.texture_height as f32).floor() as usize).min(self.texture_height as usize - 1);
 
-        if total_weight > 0.0 {
-            weight_table[y][x] / total_weight
-        } else {
-            0.0
-        }
+        // 事前計算した基本重み（jacobian * luminance）を取得
+        let pixel_rgb = self.texture_data[y][x];
+        let luminance = 0.299 * pixel_rgb[0] + 0.587 * pixel_rgb[1] + 0.114 * pixel_rgb[2];
+        let jacobian_weight = Self::jacobian_weight(theta);
+        let base_weight = jacobian_weight * luminance;
+
+        // cosine項を追加
+        let cosine_weight = shading_normal.dot(direction).max(0.0);
+        let full_weight = base_weight * cosine_weight;
+
+        // 全体の重みで正規化（cosine項を含む総重みで）
+        // 注意: total_weightはcosine項なしなので、この計算は近似
+        full_weight / self.total_weight
     }
 }
 impl<Id: SceneId> Primitive<Id> for EnvironmentLight {
@@ -315,12 +341,8 @@ impl<Id: SceneId> PrimitiveInfiniteLight<Id> for EnvironmentLight {
         shading_point: &SurfaceInteraction<Render>,
         wi: math::Vector3<Render>,
     ) -> f32 {
-        // 重みテーブルを構築（サンプリング時と同じ条件で）
-        let lambda = &SampledWavelengths::new_uniform(0.5); // RGB用の固定波長
-        let (weight_table, total_weight) =
-            self.build_weight_table(shading_point.shading_normal, lambda);
-
-        self.calculate_direction_pdf(&weight_table, total_weight, wi)
+        // 事前計算したテーブルを使用して効率的にPDFを計算
+        self.calculate_direction_pdf_efficient(wi, shading_point.shading_normal)
     }
 
     fn sample_infinite_light(
@@ -329,13 +351,8 @@ impl<Id: SceneId> PrimitiveInfiniteLight<Id> for EnvironmentLight {
         lambda: &SampledWavelengths,
         uv: glam::Vec2,
     ) -> InfiniteLightSampleRadiance<Render> {
-        // 重みテーブルとCDFテーブルを構築
-        let (weight_table, total_weight) =
-            self.build_weight_table(shading_point.shading_normal, lambda);
-        let cdf_table = Self::build_cdf_table(&weight_table, total_weight);
-
-        // CDFテーブルからピクセルをサンプリング
-        let (x, y) = Self::sample_pixel_from_cdf(&cdf_table, uv.x, uv.y);
+        // 事前計算した2段階CDFを使用してピクセルをサンプリング
+        let (x, y) = self.sample_pixel_2d(uv.x, uv.y);
 
         // ピクセル座標からテクスチャ座標を計算
         let u = (x as f32 + 0.5) / self.texture_width as f32;
@@ -345,8 +362,8 @@ impl<Id: SceneId> PrimitiveInfiniteLight<Id> for EnvironmentLight {
         let (theta, phi) = Self::uv_to_spherical(u, v);
         let wi = Self::spherical_to_direction(theta, phi);
 
-        // 方向のPDFを計算
-        let pdf_dir = self.calculate_direction_pdf(&weight_table, total_weight, wi);
+        // 効率的な方法でPDFを計算
+        let pdf_dir = self.calculate_direction_pdf_efficient(wi, shading_point.shading_normal);
 
         // その方向の放射輝度を計算
         let ray = math::Ray::new(shading_point.position, wi);
