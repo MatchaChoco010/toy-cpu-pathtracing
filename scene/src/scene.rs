@@ -6,8 +6,8 @@ use math::{Ray, Render, World};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::{
-    CreatePrimitiveDesc, GeometryIndex, InfiniteLightSampleRadiance, Intersection, LightIntensity,
-    LightSampler, PrimitiveIndex, SurfaceInteraction,
+    CreatePrimitiveDesc, GeometryIndex, Intersection, LightIntensity, LightSampler, PrimitiveIndex,
+    SurfaceInteraction,
     geometry::GeometryRepository,
     light_sampler::LightSamplerFactory,
     primitive::{PrimitiveBvh, PrimitiveRepository},
@@ -140,16 +140,8 @@ impl<Id: SceneId> Scene<Id> {
             let intensity = delta_light.calculate_intensity(shading_point, lambda);
             LightIntensity::IntensityDeltaDirectionalLight(intensity)
         } else if let Some(inf_light) = primitive.as_infinite_light() {
-            // 無限光源のサンプリング（方向はダミー、実際は後で設定される）
-            let dummy_ray = Ray::new(shading_point.position, math::Vector3::new(0.0, 1.0, 0.0));
-            let radiance = inf_light.direction_radiance(&dummy_ray, lambda);
-            let pdf_dir = inf_light.pdf_direction_sample(shading_point, dummy_ray.dir);
-
-            let infinite_sample = InfiniteLightSampleRadiance {
-                radiance,
-                pdf_dir,
-                wi: dummy_ray.dir,
-            };
+            // 無限光源の重要度サンプリング
+            let infinite_sample = inf_light.sample_infinite_light(shading_point, lambda, uv);
             LightIntensity::RadianceInfinityLight(infinite_sample)
         } else if let Some(area_light) = primitive.as_area_light() {
             let radiance =

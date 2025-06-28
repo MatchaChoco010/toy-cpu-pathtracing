@@ -9,7 +9,7 @@ use crate::{
     DeltaDirectionalLightIntensity, SceneId, SurfaceInteraction,
     primitive::traits::{
         Primitive, PrimitiveAreaLight, PrimitiveDeltaDirectionalLight, PrimitiveDeltaPointLight,
-        PrimitiveGeometry, PrimitiveInfiniteLight, PrimitiveLight, PrimitiveNonDeltaLight,
+        PrimitiveGeometry, PrimitiveInfiniteLight, PrimitiveLight,
     },
 };
 
@@ -57,10 +57,6 @@ impl<Id: SceneId> Primitive<Id> for DirectionalLight {
 
     fn as_light_mut(&mut self) -> Option<&mut dyn PrimitiveLight<Id>> {
         Some(self)
-    }
-
-    fn as_non_delta_light(&self) -> Option<&dyn PrimitiveNonDeltaLight<Id>> {
-        None
     }
 
     fn as_delta_point_light(&self) -> Option<&dyn PrimitiveDeltaPointLight<Id>> {

@@ -11,7 +11,7 @@ use crate::{
     geometry::GeometryRepository,
     primitive::traits::{
         Primitive, PrimitiveAreaLight, PrimitiveDeltaDirectionalLight, PrimitiveDeltaPointLight,
-        PrimitiveGeometry, PrimitiveInfiniteLight, PrimitiveLight, PrimitiveNonDeltaLight,
+        PrimitiveGeometry, PrimitiveInfiniteLight, PrimitiveLight,
     },
 };
 
@@ -73,10 +73,6 @@ impl<Id: SceneId> Primitive<Id> for EmissiveSingleTriangle<Id> {
     }
 
     fn as_light_mut(&mut self) -> Option<&mut dyn PrimitiveLight<Id>> {
-        Some(self)
-    }
-
-    fn as_non_delta_light(&self) -> Option<&dyn PrimitiveNonDeltaLight<Id>> {
         Some(self)
     }
 
@@ -184,7 +180,7 @@ impl<Id: SceneId> PrimitiveLight<Id> for EmissiveSingleTriangle<Id> {
             * self.area
     }
 }
-impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveSingleTriangle<Id> {
+impl<Id: SceneId> PrimitiveAreaLight<Id> for EmissiveSingleTriangle<Id> {
     fn sample_radiance(
         &self,
         _geometry_repository: &GeometryRepository<Id>,
@@ -282,8 +278,7 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveSingleTriangle<Id> {
             },
         }
     }
-}
-impl<Id: SceneId> PrimitiveAreaLight<Id> for EmissiveSingleTriangle<Id> {
+
     fn intersect_radiance(
         &self,
         shading_point: &SurfaceInteraction<Render>,

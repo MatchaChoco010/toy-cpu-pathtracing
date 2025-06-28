@@ -7,11 +7,10 @@ use math::{Local, Ray, Render, Transform, World};
 use spectrum::{RgbIlluminantSpectrum, SampledSpectrum, SampledWavelengths, Spectrum};
 
 use crate::{
-    AreaLightSampleRadiance, SceneId, SurfaceInteraction,
-    geometry::GeometryRepository,
+    InfiniteLightSampleRadiance, SceneId, SurfaceInteraction,
     primitive::traits::{
         Primitive, PrimitiveAreaLight, PrimitiveDeltaDirectionalLight, PrimitiveDeltaPointLight,
-        PrimitiveGeometry, PrimitiveInfiniteLight, PrimitiveLight, PrimitiveNonDeltaLight,
+        PrimitiveGeometry, PrimitiveInfiniteLight, PrimitiveLight,
     },
 };
 
@@ -269,10 +268,6 @@ impl<Id: SceneId> Primitive<Id> for EnvironmentLight {
         Some(self)
     }
 
-    fn as_non_delta_light(&self) -> Option<&dyn PrimitiveNonDeltaLight<Id>> {
-        Some(self)
-    }
-
     fn as_delta_point_light(&self) -> Option<&dyn PrimitiveDeltaPointLight<Id>> {
         None
     }
@@ -292,79 +287,6 @@ impl<Id: SceneId> Primitive<Id> for EnvironmentLight {
 impl<Id: SceneId> PrimitiveLight<Id> for EnvironmentLight {
     fn phi(&self, lambda: &SampledWavelengths) -> SampledSpectrum {
         self.intensity * self.integrated_spectrum.sample(lambda)
-    }
-}
-impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EnvironmentLight {
-    fn sample_radiance(
-        &self,
-        _geometry_repository: &GeometryRepository<Id>,
-        shading_point: &SurfaceInteraction<Render>,
-        lambda: &SampledWavelengths,
-        _s: f32,
-        uv: glam::Vec2,
-    ) -> AreaLightSampleRadiance<Render> {
-        // 重みテーブルを構築
-        let (weight_table, total_weight) =
-            self.build_weight_table(shading_point.shading_normal, lambda);
-
-        if total_weight <= 0.0 {
-            // 重みが0の場合は失敗
-            return AreaLightSampleRadiance {
-                radiance: SampledSpectrum::zero(),
-                pdf: 0.0,
-                light_normal: shading_point.normal, // ダミー値
-                pdf_dir: 0.0,
-                interaction: SurfaceInteraction {
-                    position: shading_point.position,
-                    normal: shading_point.normal,
-                    shading_normal: shading_point.shading_normal,
-                    tangent: shading_point.tangent,
-                    uv: shading_point.uv,
-                    material: shading_point.material.clone(),
-                },
-            };
-        }
-
-        // 累積分布関数テーブルを構築
-        let cdf_table = Self::build_cdf_table(&weight_table, total_weight);
-
-        // 2次元乱数でピクセルをサンプリング
-        let (pixel_x, pixel_y) = Self::sample_pixel_from_cdf(&cdf_table, uv.x, uv.y);
-
-        // ピクセル座標からテクスチャ座標を計算
-        let u = (pixel_x as f32 + 0.5) / self.texture_width as f32;
-        let v = (pixel_y as f32 + 0.5) / self.texture_height as f32;
-
-        // テクスチャ座標から方向を計算
-        let (theta, phi) = Self::uv_to_spherical(u, v);
-        let wi = Self::spherical_to_direction(theta, phi);
-
-        // テクスチャから放射輝度を取得
-        let pixel_rgb = self.texture_data[pixel_y][pixel_x];
-        let color = ColorSrgb::<NoneToneMap>::new(pixel_rgb[0], pixel_rgb[1], pixel_rgb[2]);
-        let spectrum = RgbIlluminantSpectrum::<ColorSrgb<NoneToneMap>>::new(color);
-        let radiance = spectrum.sample(lambda) * self.intensity;
-
-        // PDFを計算
-        let pdf_dir = self.calculate_direction_pdf(&weight_table, total_weight, wi);
-
-        // ダミーのSurfaceInteractionを作成（Environment Lightは表面を持たない）
-        let dummy_interaction = SurfaceInteraction {
-            position: shading_point.position + wi * 1000.0, // 遠方の点
-            normal: (-wi).into(),
-            shading_normal: (-wi).into(),
-            tangent: math::Vector3::new(1.0, 0.0, 0.0), // ダミー
-            uv: glam::Vec2::new(u, v),
-            material: shading_point.material.clone(), // ダミー
-        };
-
-        AreaLightSampleRadiance {
-            radiance,
-            pdf: 1.0, // 面積PDFはダミー
-            light_normal: (-wi).into(),
-            pdf_dir,
-            interaction: dummy_interaction,
-        }
     }
 }
 impl<Id: SceneId> PrimitiveInfiniteLight<Id> for EnvironmentLight {
@@ -399,5 +321,41 @@ impl<Id: SceneId> PrimitiveInfiniteLight<Id> for EnvironmentLight {
             self.build_weight_table(shading_point.shading_normal, lambda);
 
         self.calculate_direction_pdf(&weight_table, total_weight, wi)
+    }
+
+    fn sample_infinite_light(
+        &self,
+        shading_point: &SurfaceInteraction<Render>,
+        lambda: &SampledWavelengths,
+        uv: glam::Vec2,
+    ) -> InfiniteLightSampleRadiance<Render> {
+        // 重みテーブルとCDFテーブルを構築
+        let (weight_table, total_weight) =
+            self.build_weight_table(shading_point.shading_normal, lambda);
+        let cdf_table = Self::build_cdf_table(&weight_table, total_weight);
+
+        // CDFテーブルからピクセルをサンプリング
+        let (x, y) = Self::sample_pixel_from_cdf(&cdf_table, uv.x, uv.y);
+
+        // ピクセル座標からテクスチャ座標を計算
+        let u = (x as f32 + 0.5) / self.texture_width as f32;
+        let v = (y as f32 + 0.5) / self.texture_height as f32;
+
+        // テクスチャ座標から球面座標、そして方向ベクトルを計算
+        let (theta, phi) = Self::uv_to_spherical(u, v);
+        let wi = Self::spherical_to_direction(theta, phi);
+
+        // 方向のPDFを計算
+        let pdf_dir = self.calculate_direction_pdf(&weight_table, total_weight, wi);
+
+        // その方向の放射輝度を計算
+        let ray = math::Ray::new(shading_point.position, wi);
+        let radiance = <Self as PrimitiveInfiniteLight<Id>>::direction_radiance(self, &ray, lambda);
+
+        InfiniteLightSampleRadiance {
+            radiance,
+            pdf_dir,
+            wi,
+        }
     }
 }
