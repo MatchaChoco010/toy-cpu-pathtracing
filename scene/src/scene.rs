@@ -6,8 +6,8 @@ use math::{Ray, Render, World};
 use spectrum::SampledWavelengths;
 
 use crate::{
-    CreatePrimitiveDesc, GeometryIndex, Intersection, LightIntensity, LightSampler, PrimitiveIndex,
-    SurfaceInteraction,
+    CreatePrimitiveDesc, GeometryIndex, InfiniteLightSampleRadiance, Intersection, LightIntensity,
+    LightSampler, PrimitiveIndex, SurfaceInteraction,
     geometry::GeometryRepository,
     light_sampler::LightSamplerFactory,
     primitive::{PrimitiveBvh, PrimitiveRepository},
@@ -139,8 +139,18 @@ impl<Id: SceneId> Scene<Id> {
         } else if let Some(delta_light) = primitive.as_delta_directional_light() {
             let intensity = delta_light.calculate_intensity(shading_point, lambda);
             LightIntensity::IntensityDeltaDirectionalLight(intensity)
-        } else if let Some(_inf_light) = primitive.as_infinite_light() {
-            todo!()
+        } else if let Some(inf_light) = primitive.as_infinite_light() {
+            // 無限光源のサンプリング（方向はダミー、実際は後で設定される）
+            let dummy_ray = Ray::new(shading_point.position, math::Vector3::new(0.0, 1.0, 0.0));
+            let radiance = inf_light.direction_radiance(&dummy_ray, lambda);
+            let pdf_dir = inf_light.pdf_direction_sample(shading_point, dummy_ray.dir);
+
+            let infinite_sample = InfiniteLightSampleRadiance {
+                radiance,
+                pdf_dir,
+                wi: dummy_ray.dir,
+            };
+            LightIntensity::RadianceInfinityLight(infinite_sample)
         } else if let Some(area_light) = primitive.as_area_light() {
             let radiance =
                 area_light.sample_radiance(&self.geometry_repository, shading_point, lambda, s, uv);
@@ -177,6 +187,34 @@ impl<Id: SceneId> Scene<Id> {
         } else {
             0.0
         }
+    }
+
+    /// 無限光源の方向に対するpdfを計算する。
+    pub fn pdf_infinite_light_sample(
+        &self,
+        light_sampler: &LightSampler<Id>,
+        shading_point: &SurfaceInteraction<Render>,
+        direction: math::Vector3<Render>,
+    ) -> f32 {
+        let mut total_pdf = 0.0;
+
+        // 全ての無限光源についてpdfを計算
+        // 現在のprimitive_repositoryを反復して無限光源を探す
+        for primitive_index in self.primitive_repository.get_all_primitive_indices() {
+            let primitive = self.primitive_repository.get(primitive_index);
+            if let Some(inf_light) = primitive.as_infinite_light() {
+                // ライトの選択確率を計算
+                let probability = light_sampler
+                    .probability_infinite_light(&self.primitive_repository, &primitive_index);
+
+                // 方向のpdfを計算
+                let light_pdf_dir = inf_light.pdf_direction_sample(shading_point, direction);
+
+                total_pdf += probability * light_pdf_dir;
+            }
+        }
+
+        total_pdf
     }
 }
 
