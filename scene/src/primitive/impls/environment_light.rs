@@ -86,7 +86,7 @@ impl EnvironmentLight {
     /// テクスチャ座標(u,v)から球面座標(theta, phi)に変換
     fn uv_to_spherical(u: f32, v: f32) -> (f32, f32) {
         let theta = v * std::f32::consts::PI; // 0 ≤ theta ≤ π
-        let phi = u * 2.0 * std::f32::consts::PI; // 0 ≤ phi ≤ 2π
+        let phi = u * 2.0 * std::f32::consts::PI + std::f32::consts::PI; // u=0 maps to -X direction
         (theta, phi)
     }
 
@@ -101,18 +101,16 @@ impl EnvironmentLight {
     /// 方向ベクトル(Local座標系)から球面座標に変換
     fn direction_to_spherical(dir: math::Vector3<Local>) -> (f32, f32) {
         let theta = dir.y().acos().clamp(0.0, std::f32::consts::PI);
-        let phi = dir.z().atan2(dir.x());
-        let phi = if phi < 0.0 {
-            phi + 2.0 * std::f32::consts::PI
-        } else {
-            phi
-        };
+        let mut phi = dir.z().atan2(dir.x());
+        if phi < 0.0 {
+            phi += 2.0 * std::f32::consts::PI;
+        }
         (theta, phi)
     }
 
     /// 球面座標からテクスチャ座標に変換
     fn spherical_to_uv(theta: f32, phi: f32) -> (f32, f32) {
-        let u = phi / (2.0 * std::f32::consts::PI);
+        let u = (phi - std::f32::consts::PI) / (2.0 * std::f32::consts::PI);
         let v = theta / std::f32::consts::PI;
         (u, v)
     }
