@@ -180,7 +180,7 @@ pub fn evaluate_area_light_with_mis<Id: SceneId>(
 
 /// 無限光源の評価（NEE用）。
 pub fn evaluate_infinite_light<Id: SceneId>(
-    _scene: &scene::Scene<Id>,
+    scene: &scene::Scene<Id>,
     shading_point: &SurfaceInteraction<Render>,
     radiance_sample: &InfiniteLightSampleRadiance<Render>,
     bsdf: &dyn BsdfSurfaceMaterial,
@@ -189,23 +189,29 @@ pub fn evaluate_infinite_light<Id: SceneId>(
     render_to_tangent: &Transform<Render, VertexNormalTangent>,
     light_probability: f32,
 ) -> SampledSpectrum {
-    // 無限光源は常に可視（シャドウレイ不要）
-    let wo = render_to_tangent * wo;
-    let wi = render_to_tangent * radiance_sample.wi;
-    let shading_point_tangent = render_to_tangent * shading_point;
-    let material_result = bsdf.evaluate(lambda, &wo, &wi, &shading_point_tangent);
+    // シャドウレイを飛ばして可視性を確認
+    let shadow_ray = math::Ray::new(shading_point.position, radiance_sample.wi);
+    let shadow_ray = shadow_ray.move_forward(RAY_FORWARD_EPSILON);
+    let visible = !scene.intersect_p(&shadow_ray, f32::MAX);
 
-    // コサイン項
-    let cos_theta = material_result.normal.dot(wi).abs();
+    if visible {
+        let wo = render_to_tangent * wo;
+        let wi = render_to_tangent * radiance_sample.wi;
+        let shading_point_tangent = render_to_tangent * shading_point;
+        let material_result = bsdf.evaluate(lambda, &wo, &wi, &shading_point_tangent);
 
-    // 無限光源の寄与計算
-    material_result.f * &radiance_sample.radiance * cos_theta
-        / (radiance_sample.pdf_dir * light_probability)
+        let cos_theta = material_result.normal.dot(wi).abs();
+
+        material_result.f * &radiance_sample.radiance * cos_theta
+            / (radiance_sample.pdf_dir * light_probability)
+    } else {
+        SampledSpectrum::zero()
+    }
 }
 
 /// 無限光源の評価（MIS用）。
 pub fn evaluate_infinite_light_with_mis<Id: SceneId>(
-    _scene: &scene::Scene<Id>,
+    scene: &scene::Scene<Id>,
     shading_point: &SurfaceInteraction<Render>,
     radiance_sample: &InfiniteLightSampleRadiance<Render>,
     bsdf: &dyn BsdfSurfaceMaterial,
@@ -214,25 +220,34 @@ pub fn evaluate_infinite_light_with_mis<Id: SceneId>(
     render_to_tangent: &Transform<Render, VertexNormalTangent>,
     light_probability: f32,
 ) -> NeeResult {
-    // 無限光源は常に可視（シャドウレイ不要）
-    let wo = render_to_tangent * wo;
-    let wi = render_to_tangent * radiance_sample.wi;
-    let shading_point_tangent = render_to_tangent * shading_point;
-    let material_result = bsdf.evaluate(lambda, &wo, &wi, &shading_point_tangent);
+    // シャドウレイを飛ばして可視性を確認
+    let shadow_ray = math::Ray::new(shading_point.position, radiance_sample.wi);
+    let shadow_ray = shadow_ray.move_forward(RAY_FORWARD_EPSILON);
+    let visible = !scene.intersect_p(&shadow_ray, f32::MAX);
 
-    // コサイン項
-    let cos_theta = material_result.normal.dot(wi).abs();
+    if visible {
+        let wo = render_to_tangent * wo;
+        let wi = render_to_tangent * radiance_sample.wi;
+        let shading_point_tangent = render_to_tangent * shading_point;
+        let material_result = bsdf.evaluate(lambda, &wo, &wi, &shading_point_tangent);
 
-    // MISのウエイトを計算
-    let pdf_light_dir = radiance_sample.pdf_dir;
-    let pdf_bsdf_dir = bsdf.pdf(lambda, &wo, &wi, &shading_point_tangent);
-    let mis_weight = balance_heuristic(pdf_light_dir, pdf_bsdf_dir);
+        let cos_theta = material_result.normal.dot(wi).abs();
 
-    let contribution = material_result.f * &radiance_sample.radiance * cos_theta
-        / (pdf_light_dir * light_probability);
+        let pdf_light_dir = radiance_sample.pdf_dir;
+        let pdf_bsdf_dir = bsdf.pdf(lambda, &wo, &wi, &shading_point_tangent);
+        let mis_weight = balance_heuristic(pdf_light_dir, pdf_bsdf_dir);
 
-    NeeResult {
-        contribution,
-        mis_weight,
+        let contribution = material_result.f * &radiance_sample.radiance * cos_theta
+            / (pdf_light_dir * light_probability);
+
+        NeeResult {
+            contribution,
+            mis_weight,
+        }
+    } else {
+        NeeResult {
+            contribution: SampledSpectrum::zero(),
+            mis_weight: 1.0,
+        }
     }
 }
