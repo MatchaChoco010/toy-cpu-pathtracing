@@ -55,10 +55,42 @@ impl RenderingStrategy for PtStrategy {
         ray: &Ray<Render>,
         _shading_point: &SurfaceInteraction<Render>,
         _sampler: &mut S,
-    ) -> SampledSpectrum {
+        sample_contribution: &mut SampledSpectrum,
+    ) {
         // PTでは無限光源の放射輝度をそのまま使用
         let radiance = scene.evaluate_infinite_light_radiance(ray, lambda);
-        throughput * radiance
+        *sample_contribution += throughput * radiance;
+    }
+
+    fn calculate_bsdf_infinite_light_contribution<Id: SceneId, S: Sampler>(
+        &self,
+        scene: &scene::Scene<Id>,
+        lambda: &SampledWavelengths,
+        material_sample: &MaterialSample,
+        throughput: &SampledSpectrum,
+        render_to_tangent: &Transform<Render, VertexNormalTangent>,
+        current_hit_info: &Intersection<Id, Render>,
+        _sampler: &mut S,
+        sample_contribution: &mut SampledSpectrum,
+    ) {
+        // BSDFサンプリング後のレイを構築
+        let wi_render = &render_to_tangent.inverse() * &material_sample.wi;
+        let offset_dir: &math::Vector3<_> = current_hit_info.interaction.normal.as_ref();
+        let sign = if current_hit_info.interaction.normal.dot(wi_render) < 0.0 {
+            -1.0
+        } else {
+            1.0
+        };
+        let origin = current_hit_info.interaction
+            .position
+            .translate(sign * offset_dir * 1e-5);
+        let background_ray = Ray::new(origin, wi_render).move_forward(1e-5);
+        
+        // PTでは無限光源の放射輝度をBSDFで重み付けして使用
+        let radiance = scene.evaluate_infinite_light_radiance(&background_ray, lambda);
+        let cos_theta = material_sample.normal.dot(material_sample.wi).abs();
+        let throughput_factor = cos_theta / material_sample.pdf;
+        *sample_contribution += throughput * &material_sample.f * radiance * throughput_factor;
     }
 }
 
