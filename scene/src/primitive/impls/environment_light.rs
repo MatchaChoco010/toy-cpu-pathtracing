@@ -2,10 +2,9 @@
 
 use std::path::Path;
 
-use image;
+use color::{ColorSrgb, tone_map::NoneToneMap};
 use math::{Local, Ray, Render, Transform, World};
 use spectrum::{RgbIlluminantSpectrum, SampledSpectrum, SampledWavelengths, Spectrum};
-use color::{ColorSrgb, tone_map::NoneToneMap};
 
 use crate::{
     AreaLightSampleRadiance, SceneId, SurfaceInteraction,
@@ -146,6 +145,108 @@ impl EnvironmentLight {
             p0[2] * (1.0 - fy) + p1[2] * fy,
         ]
     }
+
+    /// ヤコビアン重み（正距円筒図法の歪み補正）を計算
+    fn jacobian_weight(theta: f32) -> f32 {
+        1.0 / theta.sin().max(1e-8)
+    }
+
+    /// 各ピクセルの重みを計算してテーブルを構築
+    fn build_weight_table(
+        &self,
+        shading_normal: math::Normal<Render>,
+        lambda: &SampledWavelengths,
+    ) -> (Vec<Vec<f32>>, f32) {
+        let mut weight_table =
+            vec![vec![0.0f32; self.texture_width as usize]; self.texture_height as usize];
+        let mut total_weight = 0.0f32;
+
+        for y in 0..self.texture_height {
+            for x in 0..self.texture_width {
+                let u = (x as f32 + 0.5) / self.texture_width as f32;
+                let v = (y as f32 + 0.5) / self.texture_height as f32;
+
+                // テクスチャ座標から方向を計算
+                let (theta, phi) = Self::uv_to_spherical(u, v);
+                let wi = Self::spherical_to_direction(theta, phi);
+
+                // 3つの重みを計算
+                let jacobian_weight = Self::jacobian_weight(theta);
+                let cosine_weight = shading_normal.dot(wi).max(0.0);
+
+                let pixel_rgb = self.texture_data[y as usize][x as usize];
+                let color = ColorSrgb::<NoneToneMap>::new(pixel_rgb[0], pixel_rgb[1], pixel_rgb[2]);
+                let pixel_spectrum = RgbIlluminantSpectrum::<ColorSrgb<NoneToneMap>>::new(color);
+                let luminance_weight = pixel_spectrum.sample(lambda).average();
+
+                // 全ての重みを掛け合わせる
+                let weight = jacobian_weight * cosine_weight * luminance_weight;
+                weight_table[y as usize][x as usize] = weight;
+                total_weight += weight;
+            }
+        }
+
+        (weight_table, total_weight)
+    }
+
+    /// 累積分布関数テーブルを構築
+    fn build_cdf_table(weight_table: &[Vec<f32>], total_weight: f32) -> Vec<Vec<f32>> {
+        let height = weight_table.len();
+        let width = weight_table[0].len();
+        let mut cdf_table = vec![vec![0.0f32; width]; height];
+
+        let mut cumulative = 0.0f32;
+        for y in 0..height {
+            for x in 0..width {
+                cumulative += weight_table[y][x];
+                cdf_table[y][x] = cumulative / total_weight;
+            }
+        }
+
+        cdf_table
+    }
+
+    /// 2次元乱数でCDFテーブルからピクセルをサンプリング
+    fn sample_pixel_from_cdf(cdf_table: &[Vec<f32>], u: f32, _v: f32) -> (usize, usize) {
+        let height = cdf_table.len();
+        let width = cdf_table[0].len();
+
+        // 線形検索でピクセルを見つける
+        for y in 0..height {
+            for x in 0..width {
+                if u <= cdf_table[y][x] {
+                    return (x, y);
+                }
+            }
+        }
+
+        // フォールバック（数値誤差対策）
+        (width - 1, height - 1)
+    }
+
+    /// 特定の方向に対するPDFを計算
+    fn calculate_direction_pdf(
+        &self,
+        weight_table: &[Vec<f32>],
+        total_weight: f32,
+        direction: math::Vector3<Render>,
+    ) -> f32 {
+        // 方向からテクスチャ座標を計算
+        let (theta, phi) = Self::direction_to_spherical(direction);
+        let (u, v) = Self::spherical_to_uv(theta, phi);
+
+        // 最も近いピクセルの重みを取得
+        let x =
+            ((u * self.texture_width as f32).floor() as usize).min(self.texture_width as usize - 1);
+        let y = ((v * self.texture_height as f32).floor() as usize)
+            .min(self.texture_height as usize - 1);
+
+        if total_weight > 0.0 {
+            weight_table[y][x] / total_weight
+        } else {
+            0.0
+        }
+    }
 }
 impl<Id: SceneId> Primitive<Id> for EnvironmentLight {
     fn update_world_to_render(&mut self, world_to_render: &Transform<World, Render>) {
@@ -197,12 +298,73 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EnvironmentLight {
     fn sample_radiance(
         &self,
         _geometry_repository: &GeometryRepository<Id>,
-        _shading_point: &SurfaceInteraction<Render>,
-        _lambda: &SampledWavelengths,
+        shading_point: &SurfaceInteraction<Render>,
+        lambda: &SampledWavelengths,
         _s: f32,
-        _uv: glam::Vec2,
+        uv: glam::Vec2,
     ) -> AreaLightSampleRadiance<Render> {
-        todo!()
+        // 重みテーブルを構築
+        let (weight_table, total_weight) =
+            self.build_weight_table(shading_point.shading_normal, lambda);
+
+        if total_weight <= 0.0 {
+            // 重みが0の場合は失敗
+            return AreaLightSampleRadiance {
+                radiance: SampledSpectrum::zero(),
+                pdf: 0.0,
+                light_normal: shading_point.normal, // ダミー値
+                pdf_dir: 0.0,
+                interaction: SurfaceInteraction {
+                    position: shading_point.position,
+                    normal: shading_point.normal,
+                    shading_normal: shading_point.shading_normal,
+                    tangent: shading_point.tangent,
+                    uv: shading_point.uv,
+                    material: shading_point.material.clone(),
+                },
+            };
+        }
+
+        // 累積分布関数テーブルを構築
+        let cdf_table = Self::build_cdf_table(&weight_table, total_weight);
+
+        // 2次元乱数でピクセルをサンプリング
+        let (pixel_x, pixel_y) = Self::sample_pixel_from_cdf(&cdf_table, uv.x, uv.y);
+
+        // ピクセル座標からテクスチャ座標を計算
+        let u = (pixel_x as f32 + 0.5) / self.texture_width as f32;
+        let v = (pixel_y as f32 + 0.5) / self.texture_height as f32;
+
+        // テクスチャ座標から方向を計算
+        let (theta, phi) = Self::uv_to_spherical(u, v);
+        let wi = Self::spherical_to_direction(theta, phi);
+
+        // テクスチャから放射輝度を取得
+        let pixel_rgb = self.texture_data[pixel_y][pixel_x];
+        let color = ColorSrgb::<NoneToneMap>::new(pixel_rgb[0], pixel_rgb[1], pixel_rgb[2]);
+        let spectrum = RgbIlluminantSpectrum::<ColorSrgb<NoneToneMap>>::new(color);
+        let radiance = spectrum.sample(lambda) * self.intensity;
+
+        // PDFを計算
+        let pdf_dir = self.calculate_direction_pdf(&weight_table, total_weight, wi);
+
+        // ダミーのSurfaceInteractionを作成（Environment Lightは表面を持たない）
+        let dummy_interaction = SurfaceInteraction {
+            position: shading_point.position + wi * 1000.0, // 遠方の点
+            normal: (-wi).into(),
+            shading_normal: (-wi).into(),
+            tangent: math::Vector3::new(1.0, 0.0, 0.0), // ダミー
+            uv: glam::Vec2::new(u, v),
+            material: shading_point.material.clone(), // ダミー
+        };
+
+        AreaLightSampleRadiance {
+            radiance,
+            pdf: 1.0, // 面積PDFはダミー
+            light_normal: (-wi).into(),
+            pdf_dir,
+            interaction: dummy_interaction,
+        }
     }
 }
 impl<Id: SceneId> PrimitiveInfiniteLight<Id> for EnvironmentLight {
@@ -228,9 +390,14 @@ impl<Id: SceneId> PrimitiveInfiniteLight<Id> for EnvironmentLight {
 
     fn pdf_direction_sample(
         &self,
-        _shading_point: &SurfaceInteraction<Render>,
-        _wi: math::Vector3<Render>,
+        shading_point: &SurfaceInteraction<Render>,
+        wi: math::Vector3<Render>,
     ) -> f32 {
-        todo!()
+        // 重みテーブルを構築（サンプリング時と同じ条件で）
+        let lambda = &SampledWavelengths::new_uniform(0.5); // RGB用の固定波長
+        let (weight_table, total_weight) =
+            self.build_weight_table(shading_point.shading_normal, lambda);
+
+        self.calculate_direction_pdf(&weight_table, total_weight, wi)
     }
 }
