@@ -183,10 +183,10 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy> Render
                     // ダミーSurfaceInteractionを作成（材質は適当）
                     use scene::{LambertMaterial, Material};
                     use spectrum::ConstantSpectrum;
-                    
+
                     let dummy_material = Material::from(LambertMaterial::new(
                         scene::SpectrumParameter::Constant(ConstantSpectrum::new(0.5)),
-                        scene::NormalParameter::none()
+                        scene::NormalParameter::none(),
                     ));
                     let dummy_interaction = SurfaceInteraction {
                         position: ray.origin,
@@ -196,16 +196,16 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy> Render
                         uv: glam::Vec2::new(0.5, 0.5),
                         material: dummy_material,
                     };
-                    
-                    let infinite_contribution = self.strategy.calculate_infinite_light_contribution(
+
+                    self.strategy.calculate_infinite_light_contribution(
                         scene,
                         &lambda,
                         &throughout,
                         &ray,
                         &dummy_interaction,
                         &mut sampler,
+                        &mut sample_contribution,
                     );
-                    sample_contribution += infinite_contribution;
                     sensor.add_sample(&lambda, &sample_contribution);
                     continue 'sample_loop;
                 }
@@ -261,8 +261,19 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy> Render
                     &hit_info.interaction,
                 );
 
-                // BSDFサンプリング失敗の場合は深度ループ終了
+                // BSDFサンプリング失敗または背景ヒットの場合の処理
                 let Some(bsdf_result) = bsdf_result else {
+                    // 背景（無限光源）にヒットした場合、Strategyに処理を委譲
+                    self.strategy.calculate_bsdf_infinite_light_contribution(
+                        scene,
+                        &lambda,
+                        &material_sample,
+                        &throughout,
+                        &render_to_tangent,
+                        &hit_info,
+                        &mut sampler,
+                        &mut sample_contribution,
+                    );
                     break 'depth_loop;
                 };
 
