@@ -156,7 +156,7 @@ impl EnvironmentLight {
 
     /// ヤコビアン重み（正距円筒図法の歪み補正）を計算
     fn jacobian_weight(theta: f32) -> f32 {
-        1.0 / theta.sin().max(1e-8)
+        theta.sin().max(1e-8)
     }
 
     /// 2段階CDFテーブルを事前構築（cosine項なし）
