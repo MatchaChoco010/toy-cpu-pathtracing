@@ -1,8 +1,8 @@
 //! NEEを組み込んだレンダラーを実装するモジュール。
 
 use color::{ColorSrgb, tone_map::ToneMap};
-use math::{Render, Transform, VertexNormalTangent};
-use scene::{Intersection, LightIntensity, MaterialSample, SceneId};
+use math::{Ray, Render, Transform, VertexNormalTangent};
+use scene::{Intersection, LightIntensity, MaterialSample, SceneId, SurfaceInteraction};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::{
@@ -136,6 +136,20 @@ impl RenderingStrategy for NeeStrategy {
 
         // throughputを更新（MISウエイトなし）
         *throughout *= &bsdf_result.throughput_modifier;
+    }
+
+    fn calculate_infinite_light_contribution<Id: SceneId, S: Sampler>(
+        &self,
+        _scene: &scene::Scene<Id>,
+        _lambda: &SampledWavelengths,
+        throughput: &SampledSpectrum,
+        _ray: &Ray<Render>,
+        _shading_point: &SurfaceInteraction<Render>,
+        _sampler: &mut S,
+    ) -> SampledSpectrum {
+        // NEEでは、Stage 7で具体的に実装予定
+        // 現在は単純にゼロを返す（後で実装）
+        throughput * &SampledSpectrum::zero()
     }
 }
 

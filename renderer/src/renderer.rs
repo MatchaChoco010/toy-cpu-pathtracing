@@ -6,8 +6,8 @@ use image::{ImageFormat, Rgb, RgbImage};
 use rayon::prelude::*;
 
 use color::Color;
-use math::{Render, Transform, VertexNormalTangent};
-use scene::{Intersection, MaterialSample, Scene, SceneId};
+use math::{Ray, Render, Transform, VertexNormalTangent};
+use scene::{Intersection, MaterialSample, Scene, SceneId, SurfaceInteraction};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::camera::Camera;
@@ -64,6 +64,17 @@ pub trait RenderingStrategy: Clone + Send + Sync {
         sample_contribution: &mut SampledSpectrum,
         throughout: &mut SampledSpectrum,
     );
+
+    /// 無限光源からの寄与を計算する（シーンに何もヒットしなかった場合）。
+    fn calculate_infinite_light_contribution<Id: SceneId, S: Sampler>(
+        &self,
+        scene: &Scene<Id>,
+        lambda: &SampledWavelengths,
+        throughput: &SampledSpectrum,
+        ray: &Ray<Render>,
+        shading_point: &SurfaceInteraction<Render>,
+        sampler: &mut S,
+    ) -> SampledSpectrum;
 }
 
 /// レンダラーの作成のための引数。
