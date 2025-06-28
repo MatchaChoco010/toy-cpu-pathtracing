@@ -60,6 +60,101 @@ impl<'a, Id: SceneId> LightSampler<'a, Id> {
             0.0
         }
     }
+
+    /// 無限光源のみをサンプリングする。
+    pub fn sample_infinite_light(
+        &self,
+        primitive_repository: &PrimitiveRepository<Id>,
+        u: f32,
+    ) -> Option<LightSample<Id>> {
+        if self.sample_table.is_empty() || self.sample_weight_sum == 0.0 {
+            return None;
+        }
+
+        // 無限光源のみをフィルタリング
+        let mut infinite_weights = vec![];
+        let mut infinite_indices = vec![];
+        let mut infinite_weight_sum = 0.0;
+
+        for (i, &primitive_index) in self.factory.light_list.iter().enumerate() {
+            let primitive = primitive_repository.get(primitive_index);
+            if primitive.as_infinite_light().is_some() {
+                infinite_weights.push(self.sample_weight_list[i]);
+                infinite_indices.push(i);
+                infinite_weight_sum += self.sample_weight_list[i];
+            }
+        }
+
+        if infinite_weight_sum == 0.0 {
+            return None;
+        }
+
+        // 累積分布を作成
+        let mut cumulative = 0.0;
+        for i in 0..infinite_weights.len() {
+            cumulative += infinite_weights[i];
+            if u < cumulative / infinite_weight_sum {
+                let original_index = infinite_indices[i];
+                return Some(LightSample {
+                    primitive_index: self.factory.light_list[original_index],
+                    probability: infinite_weights[i] / infinite_weight_sum,
+                });
+            }
+        }
+
+        // フォールバック
+        if !infinite_indices.is_empty() {
+            let last_index = infinite_indices[infinite_indices.len() - 1];
+            Some(LightSample {
+                primitive_index: self.factory.light_list[last_index],
+                probability: infinite_weights[infinite_weights.len() - 1] / infinite_weight_sum,
+            })
+        } else {
+            None
+        }
+    }
+
+    /// 指定したPrimitiveIndexの無限光源をLightSamplerが返す確率を返す。
+    pub fn probability_infinite_light(
+        &self,
+        primitive_repository: &PrimitiveRepository<Id>,
+        primitive_index: &PrimitiveIndex<Id>,
+    ) -> f32 {
+        if self.sample_table.is_empty() || self.sample_weight_sum == 0.0 {
+            return 0.0;
+        }
+
+        // 無限光源の重みの合計を計算
+        let mut infinite_weight_sum = 0.0;
+        for (i, &idx) in self.factory.light_list.iter().enumerate() {
+            let primitive = primitive_repository.get(idx);
+            if primitive.as_infinite_light().is_some() {
+                infinite_weight_sum += self.sample_weight_list[i];
+            }
+        }
+
+        if infinite_weight_sum == 0.0 {
+            return 0.0;
+        }
+
+        // 指定されたプリミティブの重みを取得
+        if let Some(index) = self
+            .factory
+            .light_list
+            .iter()
+            .position(|id| id == primitive_index)
+        {
+            let primitive = primitive_repository.get(*primitive_index);
+            if primitive.as_infinite_light().is_some() {
+                let weight = self.sample_weight_list[index];
+                weight / infinite_weight_sum
+            } else {
+                0.0
+            }
+        } else {
+            0.0
+        }
+    }
 }
 
 /// サンプルする波長を設定して、LightSamplerを作成するファクトリ。
