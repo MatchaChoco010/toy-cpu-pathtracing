@@ -226,6 +226,10 @@ impl RenderingStrategy for MisStrategy {
         _sampler: &mut S,
         sample_contribution: &mut SampledSpectrum,
     ) {
+        if !material_sample.is_sampled {
+            return;
+        }
+
         // BSDFサンプリング後のレイを構築
         let wi_render = &render_to_tangent.inverse() * &material_sample.wi;
         let offset_dir: &math::Vector3<_> = current_hit_info.interaction.normal.as_ref();
@@ -234,25 +238,31 @@ impl RenderingStrategy for MisStrategy {
         } else {
             1.0
         };
-        let origin = current_hit_info.interaction
+        let origin = current_hit_info
+            .interaction
             .position
             .translate(sign * offset_dir * 1e-5);
         let background_ray = Ray::new(origin, wi_render).move_forward(1e-5);
-        
+
         // MISでは無限光源の放射輝度にMIS重みを適用
         let radiance = scene.evaluate_infinite_light_radiance(&background_ray, lambda);
-        
+
         // MIS重みを計算
         let light_sampler = scene.light_sampler(lambda);
-        let light_pdf = scene.pdf_infinite_light_sample(&light_sampler, &current_hit_info.interaction, background_ray.dir);
+        let light_pdf = scene.pdf_infinite_light_sample(
+            &light_sampler,
+            &current_hit_info.interaction,
+            background_ray.dir,
+        );
         let bsdf_pdf = material_sample.pdf;
         let mis_weight = balance_heuristic(bsdf_pdf, light_pdf);
-        
+
         // BSDF項を計算
         let cos_theta = material_sample.normal.dot(material_sample.wi).abs();
         let throughput_factor = cos_theta / material_sample.pdf;
-        
-        *sample_contribution += throughput * &material_sample.f * radiance * throughput_factor * mis_weight;
+
+        *sample_contribution +=
+            throughput * &material_sample.f * radiance * throughput_factor * mis_weight;
     }
 }
 

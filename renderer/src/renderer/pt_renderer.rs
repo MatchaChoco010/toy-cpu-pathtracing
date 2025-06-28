@@ -73,6 +73,10 @@ impl RenderingStrategy for PtStrategy {
         _sampler: &mut S,
         sample_contribution: &mut SampledSpectrum,
     ) {
+        if !material_sample.is_sampled {
+            return;
+        }
+
         // BSDFサンプリング後のレイを構築
         let wi_render = &render_to_tangent.inverse() * &material_sample.wi;
         let offset_dir: &math::Vector3<_> = current_hit_info.interaction.normal.as_ref();
@@ -81,16 +85,17 @@ impl RenderingStrategy for PtStrategy {
         } else {
             1.0
         };
-        let origin = current_hit_info.interaction
+        let origin = current_hit_info
+            .interaction
             .position
             .translate(sign * offset_dir * 1e-5);
         let background_ray = Ray::new(origin, wi_render).move_forward(1e-5);
-        
+
         // PTでは無限光源の放射輝度をBSDFで重み付けして使用
         let radiance = scene.evaluate_infinite_light_radiance(&background_ray, lambda);
         let cos_theta = material_sample.normal.dot(material_sample.wi).abs();
-        let throughput_factor = cos_theta / material_sample.pdf;
-        *sample_contribution += throughput * &material_sample.f * radiance * throughput_factor;
+        *sample_contribution +=
+            throughput * &material_sample.f * radiance * cos_theta / material_sample.pdf;
     }
 }
 
