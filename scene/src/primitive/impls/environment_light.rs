@@ -244,7 +244,7 @@ impl EnvironmentLight {
     fn calculate_direction_pdf_efficient(
         &self,
         direction: math::Vector3<Render>,
-        shading_normal: math::Normal<Render>,
+        _shading_normal: math::Normal<Render>,
     ) -> f32 {
         if self.total_weight <= 0.0 {
             return 0.0;
@@ -260,19 +260,38 @@ impl EnvironmentLight {
         let y = ((v * self.texture_height as f32).floor() as usize)
             .min(self.texture_height as usize - 1);
 
-        // 事前計算した基本重み（jacobian * luminance）を取得
-        let pixel_rgb = self.texture_data[y][x];
-        let luminance = 0.299 * pixel_rgb[0] + 0.587 * pixel_rgb[1] + 0.114 * pixel_rgb[2];
-        let jacobian_weight = Self::jacobian_weight(theta);
-        let base_weight = jacobian_weight * luminance;
+        // CDFから確率密度を計算（逆関数法の逆処理）
 
-        // cosine項を追加
-        let cosine_weight = shading_normal.dot(direction).max(0.0);
-        let full_weight = base_weight * cosine_weight;
+        // 1. 周辺確率密度 p_marginal(y) を計算
+        let p_marginal = if y == 0 {
+            self.marginal_cdf[0]
+        } else {
+            self.marginal_cdf[y] - self.marginal_cdf[y - 1]
+        };
 
-        // 全体の重みで正規化（cosine項を含む総重みで）
-        // 注意: total_weightはcosine項なしなので、この計算は近似
-        full_weight / self.total_weight
+        // 2. 条件付き確率密度 p_conditional(x|y) を計算
+        let p_conditional = if x == 0 {
+            self.conditional_cdf[y][0]
+        } else {
+            self.conditional_cdf[y][x] - self.conditional_cdf[y][x - 1]
+        };
+
+        // 3. 2D確率密度 p(x,y) = p_marginal(y) * p_conditional(x|y)
+        let p_2d = p_marginal * p_conditional;
+
+        // 4. テクスチャ座標から球面座標へのヤコビアン
+        let du_dtheta = 1.0 / std::f32::consts::PI;
+        let dv_dphi = 1.0 / (2.0 * std::f32::consts::PI);
+        let jacobian_uv_to_spherical = du_dtheta * dv_dphi;
+
+        // 5. 球面座標から方向ベクトルへのヤコビアン（立体角）
+        let jacobian_spherical_to_direction = theta.sin();
+
+        // 6. テクスチャ解像度によるスケーリング
+        let texture_scale = (self.texture_width * self.texture_height) as f32;
+
+        // 7. 最終的なPDF（cosine項は含めない）
+        p_2d * texture_scale / (jacobian_uv_to_spherical * jacobian_spherical_to_direction)
     }
 }
 impl<Id: SceneId> Primitive<Id> for EnvironmentLight {
