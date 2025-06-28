@@ -85,6 +85,19 @@ fn evaluate_next_event_estimation<Id: SceneId, S: Sampler>(
             render_to_tangent,
             light_sample.probability,
         ),
+        LightIntensity::RadianceInfinityLight(radiance_sample) => {
+            // 無限光源の明示的ライトサンプリング
+            common::evaluate_infinite_light(
+                scene,
+                shading_point,
+                &radiance_sample,
+                bsdf,
+                lambda,
+                &current_hit_info.wo,
+                render_to_tangent,
+                light_sample.probability,
+            )
+        }
     }
 }
 
@@ -132,6 +145,21 @@ impl RenderingStrategy for NeeStrategy {
 
         // throughputを更新（MISウエイトなし）
         *throughout *= &bsdf_result.throughput_modifier;
+    }
+
+    fn calculate_bsdf_infinite_light_contribution<Id: SceneId, S: Sampler>(
+        &self,
+        _scene: &scene::Scene<Id>,
+        _lambda: &SampledWavelengths,
+        _material_sample: &MaterialSample,
+        _throughput: &SampledSpectrum,
+        _render_to_tangent: &Transform<Render, VertexNormalTangent>,
+        _current_hit_info: &Intersection<Id, Render>,
+        _sampler: &mut S,
+        _sample_contribution: &mut SampledSpectrum,
+    ) {
+        // 明示的ライトサンプリングで既に処理されているため、
+        // BSDFサンプリング後の背景ヒットでは何も追加しない
     }
 }
 

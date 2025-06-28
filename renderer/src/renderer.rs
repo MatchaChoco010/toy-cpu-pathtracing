@@ -64,6 +64,19 @@ pub trait RenderingStrategy: Clone + Send + Sync {
         sample_contribution: &mut SampledSpectrum,
         throughout: &mut SampledSpectrum,
     );
+
+    /// BSDFサンプリング後のレイが背景にヒットした場合の寄与を計算する。
+    fn calculate_bsdf_infinite_light_contribution<Id: SceneId, S: Sampler>(
+        &self,
+        scene: &Scene<Id>,
+        lambda: &SampledWavelengths,
+        material_sample: &MaterialSample,
+        throughput: &SampledSpectrum,
+        render_to_tangent: &Transform<Render, VertexNormalTangent>,
+        current_hit_info: &Intersection<Id, Render>,
+        sampler: &mut S,
+        sample_contribution: &mut SampledSpectrum,
+    );
 }
 
 /// レンダラーの作成のための引数。

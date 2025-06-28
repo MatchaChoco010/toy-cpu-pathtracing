@@ -179,7 +179,9 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy> Render
             hit_info = match scene.intersect(&ray, f32::MAX) {
                 Some(intersect) => intersect,
                 None => {
-                    // ヒットしなかった場合はsample_contribution = 0のまま終了
+                    // カメラレイが何もヒットしなかった場合の無限光源処理
+                    let radiance = scene.evaluate_infinite_light_radiance(&ray, &lambda);
+                    sample_contribution += &throughout * radiance;
                     sensor.add_sample(&lambda, &sample_contribution);
                     continue 'sample_loop;
                 }
@@ -235,8 +237,19 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy> Render
                     &hit_info.interaction,
                 );
 
-                // BSDFサンプリング失敗の場合は深度ループ終了
+                // BSDFサンプリング失敗または背景ヒットの場合の処理
                 let Some(bsdf_result) = bsdf_result else {
+                    // 背景（無限光源）にヒットした場合、Strategyに処理を委譲
+                    self.strategy.calculate_bsdf_infinite_light_contribution(
+                        scene,
+                        &lambda,
+                        &material_sample,
+                        &throughout,
+                        &render_to_tangent,
+                        &hit_info,
+                        &mut sampler,
+                        &mut sample_contribution,
+                    );
                     break 'depth_loop;
                 };
 

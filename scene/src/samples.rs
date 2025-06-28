@@ -174,6 +174,16 @@ pub struct AreaLightSampleRadiance<C: CoordinateSystem> {
     pub interaction: SurfaceInteraction<C>,
 }
 
+/// 無限光源からのサンプルされた放射輝度情報とpdf_dirを持つ構造体。
+pub struct InfiniteLightSampleRadiance<C: CoordinateSystem> {
+    /// サンプルした放射輝度。
+    pub radiance: SampledSpectrum,
+    /// サンプルの方向要素のpdf。
+    pub pdf_dir: f32,
+    /// サンプルされた入射方向。
+    pub wi: Vector3<C>,
+}
+
 /// ライトからの放射強度情報を持つ構造体。
 pub struct DeltaPointLightIntensity<C: CoordinateSystem> {
     /// 計算した放射強度。
@@ -194,6 +204,8 @@ pub struct DeltaDirectionalLightIntensity<C: CoordinateSystem> {
 pub enum LightIntensity<C: CoordinateSystem> {
     /// 面積光源 からサンプルした放射輝度情報。
     RadianceAreaLight(AreaLightSampleRadiance<C>),
+    /// 無限光源からサンプルした放射輝度情報。
+    RadianceInfinityLight(InfiniteLightSampleRadiance<C>),
     /// デルタ点光源の放射強度情報。
     IntensityDeltaPointLight(DeltaPointLightIntensity<C>),
     /// デルタ方向光源の放射強度情報。

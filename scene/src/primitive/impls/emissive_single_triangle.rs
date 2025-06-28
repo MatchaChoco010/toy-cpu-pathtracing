@@ -11,7 +11,7 @@ use crate::{
     geometry::GeometryRepository,
     primitive::traits::{
         Primitive, PrimitiveAreaLight, PrimitiveDeltaDirectionalLight, PrimitiveDeltaPointLight,
-        PrimitiveGeometry, PrimitiveInfiniteLight, PrimitiveLight, PrimitiveNonDeltaLight,
+        PrimitiveGeometry, PrimitiveInfiniteLight, PrimitiveLight,
     },
 };
 
@@ -73,10 +73,6 @@ impl<Id: SceneId> Primitive<Id> for EmissiveSingleTriangle<Id> {
     }
 
     fn as_light_mut(&mut self) -> Option<&mut dyn PrimitiveLight<Id>> {
-        Some(self)
-    }
-
-    fn as_non_delta_light(&self) -> Option<&dyn PrimitiveNonDeltaLight<Id>> {
         Some(self)
     }
 
@@ -184,7 +180,7 @@ impl<Id: SceneId> PrimitiveLight<Id> for EmissiveSingleTriangle<Id> {
             * self.area
     }
 }
-impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveSingleTriangle<Id> {
+impl<Id: SceneId> PrimitiveAreaLight<Id> for EmissiveSingleTriangle<Id> {
     fn sample_radiance(
         &self,
         _geometry_repository: &GeometryRepository<Id>,
@@ -283,12 +279,6 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveSingleTriangle<Id> {
         }
     }
 
-    fn pdf_light_sample(&self, _interaction: &Intersection<Id, Render>) -> f32 {
-        // 一様サンプリングしたときのpdfを計算する。
-        1.0 / self.area
-    }
-}
-impl<Id: SceneId> PrimitiveAreaLight<Id> for EmissiveSingleTriangle<Id> {
     fn intersect_radiance(
         &self,
         shading_point: &SurfaceInteraction<Render>,
@@ -309,5 +299,9 @@ impl<Id: SceneId> PrimitiveAreaLight<Id> for EmissiveSingleTriangle<Id> {
             &render_to_tangent * wo,
             &(render_to_tangent * interaction),
         )
+    }
+
+    fn pdf_light_sample(&self, _intersection: &Intersection<Id, Render>) -> f32 {
+        1.0 / self.area
     }
 }

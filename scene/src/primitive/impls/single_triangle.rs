@@ -9,7 +9,7 @@ use crate::{
     geometry::GeometryRepository,
     primitive::traits::{
         Primitive, PrimitiveAreaLight, PrimitiveDeltaDirectionalLight, PrimitiveDeltaPointLight,
-        PrimitiveGeometry, PrimitiveInfiniteLight, PrimitiveLight, PrimitiveNonDeltaLight,
+        PrimitiveGeometry, PrimitiveInfiniteLight, PrimitiveLight,
     },
 };
 
@@ -61,10 +61,6 @@ impl<Id: SceneId> Primitive<Id> for SingleTriangle<Id> {
     }
 
     fn as_light_mut(&mut self) -> Option<&mut dyn PrimitiveLight<Id>> {
-        None
-    }
-
-    fn as_non_delta_light(&self) -> Option<&dyn PrimitiveNonDeltaLight<Id>> {
         None
     }
 

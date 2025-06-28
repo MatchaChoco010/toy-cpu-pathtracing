@@ -9,7 +9,7 @@ use crate::{
     geometry::{GeometryRepository, impls::TriangleMesh},
     primitive::traits::{
         Primitive, PrimitiveAreaLight, PrimitiveDeltaDirectionalLight, PrimitiveDeltaPointLight,
-        PrimitiveGeometry, PrimitiveInfiniteLight, PrimitiveLight, PrimitiveNonDeltaLight,
+        PrimitiveGeometry, PrimitiveInfiniteLight, PrimitiveLight,
     },
 };
 
@@ -85,10 +85,6 @@ impl<Id: SceneId> Primitive<Id> for EmissiveTriangleMesh<Id> {
     }
 
     fn as_light_mut(&mut self) -> Option<&mut dyn PrimitiveLight<Id>> {
-        Some(self)
-    }
-
-    fn as_non_delta_light(&self) -> Option<&dyn PrimitiveNonDeltaLight<Id>> {
         Some(self)
     }
 
@@ -176,7 +172,7 @@ impl<Id: SceneId> PrimitiveLight<Id> for EmissiveTriangleMesh<Id> {
             * self.area_sum
     }
 }
-impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveTriangleMesh<Id> {
+impl<Id: SceneId> PrimitiveAreaLight<Id> for EmissiveTriangleMesh<Id> {
     fn sample_radiance(
         &self,
         geometry_repository: &GeometryRepository<Id>,
@@ -311,28 +307,6 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveTriangleMesh<Id> {
         }
     }
 
-    fn pdf_light_sample(&self, interaction: &Intersection<Id, Render>) -> f32 {
-        // interactionした位置の三角形のジオメトリインデックスを確認する。
-        let geometry_index = match interaction.geometry_info {
-            InteractGeometryInfo::TriangleMesh { triangle_index } => triangle_index,
-            _ => panic!("Invalid geometry info"),
-        } as usize;
-
-        // 三角形のサンプリングの選択確率を取得する。
-        let probability = if geometry_index == 0 {
-            self.area_table[0]
-        } else {
-            self.area_table[geometry_index] - self.area_table[geometry_index - 1]
-        };
-
-        // interactionした位置の三角形の面積を取得する。
-        let area = self.area_list[geometry_index as usize];
-
-        // pdfを計算する。
-        1.0 / area * probability
-    }
-}
-impl<Id: SceneId> PrimitiveAreaLight<Id> for EmissiveTriangleMesh<Id> {
     fn intersect_radiance(
         &self,
         shading_point: &SurfaceInteraction<Render>,
@@ -355,5 +329,26 @@ impl<Id: SceneId> PrimitiveAreaLight<Id> for EmissiveTriangleMesh<Id> {
             &render_to_tangent * wo,
             &(render_to_tangent * interaction),
         )
+    }
+
+    fn pdf_light_sample(&self, intersection: &Intersection<Id, Render>) -> f32 {
+        // interactionした位置の三角形のジオメトリインデックスを確認する。
+        let geometry_index = match intersection.geometry_info {
+            InteractGeometryInfo::TriangleMesh { triangle_index } => triangle_index,
+            _ => panic!("Invalid geometry info"),
+        } as usize;
+
+        // 三角形のサンプリングの選択確率を取得する。
+        let probability = if geometry_index == 0 {
+            self.area_table[0]
+        } else {
+            self.area_table[geometry_index] - self.area_table[geometry_index - 1]
+        };
+
+        // interactionした位置の三角形の面積を取得する。
+        let area = self.area_list[geometry_index as usize];
+
+        // pdfを計算する。
+        1.0 / area * probability
     }
 }

@@ -39,6 +39,8 @@ impl<G: ColorGamut, T: ToneMap, E: Eotf> Sensor<G, T, E> {
 
     /// スペクトラルサンプルを追加する。
     pub fn add_sample(&mut self, lambda: &SampledWavelengths, s: &SampledSpectrum) {
+        s.eprint_nan_inf("Sensor::add_sample");
+
         let pdf = lambda.pdf();
         let count = if lambda.is_secondary_terminated() {
             1
