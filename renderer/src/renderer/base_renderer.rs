@@ -179,33 +179,9 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy> Render
             hit_info = match scene.intersect(&ray, f32::MAX) {
                 Some(intersect) => intersect,
                 None => {
-                    // シーンに何もヒットしなかった場合の無限光源処理
-                    // ダミーSurfaceInteractionを作成（材質は適当）
-                    use scene::{LambertMaterial, Material};
-                    use spectrum::ConstantSpectrum;
-
-                    let dummy_material = Material::from(LambertMaterial::new(
-                        scene::SpectrumParameter::Constant(ConstantSpectrum::new(0.5)),
-                        scene::NormalParameter::none(),
-                    ));
-                    let dummy_interaction = SurfaceInteraction {
-                        position: ray.origin,
-                        normal: (-ray.dir).into(),
-                        shading_normal: (-ray.dir).into(),
-                        tangent: math::Vector3::new(1.0, 0.0, 0.0),
-                        uv: glam::Vec2::new(0.5, 0.5),
-                        material: dummy_material,
-                    };
-
-                    self.strategy.calculate_infinite_light_contribution(
-                        scene,
-                        &lambda,
-                        &throughout,
-                        &ray,
-                        &dummy_interaction,
-                        &mut sampler,
-                        &mut sample_contribution,
-                    );
+                    // カメラレイが何もヒットしなかった場合の無限光源処理
+                    let radiance = scene.evaluate_infinite_light_radiance(&ray, &lambda);
+                    sample_contribution += &throughout * radiance;
                     sensor.add_sample(&lambda, &sample_contribution);
                     continue 'sample_loop;
                 }

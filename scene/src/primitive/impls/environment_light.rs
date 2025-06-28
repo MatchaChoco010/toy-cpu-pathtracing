@@ -25,9 +25,9 @@ pub struct EnvironmentLight {
     local_to_world: Transform<Local, World>,
     local_to_render: Transform<Local, Render>,
     // 事前計算済みサンプリングデータ
-    marginal_cdf: Vec<f32>,           // 各行の累積重み（行選択用）
-    conditional_cdf: Vec<Vec<f32>>,   // 各行内の累積重み（列選択用）
-    total_weight: f32,                // 全体の重み合計
+    marginal_cdf: Vec<f32>,         // 各行の累積重み（行選択用）
+    conditional_cdf: Vec<Vec<f32>>, // 各行内の累積重み（列選択用）
+    total_weight: f32,              // 全体の重み合計
 }
 impl EnvironmentLight {
     /// 新しい環境ライトのプリミティブを作成する。
@@ -66,7 +66,8 @@ impl EnvironmentLight {
         let integrated_spectrum = RgbIlluminantSpectrum::<ColorSrgb<NoneToneMap>>::new(color);
 
         // 2段階CDFテーブルを事前計算
-        let (marginal_cdf, conditional_cdf, total_weight) = Self::build_2d_cdf(&texture_data, width, height);
+        let (marginal_cdf, conditional_cdf, total_weight) =
+            Self::build_2d_cdf(&texture_data, width, height);
 
         Self {
             intensity,
@@ -172,7 +173,7 @@ impl EnvironmentLight {
         // 各行の重みと条件付きCDFを計算
         for y in 0..height {
             let mut row_sum = 0.0f32;
-            
+
             for x in 0..width {
                 let u = (x as f32 + 0.5) / width as f32;
                 let v = (y as f32 + 0.5) / height as f32;
@@ -208,7 +209,7 @@ impl EnvironmentLight {
         let total_weight: f32 = row_weights.iter().sum();
         let mut marginal_cdf = vec![0.0f32; height as usize];
         let mut cumulative = 0.0f32;
-        
+
         for y in 0..height {
             cumulative += row_weights[y as usize];
             marginal_cdf[y as usize] = if total_weight > 0.0 {
@@ -240,7 +241,6 @@ impl EnvironmentLight {
         (x, y)
     }
 
-    /// 事前計算したテーブルを使って効率的にPDFを計算
     fn calculate_direction_pdf_efficient(
         &self,
         direction: math::Vector3<Render>,
@@ -255,8 +255,10 @@ impl EnvironmentLight {
         let (u, v) = Self::spherical_to_uv(theta, phi);
 
         // 最も近いピクセルの座標を取得
-        let x = ((u * self.texture_width as f32).floor() as usize).min(self.texture_width as usize - 1);
-        let y = ((v * self.texture_height as f32).floor() as usize).min(self.texture_height as usize - 1);
+        let x =
+            ((u * self.texture_width as f32).floor() as usize).min(self.texture_width as usize - 1);
+        let y = ((v * self.texture_height as f32).floor() as usize)
+            .min(self.texture_height as usize - 1);
 
         // 事前計算した基本重み（jacobian * luminance）を取得
         let pixel_rgb = self.texture_data[y][x];
@@ -341,7 +343,6 @@ impl<Id: SceneId> PrimitiveInfiniteLight<Id> for EnvironmentLight {
         shading_point: &SurfaceInteraction<Render>,
         wi: math::Vector3<Render>,
     ) -> f32 {
-        // 事前計算したテーブルを使用して効率的にPDFを計算
         self.calculate_direction_pdf_efficient(wi, shading_point.shading_normal)
     }
 
@@ -351,7 +352,6 @@ impl<Id: SceneId> PrimitiveInfiniteLight<Id> for EnvironmentLight {
         lambda: &SampledWavelengths,
         uv: glam::Vec2,
     ) -> InfiniteLightSampleRadiance<Render> {
-        // 事前計算した2段階CDFを使用してピクセルをサンプリング
         let (x, y) = self.sample_pixel_2d(uv.x, uv.y);
 
         // ピクセル座標からテクスチャ座標を計算
@@ -362,7 +362,6 @@ impl<Id: SceneId> PrimitiveInfiniteLight<Id> for EnvironmentLight {
         let (theta, phi) = Self::uv_to_spherical(u, v);
         let wi = Self::spherical_to_direction(theta, phi);
 
-        // 効率的な方法でPDFを計算
         let pdf_dir = self.calculate_direction_pdf_efficient(wi, shading_point.shading_normal);
 
         // その方向の放射輝度を計算

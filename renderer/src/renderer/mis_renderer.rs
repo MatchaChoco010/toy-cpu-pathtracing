@@ -2,7 +2,7 @@
 
 use color::{ColorSrgb, tone_map::ToneMap};
 use math::{Ray, Render, Transform, VertexNormalTangent};
-use scene::{Intersection, LightIntensity, MaterialSample, SceneId, SurfaceInteraction};
+use scene::{Intersection, LightIntensity, MaterialSample, SceneId};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::{
@@ -180,41 +180,6 @@ impl RenderingStrategy for MisStrategy {
         *throughout *= &bsdf_result.throughput_modifier;
     }
 
-    fn calculate_infinite_light_contribution<Id: SceneId, S: Sampler>(
-        &self,
-        scene: &scene::Scene<Id>,
-        lambda: &SampledWavelengths,
-        throughput: &SampledSpectrum,
-        ray: &Ray<Render>,
-        shading_point: &SurfaceInteraction<Render>,
-        _sampler: &mut S,
-        sample_contribution: &mut SampledSpectrum,
-    ) {
-        // MISでは無限光源の放射輝度にMIS重みを適用
-        let radiance = scene.evaluate_infinite_light_radiance(ray, lambda);
-
-        // MIS重みを計算
-        let light_sampler = scene.light_sampler(lambda);
-        let light_pdf = scene.pdf_infinite_light_sample(&light_sampler, shading_point, ray.dir);
-
-        let render_to_tangent = shading_point.shading_transform();
-        let ray_tangent = &render_to_tangent * ray;
-        let shading_point_tangent = &render_to_tangent * shading_point;
-
-        let bsdf_pdf = if let Some(bsdf_material) = shading_point.material.as_bsdf_material() {
-            // woは表面から外向きの方向（outgoing）、wiは入射方向（incoming）
-            let wo_tangent = -ray_tangent.dir; // カメラレイの反対方向
-            let wi_tangent = ray_tangent.dir; // レイの方向
-            bsdf_material.pdf(lambda, &wo_tangent, &wi_tangent, &shading_point_tangent)
-        } else {
-            0.0
-        };
-
-        let mis_weight = balance_heuristic(bsdf_pdf, light_pdf);
-
-        *sample_contribution += throughput * radiance * mis_weight;
-    }
-
     fn calculate_bsdf_infinite_light_contribution<Id: SceneId, S: Sampler>(
         &self,
         scene: &scene::Scene<Id>,
@@ -244,7 +209,7 @@ impl RenderingStrategy for MisStrategy {
             .translate(sign * offset_dir * 1e-5);
         let background_ray = Ray::new(origin, wi_render).move_forward(1e-5);
 
-        // MISでは無限光源の放射輝度にMIS重みを適用
+        // MIS重みを適用して無限光源の寄与を計算
         let radiance = scene.evaluate_infinite_light_radiance(&background_ray, lambda);
 
         // MIS重みを計算

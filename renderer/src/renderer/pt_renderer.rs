@@ -2,7 +2,7 @@
 
 use color::{ColorSrgb, tone_map::ToneMap};
 use math::{Ray, Render, Transform, VertexNormalTangent};
-use scene::{Intersection, MaterialSample, SceneId, SurfaceInteraction};
+use scene::{Intersection, MaterialSample, SceneId};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::{
@@ -47,21 +47,6 @@ impl RenderingStrategy for PtStrategy {
         *throughout *= &bsdf_result.throughput_modifier;
     }
 
-    fn calculate_infinite_light_contribution<Id: SceneId, S: Sampler>(
-        &self,
-        scene: &scene::Scene<Id>,
-        lambda: &SampledWavelengths,
-        throughput: &SampledSpectrum,
-        ray: &Ray<Render>,
-        _shading_point: &SurfaceInteraction<Render>,
-        _sampler: &mut S,
-        sample_contribution: &mut SampledSpectrum,
-    ) {
-        // PTでは無限光源の放射輝度をそのまま使用
-        let radiance = scene.evaluate_infinite_light_radiance(ray, lambda);
-        *sample_contribution += throughput * radiance;
-    }
-
     fn calculate_bsdf_infinite_light_contribution<Id: SceneId, S: Sampler>(
         &self,
         scene: &scene::Scene<Id>,
@@ -91,7 +76,7 @@ impl RenderingStrategy for PtStrategy {
             .translate(sign * offset_dir * 1e-5);
         let background_ray = Ray::new(origin, wi_render).move_forward(1e-5);
 
-        // PTでは無限光源の放射輝度をBSDFで重み付けして使用
+        // 無限光源の放射輝度をBSDFで重み付けして計算
         let radiance = scene.evaluate_infinite_light_radiance(&background_ray, lambda);
         let cos_theta = material_sample.normal.dot(material_sample.wi).abs();
         *sample_contribution +=
