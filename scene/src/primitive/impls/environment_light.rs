@@ -6,7 +6,7 @@ use math::{Local, Ray, Render, Transform, World};
 use spectrum::{SampledSpectrum, SampledWavelengths, SpectrumTrait};
 
 use crate::{
-    AreaLightSampleRadiance, Intersection, SceneId, SurfaceInteraction,
+    AreaLightSampleRadiance, SceneId, SurfaceInteraction,
     geometry::GeometryRepository,
     primitive::traits::{
         Primitive, PrimitiveAreaLight, PrimitiveDeltaDirectionalLight, PrimitiveDeltaPointLight,
@@ -96,9 +96,6 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EnvironmentLight {
         todo!()
     }
 
-    fn pdf_light_sample(&self, _interaction: &Intersection<Id, Render>) -> f32 {
-        todo!()
-    }
 }
 impl<Id: SceneId> PrimitiveInfiniteLight<Id> for EnvironmentLight {
     fn direction_radiance(
@@ -106,6 +103,14 @@ impl<Id: SceneId> PrimitiveInfiniteLight<Id> for EnvironmentLight {
         _ray: &Ray<Render>,
         _lambda: &SampledWavelengths,
     ) -> SampledSpectrum {
+        todo!()
+    }
+
+    fn pdf_direction_sample(
+        &self,
+        _shading_point: &SurfaceInteraction<Render>,
+        _wi: math::Vector3<Render>,
+    ) -> f32 {
         todo!()
     }
 }

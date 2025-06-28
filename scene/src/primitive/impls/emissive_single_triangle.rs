@@ -282,11 +282,6 @@ impl<Id: SceneId> PrimitiveNonDeltaLight<Id> for EmissiveSingleTriangle<Id> {
             },
         }
     }
-
-    fn pdf_light_sample(&self, _interaction: &Intersection<Id, Render>) -> f32 {
-        // 一様サンプリングしたときのpdfを計算する。
-        1.0 / self.area
-    }
 }
 impl<Id: SceneId> PrimitiveAreaLight<Id> for EmissiveSingleTriangle<Id> {
     fn intersect_radiance(
@@ -309,5 +304,9 @@ impl<Id: SceneId> PrimitiveAreaLight<Id> for EmissiveSingleTriangle<Id> {
             &render_to_tangent * wo,
             &(render_to_tangent * interaction),
         )
+    }
+
+    fn pdf_light_sample(&self, _intersection: &Intersection<Id, Render>) -> f32 {
+        1.0 / self.area
     }
 }

@@ -96,9 +96,6 @@ pub trait PrimitiveNonDeltaLight<Id: SceneId>: PrimitiveLight<Id> {
         s: f32,
         uv: glam::Vec2,
     ) -> AreaLightSampleRadiance<Render>;
-
-    /// 交差点をライトのサンプルでサンプルしたときのpdfを計算する。
-    fn pdf_light_sample(&self, intersection: &Intersection<Id, Render>) -> f32;
 }
 
 /// Deltaな点光源のPrimitiveを表すトレイト。
@@ -130,6 +127,9 @@ pub trait PrimitiveAreaLight<Id: SceneId>: PrimitiveNonDeltaLight<Id> {
         interaction: &SurfaceInteraction<Render>,
         lambda: &SampledWavelengths,
     ) -> SampledSpectrum;
+
+    /// 交差点をライトのサンプルでサンプルしたときのpdfを計算する。
+    fn pdf_light_sample(&self, intersection: &Intersection<Id, Render>) -> f32;
 }
 
 /// 無限光源のPrimitiveを表すトレイト。
@@ -137,4 +137,11 @@ pub trait PrimitiveInfiniteLight<Id: SceneId>: PrimitiveNonDeltaLight<Id> {
     /// 与えた波長における特定方向でのスペクトル放射輝度を計算する。
     fn direction_radiance(&self, ray: &Ray<Render>, lambda: &SampledWavelengths)
     -> SampledSpectrum;
+
+    /// 与えられた方向に対するサンプリング確率密度を計算する。
+    fn pdf_direction_sample(
+        &self,
+        shading_point: &SurfaceInteraction<Render>,
+        wi: math::Vector3<Render>,
+    ) -> f32;
 }

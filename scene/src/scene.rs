@@ -158,12 +158,12 @@ impl<Id: SceneId> Scene<Id> {
         intersection: &Intersection<Id, Render>,
     ) -> f32 {
         let primitive = self.primitive_repository.get(intersection.primitive_index);
-        if let Some(light) = primitive.as_non_delta_light() {
+        if let Some(area_light) = primitive.as_area_light() {
             // ライトの選択確率を計算する。
             let probability = light_sampler.probability(&intersection.primitive_index);
 
             // ライトのpdfを計算する。
-            let light_pdf_area = light.pdf_light_sample(intersection);
+            let light_pdf_area = area_light.pdf_light_sample(intersection);
 
             // pdfを面積要素から方向要素に変換する。
             let interaction = &intersection.interaction;

@@ -85,6 +85,10 @@ fn evaluate_next_event_estimation<Id: SceneId, S: Sampler>(
             render_to_tangent,
             light_sample.probability,
         ),
+        LightIntensity::RadianceInfinityLight(_) => {
+            // TODO: 第7段階で実装予定
+            SampledSpectrum::zero()
+        }
     }
 }
 

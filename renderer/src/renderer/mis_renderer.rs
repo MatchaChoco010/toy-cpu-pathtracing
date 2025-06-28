@@ -106,6 +106,13 @@ fn evaluate_next_event_estimation_with_mis<Id: SceneId, S: Sampler>(
             render_to_tangent,
             light_sample.probability,
         ),
+        LightIntensity::RadianceInfinityLight(_) => {
+            // TODO: 第7段階で実装予定
+            NeeResult {
+                contribution: SampledSpectrum::zero(),
+                mis_weight: 0.0,
+            }
+        }
     }
 }
 
