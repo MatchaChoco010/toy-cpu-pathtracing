@@ -106,12 +106,18 @@ fn evaluate_next_event_estimation_with_mis<Id: SceneId, S: Sampler>(
             render_to_tangent,
             light_sample.probability,
         ),
-        LightIntensity::RadianceInfinityLight(_) => {
-            // TODO: 第7段階で実装予定
-            NeeResult {
-                contribution: SampledSpectrum::zero(),
-                mis_weight: 0.0,
-            }
+        LightIntensity::RadianceInfinityLight(radiance_sample) => {
+            // 無限光源の明示的ライトサンプリング
+            common::evaluate_infinite_light_with_mis(
+                scene,
+                shading_point,
+                &radiance_sample,
+                bsdf,
+                lambda,
+                &current_hit_info.wo,
+                render_to_tangent,
+                light_sample.probability,
+            )
         }
     }
 }
@@ -176,16 +182,37 @@ impl RenderingStrategy for MisStrategy {
 
     fn calculate_infinite_light_contribution<Id: SceneId, S: Sampler>(
         &self,
-        _scene: &scene::Scene<Id>,
-        _lambda: &SampledWavelengths,
+        scene: &scene::Scene<Id>,
+        lambda: &SampledWavelengths,
         throughput: &SampledSpectrum,
-        _ray: &Ray<Render>,
-        _shading_point: &SurfaceInteraction<Render>,
+        ray: &Ray<Render>,
+        shading_point: &SurfaceInteraction<Render>,
         _sampler: &mut S,
     ) -> SampledSpectrum {
-        // MISでは、Stage 7で具体的に実装予定
-        // 現在は単純にゼロを返す（後で実装）
-        throughput * &SampledSpectrum::zero()
+        // MISでは無限光源の放射輝度にMIS重みを適用
+        let radiance = scene.evaluate_infinite_light_radiance(ray, lambda);
+
+        // MIS重みを計算
+        let light_sampler = scene.light_sampler(lambda);
+        let light_pdf = scene.pdf_infinite_light_sample(&light_sampler, shading_point, ray.dir);
+
+        let render_to_tangent = shading_point.shading_transform();
+        let ray_tangent = &render_to_tangent * ray;
+        let wi_tangent = ray_tangent.dir;
+        let shading_point_tangent = &render_to_tangent * shading_point;
+
+        let bsdf_pdf = if let Some(bsdf_material) = shading_point.material.as_bsdf_material() {
+            // woは表面から外向きの方向（outgoing）、wiは入射方向（incoming）
+            let wo_tangent = (-ray_tangent.dir); // カメラレイの反対方向
+            let wi_tangent = ray_tangent.dir; // レイの方向
+            bsdf_material.pdf(lambda, &wo_tangent, &wi_tangent, &shading_point_tangent)
+        } else {
+            0.0
+        };
+
+        let mis_weight = balance_heuristic(bsdf_pdf, light_pdf);
+
+        throughput * radiance * mis_weight
     }
 }
 

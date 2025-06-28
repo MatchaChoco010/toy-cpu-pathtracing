@@ -85,9 +85,18 @@ fn evaluate_next_event_estimation<Id: SceneId, S: Sampler>(
             render_to_tangent,
             light_sample.probability,
         ),
-        LightIntensity::RadianceInfinityLight(_) => {
-            // TODO: 第7段階で実装予定
-            SampledSpectrum::zero()
+        LightIntensity::RadianceInfinityLight(radiance_sample) => {
+            // 無限光源の明示的ライトサンプリング
+            common::evaluate_infinite_light(
+                scene,
+                shading_point,
+                &radiance_sample,
+                bsdf,
+                lambda,
+                &current_hit_info.wo,
+                render_to_tangent,
+                light_sample.probability,
+            )
         }
     }
 }
@@ -142,14 +151,14 @@ impl RenderingStrategy for NeeStrategy {
         &self,
         _scene: &scene::Scene<Id>,
         _lambda: &SampledWavelengths,
-        throughput: &SampledSpectrum,
+        _throughput: &SampledSpectrum,
         _ray: &Ray<Render>,
         _shading_point: &SurfaceInteraction<Render>,
         _sampler: &mut S,
     ) -> SampledSpectrum {
-        // NEEでは、Stage 7で具体的に実装予定
-        // 現在は単純にゼロを返す（後で実装）
-        throughput * &SampledSpectrum::zero()
+        // NEEでは明示的ライトサンプリングで既に処理されているため、
+        // ここでは何も追加しない
+        SampledSpectrum::zero()
     }
 }
 

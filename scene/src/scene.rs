@@ -3,7 +3,7 @@
 use std::fmt::Debug;
 
 use math::{Ray, Render, World};
-use spectrum::SampledWavelengths;
+use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::{
     CreatePrimitiveDesc, GeometryIndex, InfiniteLightSampleRadiance, Intersection, LightIntensity,
@@ -215,6 +215,35 @@ impl<Id: SceneId> Scene<Id> {
         }
 
         total_pdf
+    }
+
+    /// レイの方向に対する全ての無限光源からの放射輝度を計算する。
+    pub fn evaluate_infinite_light_radiance(
+        &self,
+        ray: &Ray<Render>,
+        lambda: &SampledWavelengths,
+    ) -> SampledSpectrum {
+        let mut total_radiance = SampledSpectrum::zero();
+
+        // 全ての無限光源についてradianceを計算
+        for primitive_index in self.primitive_repository.get_all_primitive_indices() {
+            let primitive = self.primitive_repository.get(primitive_index);
+            if let Some(inf_light) = primitive.as_infinite_light() {
+                let radiance = inf_light.direction_radiance(ray, lambda);
+                total_radiance += radiance;
+            }
+        }
+
+        total_radiance
+    }
+
+    /// 無限光源をサンプリングする（PrimitiveRepositoryアクセスをラップ）。
+    pub fn sample_infinite_light(
+        &self,
+        light_sampler: &LightSampler<Id>,
+        u: f32,
+    ) -> Option<crate::LightSample<Id>> {
+        light_sampler.sample_infinite_light(&self.primitive_repository, u)
     }
 }
 

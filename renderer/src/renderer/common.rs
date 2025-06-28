@@ -3,7 +3,7 @@
 use math::{Ray, Render, Transform, VertexNormalTangent};
 use scene::{
     AreaLightSampleRadiance, BsdfSurfaceMaterial, DeltaDirectionalLightIntensity,
-    DeltaPointLightIntensity, SceneId, SurfaceInteraction,
+    DeltaPointLightIntensity, InfiniteLightSampleRadiance, SceneId, SurfaceInteraction,
 };
 use spectrum::SampledSpectrum;
 
@@ -175,5 +175,64 @@ pub fn evaluate_area_light_with_mis<Id: SceneId>(
             contribution: SampledSpectrum::zero(),
             mis_weight: 1.0,
         }
+    }
+}
+
+/// 無限光源の評価（NEE用）。
+pub fn evaluate_infinite_light<Id: SceneId>(
+    _scene: &scene::Scene<Id>,
+    shading_point: &SurfaceInteraction<Render>,
+    radiance_sample: &InfiniteLightSampleRadiance<Render>,
+    bsdf: &dyn BsdfSurfaceMaterial,
+    lambda: &spectrum::SampledWavelengths,
+    wo: &math::Vector3<Render>,
+    render_to_tangent: &Transform<Render, VertexNormalTangent>,
+    light_probability: f32,
+) -> SampledSpectrum {
+    // 無限光源は常に可視（シャドウレイ不要）
+    let wo = render_to_tangent * wo;
+    let wi = render_to_tangent * radiance_sample.wi;
+    let shading_point_tangent = render_to_tangent * shading_point;
+    let material_result = bsdf.evaluate(lambda, &wo, &wi, &shading_point_tangent);
+
+    // コサイン項
+    let cos_theta = material_result.normal.dot(wi).abs();
+
+    // 無限光源の寄与計算
+    material_result.f * &radiance_sample.radiance * cos_theta
+        / (radiance_sample.pdf_dir * light_probability)
+}
+
+/// 無限光源の評価（MIS用）。
+pub fn evaluate_infinite_light_with_mis<Id: SceneId>(
+    _scene: &scene::Scene<Id>,
+    shading_point: &SurfaceInteraction<Render>,
+    radiance_sample: &InfiniteLightSampleRadiance<Render>,
+    bsdf: &dyn BsdfSurfaceMaterial,
+    lambda: &spectrum::SampledWavelengths,
+    wo: &math::Vector3<Render>,
+    render_to_tangent: &Transform<Render, VertexNormalTangent>,
+    light_probability: f32,
+) -> NeeResult {
+    // 無限光源は常に可視（シャドウレイ不要）
+    let wo = render_to_tangent * wo;
+    let wi = render_to_tangent * radiance_sample.wi;
+    let shading_point_tangent = render_to_tangent * shading_point;
+    let material_result = bsdf.evaluate(lambda, &wo, &wi, &shading_point_tangent);
+
+    // コサイン項
+    let cos_theta = material_result.normal.dot(wi).abs();
+
+    // MISのウエイトを計算
+    let pdf_light_dir = radiance_sample.pdf_dir;
+    let pdf_bsdf_dir = bsdf.pdf(lambda, &wo, &wi, &shading_point_tangent);
+    let mis_weight = balance_heuristic(pdf_light_dir, pdf_bsdf_dir);
+
+    let contribution = material_result.f * &radiance_sample.radiance * cos_theta
+        / (pdf_light_dir * light_probability);
+
+    NeeResult {
+        contribution,
+        mis_weight,
     }
 }

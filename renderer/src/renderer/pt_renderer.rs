@@ -49,16 +49,16 @@ impl RenderingStrategy for PtStrategy {
 
     fn calculate_infinite_light_contribution<Id: SceneId, S: Sampler>(
         &self,
-        _scene: &scene::Scene<Id>,
-        _lambda: &SampledWavelengths,
+        scene: &scene::Scene<Id>,
+        lambda: &SampledWavelengths,
         throughput: &SampledSpectrum,
-        _ray: &Ray<Render>,
+        ray: &Ray<Render>,
         _shading_point: &SurfaceInteraction<Render>,
         _sampler: &mut S,
     ) -> SampledSpectrum {
-        // PTでは、Stage 7で具体的に実装予定
-        // 現在は単純にゼロを返す（後で実装）
-        throughput * &SampledSpectrum::zero()
+        // PTでは無限光源の放射輝度をそのまま使用
+        let radiance = scene.evaluate_infinite_light_radiance(ray, lambda);
+        throughput * radiance
     }
 }
 
