@@ -85,8 +85,8 @@ impl EnvironmentLight {
 
     /// テクスチャ座標(u,v)から球面座標(theta, phi)に変換
     fn uv_to_spherical(u: f32, v: f32) -> (f32, f32) {
-        let theta = v * std::f32::consts::PI; // 0 ≤ theta ≤ π
-        let phi = u * 2.0 * std::f32::consts::PI + std::f32::consts::PI; // u=0 maps to -X direction
+        let theta = v * std::f32::consts::PI;
+        let phi = u * 2.0 * std::f32::consts::PI;
         (theta, phi)
     }
 
@@ -110,9 +110,14 @@ impl EnvironmentLight {
 
     /// 球面座標からテクスチャ座標に変換
     fn spherical_to_uv(theta: f32, phi: f32) -> (f32, f32) {
-        let u = (phi - std::f32::consts::PI) / (2.0 * std::f32::consts::PI);
+        let u = phi / (2.0 * std::f32::consts::PI);
         let v = theta / std::f32::consts::PI;
         (u, v)
+    }
+
+    /// ヤコビアン重み（正距円筒図法の歪み補正）を計算
+    fn jacobian_weight(theta: f32) -> f32 {
+        theta.sin().max(1e-8)
     }
 
     /// テクスチャをサンプリング（バイリニア補間）
@@ -154,12 +159,9 @@ impl EnvironmentLight {
         ]
     }
 
-    /// ヤコビアン重み（正距円筒図法の歪み補正）を計算
-    fn jacobian_weight(theta: f32) -> f32 {
-        theta.sin().max(1e-8)
-    }
-
-    /// 2段階CDFテーブルを事前構築（cosine項なし）
+    /// 2段階CDFテーブルを事前構築
+    /// 重み: luminance * sin(theta) による重要度サンプリング
+    /// 1段階目: 行選択用周辺CDF、2段階目: 各行内の列選択用条件付きCDF
     fn build_2d_cdf(
         texture_data: &[Vec<[f32; 3]>],
         width: u32,
@@ -168,7 +170,6 @@ impl EnvironmentLight {
         let mut row_weights = vec![0.0f32; height as usize];
         let mut conditional_cdf = vec![vec![0.0f32; width as usize]; height as usize];
 
-        // 各行の重みと条件付きCDFを計算
         for y in 0..height {
             let mut row_sum = 0.0f32;
 
@@ -176,26 +177,19 @@ impl EnvironmentLight {
                 let u = (x as f32 + 0.5) / width as f32;
                 let v = (y as f32 + 0.5) / height as f32;
 
-                // テクスチャ座標から方向を計算
                 let (theta, _phi) = Self::uv_to_spherical(u, v);
-
-                // jacobian重み（sin_theta項）と輝度重みのみ（cosine項は除外）
-                let jacobian_weight = Self::jacobian_weight(theta);
-
                 let pixel_rgb = texture_data[y as usize][x as usize];
                 let luminance = 0.299 * pixel_rgb[0] + 0.587 * pixel_rgb[1] + 0.114 * pixel_rgb[2];
-
-                let weight = jacobian_weight * luminance;
+                let jacobian_weight = Self::jacobian_weight(theta);
+                // 重要度サンプリング重み: 輝度 × sin(theta)
+                let weight = luminance * jacobian_weight;
                 row_sum += weight;
 
-                // 条件付きCDF（行内累積分布）
                 conditional_cdf[y as usize][x as usize] = row_sum;
             }
 
-            // 行の重みを記録
             row_weights[y as usize] = row_sum;
-
-            // 条件付きCDFを正規化
+            // 各行の条件付きCDFを正規化
             if row_sum > 0.0 {
                 for x in 0..width {
                     conditional_cdf[y as usize][x as usize] /= row_sum;
@@ -203,7 +197,7 @@ impl EnvironmentLight {
             }
         }
 
-        // 周辺CDF（行選択用）を計算
+        // 周辺CDF（行選択用）を構築
         let total_weight: f32 = row_weights.iter().sum();
         let mut marginal_cdf = vec![0.0f32; height as usize];
         let mut cumulative = 0.0f32;
@@ -229,43 +223,34 @@ impl EnvironmentLight {
     }
 
     /// 2段階CDFサンプリングでピクセル座標を取得
+    /// u: 行選択、v: 列選択
     fn sample_pixel_2d(&self, u: f32, v: f32) -> (usize, usize) {
-        // 1. 周辺CDFで行を選択
         let y = Self::sample_from_cdf(&self.marginal_cdf, u);
-
-        // 2. 条件付きCDFで列を選択
         let x = Self::sample_from_cdf(&self.conditional_cdf[y], v);
 
         (x, y)
     }
 
-    fn calculate_direction_pdf_efficient(&self, direction: math::Vector3<Render>) -> f32 {
+    fn calculate_direction_pdf(&self, direction: math::Vector3<Render>) -> f32 {
         if self.total_weight <= 0.0 {
             return 0.0;
         }
 
-        // レンダー座標系からローカル座標系に変換
         let dir_local = &self.local_to_render.inverse() * &direction;
-        // 方向からテクスチャ座標を計算
         let (theta, phi) = Self::direction_to_spherical(dir_local);
         let (u, v) = Self::spherical_to_uv(theta, phi);
 
-        // 最も近いピクセルの座標を取得
         let x =
             ((u * self.texture_width as f32).floor() as usize).min(self.texture_width as usize - 1);
         let y = ((v * self.texture_height as f32).floor() as usize)
             .min(self.texture_height as usize - 1);
 
-        // 記事のDistribution2D::getPDF実装に従う
         let pixel_rgb = self.texture_data[y][x];
         let luminance = 0.299 * pixel_rgb[0] + 0.587 * pixel_rgb[1] + 0.114 * pixel_rgb[2];
         let sin_theta = theta.sin().max(1e-8);
         let pixel_weight = luminance * sin_theta;
 
-        // テクスチャ座標でのPDF密度
         let pdf_texture = pixel_weight / self.total_weight;
-
-        // テクスチャ座標から立体角への変換
         let texture_to_solid_angle_jacobian = (self.texture_width as f32)
             * (self.texture_height as f32)
             / (2.0 * std::f32::consts::PI * std::f32::consts::PI * sin_theta);
@@ -321,18 +306,10 @@ impl<Id: SceneId> PrimitiveInfiniteLight<Id> for EnvironmentLight {
         ray: &Ray<Render>,
         lambda: &SampledWavelengths,
     ) -> SampledSpectrum {
-        // レンダー座標系からローカル座標系に変換
         let dir_local = &self.local_to_render.inverse() * &ray.dir;
-        // 方向を球面座標に変換
         let (theta, phi) = Self::direction_to_spherical(dir_local);
-
-        // 球面座標をテクスチャ座標に変換
         let (u, v) = Self::spherical_to_uv(theta, phi);
-
-        // テクスチャをサンプリング
         let rgb = self.sample_texture(u, v);
-
-        // RGBからスペクトルに変換してintensityを適用
         let color = ColorSrgb::<NoneToneMap>::new(rgb[0], rgb[1], rgb[2]);
         let spectrum = RgbIlluminantSpectrum::<ColorSrgb<NoneToneMap>>::new(color);
         spectrum.sample(lambda) * self.intensity
@@ -343,7 +320,7 @@ impl<Id: SceneId> PrimitiveInfiniteLight<Id> for EnvironmentLight {
         _shading_point: &SurfaceInteraction<Render>,
         wi: math::Vector3<Render>,
     ) -> f32 {
-        self.calculate_direction_pdf_efficient(wi)
+        self.calculate_direction_pdf(wi)
     }
 
     fn sample_infinite_light(
@@ -354,18 +331,14 @@ impl<Id: SceneId> PrimitiveInfiniteLight<Id> for EnvironmentLight {
     ) -> InfiniteLightSampleRadiance<Render> {
         let (x, y) = self.sample_pixel_2d(uv.x, uv.y);
 
-        // ピクセル座標からテクスチャ座標を計算
         let u = (x as f32 + 0.5) / self.texture_width as f32;
         let v = (y as f32 + 0.5) / self.texture_height as f32;
 
-        // テクスチャ座標から球面座標、そして方向ベクトルを計算
         let (theta, phi) = Self::uv_to_spherical(u, v);
         let wi_local = Self::spherical_to_direction(theta, phi);
         let wi = &self.local_to_render * &wi_local;
 
-        let pdf_dir = self.calculate_direction_pdf_efficient(wi);
-
-        // その方向の放射輝度を計算
+        let pdf_dir = self.calculate_direction_pdf(wi);
         let ray = math::Ray::new(shading_point.position, wi);
         let radiance = <Self as PrimitiveInfiniteLight<Id>>::direction_radiance(self, &ray, lambda);
 
