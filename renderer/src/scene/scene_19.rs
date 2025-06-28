@@ -32,18 +32,18 @@ pub fn load_scene_19<Id: scene::SceneId, F: Filter>(
         transform: Transform::identity(),
     });
 
-    // シンプルなバニーモデル
-    let bunny_geom = scene.load_obj("./renderer/assets/bunny.obj");
+    // ドラゴンモデル
+    let dragon_geom = scene.load_obj("./renderer/assets/dragon.min.obj");
 
-    // バニーの材質（ミディアムグレー）
-    let bunny_color =
+    // ドラゴンの材質（ミディアムグレー）
+    let dragon_color =
         RgbAlbedoSpectrum::<ColorSrgb<NoneToneMap>>::new(ColorSrgb::new(0.6, 0.6, 0.6));
 
-    // バニーをシーンに追加
-    let _bunny_primitive = scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
-        geometry_index: bunny_geom,
+    // ドラゴンをシーンに追加
+    let _dragon_primitive = scene.create_primitive(CreatePrimitiveDesc::GeometryPrimitive {
+        geometry_index: dragon_geom,
         surface_material: LambertMaterial::new(
-            SpectrumParameter::constant(bunny_color),
+            SpectrumParameter::constant(dragon_color),
             NormalParameter::none(),
         ),
         transform: Transform::identity(),
@@ -59,8 +59,8 @@ pub fn load_scene_19<Id: scene::SceneId, F: Filter>(
 
     // カメラ設定
     camera.set_look_to(
-        Point3::new(0.0, 1.0, 3.0),
-        Vector3::new(0.0, -0.5, -3.0).normalize(),
+        Point3::new(0.0, 1.5, 4.0),
+        Vector3::new(0.0, -0.3, -4.0).normalize(),
         Vector3::new(0.0, 1.0, 0.0),
     );
 }
