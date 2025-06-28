@@ -188,7 +188,8 @@ impl RenderingStrategy for MisStrategy {
         ray: &Ray<Render>,
         shading_point: &SurfaceInteraction<Render>,
         _sampler: &mut S,
-    ) -> SampledSpectrum {
+        sample_contribution: &mut SampledSpectrum,
+    ) {
         // MISでは無限光源の放射輝度にMIS重みを適用
         let radiance = scene.evaluate_infinite_light_radiance(ray, lambda);
 
@@ -198,12 +199,11 @@ impl RenderingStrategy for MisStrategy {
 
         let render_to_tangent = shading_point.shading_transform();
         let ray_tangent = &render_to_tangent * ray;
-        let wi_tangent = ray_tangent.dir;
         let shading_point_tangent = &render_to_tangent * shading_point;
 
         let bsdf_pdf = if let Some(bsdf_material) = shading_point.material.as_bsdf_material() {
             // woは表面から外向きの方向（outgoing）、wiは入射方向（incoming）
-            let wo_tangent = (-ray_tangent.dir); // カメラレイの反対方向
+            let wo_tangent = -ray_tangent.dir; // カメラレイの反対方向
             let wi_tangent = ray_tangent.dir; // レイの方向
             bsdf_material.pdf(lambda, &wo_tangent, &wi_tangent, &shading_point_tangent)
         } else {
@@ -212,7 +212,47 @@ impl RenderingStrategy for MisStrategy {
 
         let mis_weight = balance_heuristic(bsdf_pdf, light_pdf);
 
-        throughput * radiance * mis_weight
+        *sample_contribution += throughput * radiance * mis_weight;
+    }
+
+    fn calculate_bsdf_infinite_light_contribution<Id: SceneId, S: Sampler>(
+        &self,
+        scene: &scene::Scene<Id>,
+        lambda: &SampledWavelengths,
+        material_sample: &MaterialSample,
+        throughput: &SampledSpectrum,
+        render_to_tangent: &Transform<Render, VertexNormalTangent>,
+        current_hit_info: &Intersection<Id, Render>,
+        _sampler: &mut S,
+        sample_contribution: &mut SampledSpectrum,
+    ) {
+        // BSDFサンプリング後のレイを構築
+        let wi_render = &render_to_tangent.inverse() * &material_sample.wi;
+        let offset_dir: &math::Vector3<_> = current_hit_info.interaction.normal.as_ref();
+        let sign = if current_hit_info.interaction.normal.dot(wi_render) < 0.0 {
+            -1.0
+        } else {
+            1.0
+        };
+        let origin = current_hit_info.interaction
+            .position
+            .translate(sign * offset_dir * 1e-5);
+        let background_ray = Ray::new(origin, wi_render).move_forward(1e-5);
+        
+        // MISでは無限光源の放射輝度にMIS重みを適用
+        let radiance = scene.evaluate_infinite_light_radiance(&background_ray, lambda);
+        
+        // MIS重みを計算
+        let light_sampler = scene.light_sampler(lambda);
+        let light_pdf = scene.pdf_infinite_light_sample(&light_sampler, &current_hit_info.interaction, background_ray.dir);
+        let bsdf_pdf = material_sample.pdf;
+        let mis_weight = balance_heuristic(bsdf_pdf, light_pdf);
+        
+        // BSDF項を計算
+        let cos_theta = material_sample.normal.dot(material_sample.wi).abs();
+        let throughput_factor = cos_theta / material_sample.pdf;
+        
+        *sample_contribution += throughput * &material_sample.f * radiance * throughput_factor * mis_weight;
     }
 }
 
