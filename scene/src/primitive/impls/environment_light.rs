@@ -90,16 +90,16 @@ impl EnvironmentLight {
         (theta, phi)
     }
 
-    /// 球面座標(theta, phi)から方向ベクトル(Render座標系、Y上)に変換
-    fn spherical_to_direction(theta: f32, phi: f32) -> math::Vector3<Render> {
+    /// 球面座標(theta, phi)から方向ベクトル(Local座標系、Y上)に変換
+    fn spherical_to_direction(theta: f32, phi: f32) -> math::Vector3<Local> {
         let x = theta.sin() * phi.cos();
         let y = theta.cos();
         let z = theta.sin() * phi.sin();
         math::Vector3::new(x, y, z)
     }
 
-    /// 方向ベクトルから球面座標に変換
-    fn direction_to_spherical(dir: math::Vector3<Render>) -> (f32, f32) {
+    /// 方向ベクトル(Local座標系)から球面座標に変換
+    fn direction_to_spherical(dir: math::Vector3<Local>) -> (f32, f32) {
         let theta = dir.y().acos().clamp(0.0, std::f32::consts::PI);
         let phi = dir.z().atan2(dir.x());
         let phi = if phi < 0.0 {
@@ -241,17 +241,15 @@ impl EnvironmentLight {
         (x, y)
     }
 
-    fn calculate_direction_pdf_efficient(
-        &self,
-        direction: math::Vector3<Render>,
-        _shading_normal: math::Normal<Render>,
-    ) -> f32 {
+    fn calculate_direction_pdf_efficient(&self, direction: math::Vector3<Render>) -> f32 {
         if self.total_weight <= 0.0 {
             return 0.0;
         }
 
+        // レンダー座標系からローカル座標系に変換
+        let dir_local = &self.local_to_render.inverse() * &direction;
         // 方向からテクスチャ座標を計算
-        let (theta, phi) = Self::direction_to_spherical(direction);
+        let (theta, phi) = Self::direction_to_spherical(dir_local);
         let (u, v) = Self::spherical_to_uv(theta, phi);
 
         // 最も近いピクセルの座標を取得
@@ -325,8 +323,10 @@ impl<Id: SceneId> PrimitiveInfiniteLight<Id> for EnvironmentLight {
         ray: &Ray<Render>,
         lambda: &SampledWavelengths,
     ) -> SampledSpectrum {
+        // レンダー座標系からローカル座標系に変換
+        let dir_local = &self.local_to_render.inverse() * &ray.dir;
         // 方向を球面座標に変換
-        let (theta, phi) = Self::direction_to_spherical(ray.dir);
+        let (theta, phi) = Self::direction_to_spherical(dir_local);
 
         // 球面座標をテクスチャ座標に変換
         let (u, v) = Self::spherical_to_uv(theta, phi);
@@ -342,10 +342,10 @@ impl<Id: SceneId> PrimitiveInfiniteLight<Id> for EnvironmentLight {
 
     fn pdf_direction_sample(
         &self,
-        shading_point: &SurfaceInteraction<Render>,
+        _shading_point: &SurfaceInteraction<Render>,
         wi: math::Vector3<Render>,
     ) -> f32 {
-        self.calculate_direction_pdf_efficient(wi, shading_point.shading_normal)
+        self.calculate_direction_pdf_efficient(wi)
     }
 
     fn sample_infinite_light(
@@ -362,9 +362,10 @@ impl<Id: SceneId> PrimitiveInfiniteLight<Id> for EnvironmentLight {
 
         // テクスチャ座標から球面座標、そして方向ベクトルを計算
         let (theta, phi) = Self::uv_to_spherical(u, v);
-        let wi = Self::spherical_to_direction(theta, phi);
+        let wi_local = Self::spherical_to_direction(theta, phi);
+        let wi = &self.local_to_render * &wi_local;
 
-        let pdf_dir = self.calculate_direction_pdf_efficient(wi, shading_point.shading_normal);
+        let pdf_dir = self.calculate_direction_pdf_efficient(wi);
 
         // その方向の放射輝度を計算
         let ray = math::Ray::new(shading_point.position, wi);
