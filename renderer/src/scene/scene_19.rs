@@ -57,10 +57,10 @@ pub fn load_scene_19<Id: scene::SceneId, F: Filter>(
             transform: Transform::identity(),
         });
 
-    // カメラ設定
+    // カメラ設定 - ドラゴンを正面から斜めに映す
     camera.set_look_to(
-        Point3::new(0.0, 1.5, 4.0),
-        Vector3::new(0.0, -0.3, -4.0).normalize(),
+        Point3::new(-1.5, 1.2, 2.5),
+        Vector3::new(1.5, -0.4, -2.5).normalize(),
         Vector3::new(0.0, 1.0, 0.0),
     );
 }

@@ -149,16 +149,17 @@ impl RenderingStrategy for NeeStrategy {
 
     fn calculate_infinite_light_contribution<Id: SceneId, S: Sampler>(
         &self,
-        _scene: &scene::Scene<Id>,
-        _lambda: &SampledWavelengths,
-        _throughput: &SampledSpectrum,
-        _ray: &Ray<Render>,
+        scene: &scene::Scene<Id>,
+        lambda: &SampledWavelengths,
+        throughput: &SampledSpectrum,
+        ray: &Ray<Render>,
         _shading_point: &SurfaceInteraction<Render>,
         _sampler: &mut S,
-        _sample_contribution: &mut SampledSpectrum,
+        sample_contribution: &mut SampledSpectrum,
     ) {
-        // NEEでは明示的ライトサンプリングで既に処理されているため、
-        // ここでは何も追加しない
+        // カメラレイはNEEでも背景のサンプリングを行う
+        let radiance = scene.evaluate_infinite_light_radiance(ray, lambda);
+        *sample_contribution += throughput * radiance;
     }
 
     fn calculate_bsdf_infinite_light_contribution<Id: SceneId, S: Sampler>(
