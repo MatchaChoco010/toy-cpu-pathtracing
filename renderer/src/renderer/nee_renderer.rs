@@ -155,10 +155,25 @@ impl RenderingStrategy for NeeStrategy {
         _ray: &Ray<Render>,
         _shading_point: &SurfaceInteraction<Render>,
         _sampler: &mut S,
-    ) -> SampledSpectrum {
+        _sample_contribution: &mut SampledSpectrum,
+    ) {
         // NEEでは明示的ライトサンプリングで既に処理されているため、
         // ここでは何も追加しない
-        SampledSpectrum::zero()
+    }
+
+    fn calculate_bsdf_infinite_light_contribution<Id: SceneId, S: Sampler>(
+        &self,
+        _scene: &scene::Scene<Id>,
+        _lambda: &SampledWavelengths,
+        _material_sample: &MaterialSample,
+        _throughput: &SampledSpectrum,
+        _render_to_tangent: &Transform<Render, VertexNormalTangent>,
+        _current_hit_info: &Intersection<Id, Render>,
+        _sampler: &mut S,
+        _sample_contribution: &mut SampledSpectrum,
+    ) {
+        // NEEでは明示的ライトサンプリングで既に処理されているため、
+        // BSDFサンプリング後の背景ヒットでは何も追加しない
     }
 }
 
