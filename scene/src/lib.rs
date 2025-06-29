@@ -14,7 +14,8 @@ pub use material::{
     EmissiveMaterial, EmissiveSurfaceMaterial, FloatParameter, GlassMaterial, GlassType,
     LambertMaterial, Material, MetalMaterial, MetalType, NormalParameter, NormalizedLambertBsdf,
     PlasticMaterial, SimpleClearcoatPbrMaterial, SimplePbrMaterial, SpectrumParameter,
-    SurfaceMaterial, UniformEdf,
+    SurfaceMaterial, UniformEdf, evaluate_microfacet_normal_mapping, pdf_microfacet_normal_mapping,
+    sample_microfacet_normal_mapping,
 };
 pub use primitive::{CreatePrimitiveDesc, Intersection, PrimitiveBvh, PrimitiveIndex};
 pub use samples::{
