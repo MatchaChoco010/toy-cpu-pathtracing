@@ -2,12 +2,14 @@
 
 use std::sync::Arc;
 
-use math::{Normal, Transform, Vector3, VertexNormalTangent};
+use math::{Normal, Vector3, VertexNormalTangent};
 use spectrum::SampledWavelengths;
 
 use crate::{
     BsdfSurfaceMaterial, Material, MaterialEvaluationResult, MaterialSample, NormalParameter,
     NormalizedLambertBsdf, SpectrumParameter, SurfaceInteraction, SurfaceMaterial,
+    evaluate_microfacet_normal_mapping, pdf_microfacet_normal_mapping,
+    sample_microfacet_normal_mapping,
 };
 
 /// 拡散反射のみを行うLambertマテリアル。
@@ -41,7 +43,7 @@ impl SurfaceMaterial for LambertMaterial {
 impl BsdfSurfaceMaterial for LambertMaterial {
     fn sample(
         &self,
-        _uc: f32,
+        uc: f32,
         uv: glam::Vec2,
         lambda: &mut SampledWavelengths,
         wo: &Vector3<VertexNormalTangent>,
@@ -55,43 +57,28 @@ impl BsdfSurfaceMaterial for LambertMaterial {
             .sample(shading_point.uv)
             .unwrap_or_else(|| Normal::new(0.0, 0.0, 1.0));
 
-        // シェーディングタンジェント空間からノーマルマップタンジェント空間への変換
-        let transform = Transform::from_normal_map(&normal_map);
-        let transform_inv = transform.inverse();
+        // 幾何学的法線（VertexNormalTangent空間では常にz軸方向）
+        let geometry_normal = Normal::new(0.0, 0.0, 1.0);
 
-        // ベクトルをノーマルマップタンジェント空間に変換
-        let wo_normalmap = &transform * wo;
-
-        // BSDFサンプリング（ノーマルマップタンジェント空間で実行）
-        let bsdf = NormalizedLambertBsdf::new(albedo);
-        let bsdf_result = match bsdf.sample(&wo_normalmap, uv) {
-            Some(result) => result,
-            None => {
-                // BSDFサンプリング失敗の場合
-                return MaterialSample::failed(normal_map);
-            }
+        // Microfacet-based normal mappingを使用してサンプリング
+        let base_bsdf_sample = |wo_local: &Vector3<math::ShadingNormalTangent>,
+                                uv_sample: glam::Vec2| {
+            let bsdf = NormalizedLambertBsdf::new(albedo.clone());
+            bsdf.sample(wo_local, uv_sample)
         };
 
-        // 結果をシェーディングタンジェント空間に変換して返す
-        let wi_shading = &transform_inv * &bsdf_result.wi;
-
-        // 幾何学的制約チェック: wiとwoが幾何法線に対して同じ側にあるかチェック
-        let geometry_normal = shading_point.normal;
-        let wi_cos_geometric = geometry_normal.dot(wi_shading);
-        let wo_cos_geometric = geometry_normal.dot(wo);
-
-        if wi_cos_geometric.signum() != wo_cos_geometric.signum() {
-            // 不透明マテリアルなので表面貫通サンプルは無効
-            return MaterialSample::failed(normal_map);
+        match sample_microfacet_normal_mapping(
+            wo,
+            uv,
+            uc,
+            &normal_map,
+            &geometry_normal,
+            base_bsdf_sample,
+            albedo.clone(),
+        ) {
+            Some(sample) => sample,
+            None => MaterialSample::failed(normal_map),
         }
-
-        MaterialSample::new(
-            bsdf_result.f,
-            wi_shading,
-            bsdf_result.pdf,
-            bsdf_result.sample_type,
-            normal_map,
-        )
     }
 
     fn evaluate(
@@ -109,70 +96,58 @@ impl BsdfSurfaceMaterial for LambertMaterial {
             .sample(shading_point.uv)
             .unwrap_or_else(|| Normal::new(0.0, 0.0, 1.0));
 
-        // シェーディングタンジェント空間からノーマルマップタンジェント空間への変換
-        let transform = Transform::from_normal_map(&normal_map);
+        // 幾何学的法線（VertexNormalTangent空間では常にz軸方向）
+        let geometry_normal = Normal::new(0.0, 0.0, 1.0);
 
-        // ベクトルをノーマルマップタンジェント空間に変換
-        let wo_normalmap = &transform * wo;
-        let wi_normalmap = &transform * wi;
-
-        // 幾何学的制約チェック: wiとwoが幾何法線に対して同じ側にあるかチェック
-        let geometry_normal = shading_point.normal;
-        let wi_cos_geometric = geometry_normal.dot(wi);
-        let wo_cos_geometric = geometry_normal.dot(wo);
-        if wi_cos_geometric.signum() != wo_cos_geometric.signum() {
-            // 不透明マテリアルなので表面貫通は寄与0
-            return MaterialEvaluationResult {
-                f: spectrum::SampledSpectrum::zero(),
-                pdf: 1.0,
-                normal: normal_map,
+        let base_bsdf_eval =
+            |wo_local: &Vector3<math::ShadingNormalTangent>,
+             wi_local: &Vector3<math::ShadingNormalTangent>| {
+                let bsdf = NormalizedLambertBsdf::new(albedo.clone());
+                bsdf.evaluate(wo_local, wi_local)
             };
-        }
 
-        // BSDF評価（ノーマルマップタンジェント空間で実行）
-        let bsdf = NormalizedLambertBsdf::new(albedo);
-        let f = bsdf.evaluate(&wo_normalmap, &wi_normalmap);
+        let f = evaluate_microfacet_normal_mapping(
+            wo,
+            wi,
+            &normal_map,
+            &geometry_normal,
+            base_bsdf_eval,
+        );
 
         MaterialEvaluationResult {
             f,
-            pdf: 1.0,
+            pdf: 1.0, // Deterministic evaluation, not stochastic
             normal: normal_map,
         }
     }
 
     fn pdf(
         &self,
-        _lambda: &SampledWavelengths,
+        lambda: &SampledWavelengths,
         wo: &Vector3<VertexNormalTangent>,
         wi: &Vector3<VertexNormalTangent>,
         shading_point: &SurfaceInteraction<VertexNormalTangent>,
     ) -> f32 {
+        let albedo = self.albedo.sample(shading_point.uv).sample(lambda);
+
         // 法線マップから法線を取得（ない場合はデフォルトのZ+法線）
         let normal_map = self
             .normal
             .sample(shading_point.uv)
             .unwrap_or_else(|| Normal::new(0.0, 0.0, 1.0));
 
-        // シェーディングタンジェント空間からノーマルマップタンジェント空間への変換
-        let transform = Transform::from_normal_map(&normal_map);
+        // 幾何学的法線（VertexNormalTangent空間では常にz軸方向）
+        let geometry_normal = Normal::new(0.0, 0.0, 1.0);
 
-        // 幾何学的制約チェック: wiとwoが幾何法線に対して同じ側にあるかチェック
-        let geometry_normal = shading_point.normal;
-        let wi_cos_geometric = geometry_normal.dot(wi);
-        let wo_cos_geometric = geometry_normal.dot(wo);
-        if wi_cos_geometric.signum() != wo_cos_geometric.signum() {
-            // 不透明マテリアルなので表面貫通のPDFは0
-            return 0.0;
-        }
+        // Microfacet-based normal mappingを使用してPDF計算
+        let base_bsdf_pdf =
+            |wo_local: &Vector3<math::ShadingNormalTangent>,
+             wi_local: &Vector3<math::ShadingNormalTangent>| {
+                let bsdf = NormalizedLambertBsdf::new(albedo.clone());
+                bsdf.pdf(wo_local, wi_local)
+            };
 
-        // ベクトルをノーマルマップタンジェント空間に変換
-        let wo_normalmap = &transform * wo;
-        let wi_normalmap = &transform * wi;
-
-        // BSDF PDF計算（ノーマルマップタンジェント空間で実行）
-        let albedo = self.albedo.sample(shading_point.uv).sample(_lambda);
-        let bsdf = NormalizedLambertBsdf::new(albedo);
-        bsdf.pdf(&wo_normalmap, &wi_normalmap)
+        pdf_microfacet_normal_mapping(wo, wi, &normal_map, &geometry_normal, base_bsdf_pdf)
     }
 
     fn sample_albedo_spectrum(
