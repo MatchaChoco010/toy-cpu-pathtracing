@@ -150,7 +150,7 @@ impl BsdfSurfaceMaterial for MetalMaterial {
             Some(result) => result,
             None => {
                 // BSDFサンプリング失敗の場合
-                return MaterialSample::failed(normal_map);
+                return MaterialSample::failed();
             }
         };
 
@@ -164,7 +164,7 @@ impl BsdfSurfaceMaterial for MetalMaterial {
 
         if wi_cos_geometric.signum() != wo_cos_geometric.signum() {
             // 不透明マテリアルなので表面貫通サンプルは無効
-            return MaterialSample::failed(normal_map);
+            return MaterialSample::failed();
         }
 
         MaterialSample::new(
@@ -172,7 +172,6 @@ impl BsdfSurfaceMaterial for MetalMaterial {
             wi_shading,
             bsdf_result.pdf,
             bsdf_result.sample_type,
-            normal_map,
         )
     }
 
@@ -209,7 +208,6 @@ impl BsdfSurfaceMaterial for MetalMaterial {
             return MaterialEvaluationResult {
                 f: spectrum::SampledSpectrum::zero(),
                 pdf: 1.0,
-                normal: normal_map,
             };
         }
 
@@ -221,11 +219,7 @@ impl BsdfSurfaceMaterial for MetalMaterial {
         let conductor_bsdf = ConductorBsdf::new(eta, k, alpha, alpha);
         let f = conductor_bsdf.evaluate(&wo_normalmap, &wi_normalmap);
 
-        MaterialEvaluationResult {
-            f,
-            pdf: 1.0,
-            normal: normal_map,
-        }
+        MaterialEvaluationResult { f, pdf: 1.0 }
     }
 
     fn pdf(

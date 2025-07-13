@@ -203,10 +203,9 @@ impl BsdfSurfaceMaterial for SimpleClearcoatPbrMaterial {
                         wi_shading,
                         bsdf_result.pdf * clearcoat_fresnel,
                         bsdf_result.sample_type,
-                        normal_map,
                     )
                 }
-                None => MaterialSample::failed(normal_map),
+                None => MaterialSample::failed(),
             }
         } else {
             // 下層をサンプリング
@@ -248,7 +247,6 @@ impl BsdfSurfaceMaterial for SimpleClearcoatPbrMaterial {
                 substrate_sample.wi,
                 substrate_sample.pdf * (1.0 - clearcoat_fresnel),
                 substrate_sample.sample_type,
-                normal_map,
             )
         }
     }
@@ -296,11 +294,7 @@ impl BsdfSurfaceMaterial for SimpleClearcoatPbrMaterial {
                 &wo_normalmap,
                 &wi_normalmap,
             );
-            return MaterialEvaluationResult {
-                f,
-                pdf: 1.0,
-                normal: normal_map,
-            };
+            return MaterialEvaluationResult { f, pdf: 1.0 };
         }
 
         // clearcoatの処理
@@ -357,11 +351,7 @@ impl BsdfSurfaceMaterial for SimpleClearcoatPbrMaterial {
         let f =
             clearcoat_f * clearcoat_fresnel + substrate_f * attenuation * (1.0 - clearcoat_fresnel);
 
-        MaterialEvaluationResult {
-            f,
-            pdf: 1.0,
-            normal: normal_map,
-        }
+        MaterialEvaluationResult { f, pdf: 1.0 }
     }
 
     fn pdf(
@@ -467,7 +457,7 @@ impl SimpleClearcoatPbrMaterial {
         uv: glam::Vec2,
         lambda: &mut SampledWavelengths,
         transform_inv: &Transform<ShadingNormalTangent, VertexNormalTangent>,
-        normal_map: Normal<VertexNormalTangent>,
+        _normal_map: Normal<VertexNormalTangent>,
     ) -> MaterialSample {
         // roughnessからalpha値を計算
         let alpha = Self::roughness_to_alpha(roughness_value);
@@ -601,7 +591,7 @@ impl SimpleClearcoatPbrMaterial {
         uv: glam::Vec2,
         lambda: &mut SampledWavelengths,
         transform_inv: &Transform<ShadingNormalTangent, VertexNormalTangent>,
-        normal_map: Normal<VertexNormalTangent>,
+        _normal_map: Normal<VertexNormalTangent>,
     ) -> MaterialSample {
         // 金属用GeneralizedSchlickBsdf
         let r0 = base_color.clone();
@@ -629,10 +619,9 @@ impl SimpleClearcoatPbrMaterial {
                     wi_shading,
                     bsdf_result.pdf,
                     bsdf_result.sample_type,
-                    normal_map,
                 )
             }
-            None => MaterialSample::failed(normal_map),
+            None => MaterialSample::failed(),
         }
     }
 
@@ -647,7 +636,7 @@ impl SimpleClearcoatPbrMaterial {
         uv: glam::Vec2,
         lambda: &mut SampledWavelengths,
         transform_inv: &Transform<ShadingNormalTangent, VertexNormalTangent>,
-        normal_map: Normal<VertexNormalTangent>,
+        _normal_map: Normal<VertexNormalTangent>,
     ) -> MaterialSample {
         // 非金属用GeneralizedSchlickBsdf（反射・透過）
         let r0_value = Self::compute_dielectric_r0(ior);
@@ -681,10 +670,9 @@ impl SimpleClearcoatPbrMaterial {
                         wi_shading,
                         bsdf_result.pdf * fresnel,
                         bsdf_result.sample_type,
-                        normal_map,
                     )
                 }
-                None => MaterialSample::failed(normal_map),
+                None => MaterialSample::failed(),
             }
         } else {
             // Diffuse反射をサンプリング
@@ -697,10 +685,9 @@ impl SimpleClearcoatPbrMaterial {
                         wi_shading,
                         bsdf_result.pdf * (1.0 - fresnel),
                         bsdf_result.sample_type,
-                        normal_map,
                     )
                 }
-                None => MaterialSample::failed(normal_map),
+                None => MaterialSample::failed(),
             }
         }
     }
@@ -717,7 +704,7 @@ impl SimpleClearcoatPbrMaterial {
         uv: glam::Vec2,
         lambda: &mut SampledWavelengths,
         transform_inv: &Transform<ShadingNormalTangent, VertexNormalTangent>,
-        normal_map: Normal<VertexNormalTangent>,
+        _normal_map: Normal<VertexNormalTangent>,
     ) -> MaterialSample {
         if uc <= metallic {
             // 金属として扱う

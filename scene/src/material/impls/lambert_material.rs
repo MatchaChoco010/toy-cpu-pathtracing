@@ -68,7 +68,7 @@ impl BsdfSurfaceMaterial for LambertMaterial {
             Some(result) => result,
             None => {
                 // BSDFサンプリング失敗の場合
-                return MaterialSample::failed(normal_map);
+                return MaterialSample::failed();
             }
         };
 
@@ -82,7 +82,7 @@ impl BsdfSurfaceMaterial for LambertMaterial {
 
         if wi_cos_geometric.signum() != wo_cos_geometric.signum() {
             // 不透明マテリアルなので表面貫通サンプルは無効
-            return MaterialSample::failed(normal_map);
+            return MaterialSample::failed();
         }
 
         MaterialSample::new(
@@ -90,7 +90,6 @@ impl BsdfSurfaceMaterial for LambertMaterial {
             wi_shading,
             bsdf_result.pdf,
             bsdf_result.sample_type,
-            normal_map,
         )
     }
 
@@ -125,7 +124,6 @@ impl BsdfSurfaceMaterial for LambertMaterial {
             return MaterialEvaluationResult {
                 f: spectrum::SampledSpectrum::zero(),
                 pdf: 1.0,
-                normal: normal_map,
             };
         }
 
@@ -133,11 +131,7 @@ impl BsdfSurfaceMaterial for LambertMaterial {
         let bsdf = NormalizedLambertBsdf::new(albedo);
         let f = bsdf.evaluate(&wo_normalmap, &wi_normalmap);
 
-        MaterialEvaluationResult {
-            f,
-            pdf: 1.0,
-            normal: normal_map,
-        }
+        MaterialEvaluationResult { f, pdf: 1.0 }
     }
 
     fn pdf(

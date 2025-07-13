@@ -128,7 +128,7 @@ impl BsdfSurfaceMaterial for GlassMaterial {
             Some(result) => result,
             None => {
                 // BSDFサンプリング失敗の場合
-                return MaterialSample::failed(normal_map);
+                return MaterialSample::failed();
             }
         };
 
@@ -140,7 +140,6 @@ impl BsdfSurfaceMaterial for GlassMaterial {
             wi_shading,
             bsdf_result.pdf,
             bsdf_result.sample_type,
-            normal_map,
         )
     }
 
@@ -181,11 +180,7 @@ impl BsdfSurfaceMaterial for GlassMaterial {
         );
         let f = dielectric_bsdf.evaluate(&wo_normalmap, &wi_normalmap);
 
-        MaterialEvaluationResult {
-            f,
-            pdf: 1.0,
-            normal: normal_map,
-        }
+        MaterialEvaluationResult { f, pdf: 1.0 }
     }
 
     fn pdf(
