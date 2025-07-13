@@ -43,12 +43,9 @@ pub fn evaluate_delta_point_light<Id: SceneId>(
         let shading_point_tangent = render_to_tangent * shading_point;
         let material_result = bsdf.evaluate(lambda, &wo, &wi, &shading_point_tangent);
 
-        // Normal mappingされた表面法線に対するcos項
         let distance_squared = distance_vector.length_squared();
-        let cos_theta = material_result.normal.dot(wi).abs();
 
-        material_result.f * &intensity.intensity * cos_theta
-            / (distance_squared * light_probability)
+        material_result.f * &intensity.intensity / (distance_squared * light_probability)
     } else {
         SampledSpectrum::zero()
     }
@@ -75,10 +72,7 @@ pub fn evaluate_delta_directional_light<Id: SceneId>(
         let shading_point_tangent = render_to_tangent * shading_point;
         let material_result = bsdf.evaluate(lambda, &wo, &wi, &shading_point_tangent);
 
-        // Normal mappingされた表面法線に対するcos項
-        let cos_theta = material_result.normal.dot(wi).abs();
-
-        material_result.f * &intensity.intensity * cos_theta / light_probability
+        material_result.f * &intensity.intensity / light_probability
     } else {
         SampledSpectrum::zero()
     }
@@ -116,7 +110,7 @@ pub fn evaluate_area_light<Id: SceneId>(
         // 幾何項の計算
         let distance2 = distance_vector.length_squared();
         let light_normal = render_to_tangent * radiance.light_normal; // VertexNormalTangent座標系に変換
-        let cos_material = material_result.normal.dot(wi_tangent).abs(); // VertexNormalTangent座標系で統一
+        let cos_material = shading_point_tangent.shading_normal.dot(wi_tangent).abs(); // VertexNormalTangent座標系で統一
         let cos_light = light_normal.dot(-wi_tangent).abs(); // VertexNormalTangent座標系で統一
         let g = cos_material * cos_light / distance2;
 
@@ -156,7 +150,7 @@ pub fn evaluate_area_light_with_mis<Id: SceneId>(
         // 幾何項の計算
         let distance2 = distance_vector.length_squared();
         let light_normal = render_to_tangent * radiance.light_normal;
-        let cos_material = material_result.normal.dot(wi).abs();
+        let cos_material = shading_point_tangent.shading_normal.dot(wi).abs();
         let cos_light = light_normal.dot(-wi).abs();
         let g = cos_material * cos_light / distance2;
 
@@ -200,9 +194,7 @@ pub fn evaluate_infinite_light<Id: SceneId>(
         let shading_point_tangent = render_to_tangent * shading_point;
         let material_result = bsdf.evaluate(lambda, &wo, &wi, &shading_point_tangent);
 
-        let cos_theta = material_result.normal.dot(wi).abs();
-
-        material_result.f * &radiance_sample.radiance * cos_theta
+        material_result.f * &radiance_sample.radiance
             / (radiance_sample.pdf_dir * light_probability)
     } else {
         SampledSpectrum::zero()
@@ -231,14 +223,12 @@ pub fn evaluate_infinite_light_with_mis<Id: SceneId>(
         let shading_point_tangent = render_to_tangent * shading_point;
         let material_result = bsdf.evaluate(lambda, &wo, &wi, &shading_point_tangent);
 
-        let cos_theta = material_result.normal.dot(wi).abs();
-
         let pdf_light_dir = radiance_sample.pdf_dir;
         let pdf_bsdf_dir = bsdf.pdf(lambda, &wo, &wi, &shading_point_tangent);
         let mis_weight = balance_heuristic(pdf_light_dir, pdf_bsdf_dir);
 
-        let contribution = material_result.f * &radiance_sample.radiance * cos_theta
-            / (pdf_light_dir * light_probability);
+        let contribution =
+            material_result.f * &radiance_sample.radiance / (pdf_light_dir * light_probability);
 
         NeeResult {
             contribution,

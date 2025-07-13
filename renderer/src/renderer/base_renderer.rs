@@ -103,10 +103,9 @@ impl<'a, Id: SceneId, F: Filter, T: ToneMap, Strategy: RenderingStrategy>
             return None;
         }
 
-        let cos_theta = material_sample.normal.dot(material_sample.wi).abs();
         let sample_wi = material_sample.wi;
         let f_value = &material_sample.f;
-        let throughput_factor = cos_theta / material_sample.pdf;
+        let throughput_factor = 1.0 / material_sample.pdf;
 
         // wiの方向にレイを飛ばす
         let wi_render = &render_to_tangent.inverse() * &sample_wi;

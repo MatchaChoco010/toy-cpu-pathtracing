@@ -223,8 +223,7 @@ impl RenderingStrategy for MisStrategy {
         let mis_weight = balance_heuristic(bsdf_pdf, light_pdf);
 
         // BSDF項を計算
-        let cos_theta = material_sample.normal.dot(material_sample.wi).abs();
-        let throughput_factor = cos_theta / material_sample.pdf;
+        let throughput_factor = 1.0 / material_sample.pdf;
 
         *sample_contribution +=
             throughput * &material_sample.f * radiance * throughput_factor * mis_weight;
