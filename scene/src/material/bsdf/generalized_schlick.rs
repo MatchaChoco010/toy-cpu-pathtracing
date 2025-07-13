@@ -561,8 +561,8 @@ impl GeneralizedSchlickBsdf {
             let cos_theta_i = abs_cos_theta(&wi);
             let cos_theta_o = abs_cos_theta(wo);
 
-            let ft = transmission * d * g * wi.dot(wm).abs() * wo.dot(wm).abs()
-                / (denom * cos_theta_i * cos_theta_o * eta * eta);
+            let ft = transmission * d * g * wi.dot(wm).abs() * wo.dot(wm).abs() * cos_theta_i
+                / (denom * cos_theta_o * eta * eta);
 
             Some(BsdfSample::new(
                 ft,
