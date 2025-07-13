@@ -491,7 +491,7 @@ impl GeneralizedSchlickBsdf {
             return None;
         }
 
-        let f_value = fresnel * d * g * cos_theta_i / (4.0 * cos_theta_o);
+        let f_value = fresnel * d * g / (4.0 * cos_theta_o);
 
         Some(BsdfSample::new(
             f_value,
@@ -558,10 +558,10 @@ impl GeneralizedSchlickBsdf {
             // マイクロファセットBTDF値計算
             let d = self.microfacet_distribution(wm);
             let g = self.masking_shadowing_g(wo, &wi);
-            let cos_theta_i = abs_cos_theta(&wi);
+            let _cos_theta_i = abs_cos_theta(&wi);
             let cos_theta_o = abs_cos_theta(wo);
 
-            let ft = transmission * d * g * wi.dot(wm).abs() * wo.dot(wm).abs() * cos_theta_i
+            let ft = transmission * d * g * wi.dot(wm).abs() * wo.dot(wm).abs()
                 / (denom * cos_theta_o * eta * eta);
 
             Some(BsdfSample::new(
@@ -651,10 +651,10 @@ impl GeneralizedSchlickBsdf {
         // マイクロファセットBRDF: D(ωm) * F(ωo·ωm) * G(ωo, ωi) / (4 * cos θi * cos θo)
         let d = self.microfacet_distribution(&wm);
         let g = self.masking_shadowing_g(wo, wi);
-        let cos_theta_i = wi.z().abs();
+        let _cos_theta_i = wi.z().abs();
         let cos_theta_o = wo.z().abs();
 
-        fresnel * d * g * cos_theta_i / (4.0 * cos_theta_o)
+        fresnel * d * g / (4.0 * cos_theta_o)
     }
 
     /// 透過BTDFを評価する。
@@ -699,8 +699,7 @@ impl GeneralizedSchlickBsdf {
             let d = self.microfacet_distribution(&wm);
             let g = self.masking_shadowing_g(wo, wi);
 
-            let numerator =
-                d * transmission * g * wi.dot(wm).abs() * wo.dot(wm).abs() * abs_cos_theta(wi);
+            let numerator = d * transmission * g * wi.dot(wm).abs() * wo.dot(wm).abs();
             let denominator = denom * abs_cos_theta(wo);
 
             numerator / denominator / (eta_scalar * eta_scalar)

@@ -346,8 +346,8 @@ impl ConductorBsdf {
         // マスキング・シャドウイング項: G(ωo, ωi)
         let masking_shadowing = self.masking_shadowing_g(wo, wi);
 
-        // Torrance-Sparrow BRDF（cosine項を含む）: D(ωm) * F(ωo·ωm) * G(ωo, ωi) * cos θi / (4 * cos θo)
-        fresnel * distribution * masking_shadowing * cos_theta_i / (4.0 * cos_theta_o)
+        // Torrance-Sparrow BRDF（cosine項を含む）: D(ωm) * F(ωo·ωm) * G(ωo, ωi) / (4 * cos θo)
+        fresnel * distribution * masking_shadowing / (4.0 * cos_theta_o)
     }
 
     /// BSDF値を評価する。

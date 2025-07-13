@@ -587,14 +587,14 @@ impl DielectricBsdf {
             let d = self.microfacet_distribution(&wm);
             let g = self.masking_shadowing_g(wo, wi);
 
-            fresnel * d * g * abs_cos_theta(wi) / (4.0 * abs_cos_theta(wo))
+            fresnel * d * g / (4.0 * abs_cos_theta(wo))
         } else {
             let denom = (wi.dot(wm) + wo.dot(wm) / eta_scalar).powi(2);
             let d = self.microfacet_distribution(&wm);
             let g = self.masking_shadowing_g(wo, wi);
             let transmission = SampledSpectrum::one() - fresnel;
 
-            transmission * d * g * wi.dot(wm).abs() * wo.dot(wm).abs() * abs_cos_theta(wi)
+            transmission * d * g * wi.dot(wm).abs() * wo.dot(wm).abs()
                 / (denom * abs_cos_theta(wo) * eta_scalar * eta_scalar)
         }
     }
