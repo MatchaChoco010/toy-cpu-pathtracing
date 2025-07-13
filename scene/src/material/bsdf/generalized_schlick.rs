@@ -558,7 +558,6 @@ impl GeneralizedSchlickBsdf {
             // マイクロファセットBTDF値計算
             let d = self.microfacet_distribution(wm);
             let g = self.masking_shadowing_g(wo, &wi);
-            let _cos_theta_i = abs_cos_theta(&wi);
             let cos_theta_o = abs_cos_theta(wo);
 
             let ft = transmission * d * g * wi.dot(wm).abs() * wo.dot(wm).abs()
@@ -651,7 +650,6 @@ impl GeneralizedSchlickBsdf {
         // マイクロファセットBRDF: D(ωm) * F(ωo·ωm) * G(ωo, ωi) / (4 * cos θi * cos θo)
         let d = self.microfacet_distribution(&wm);
         let g = self.masking_shadowing_g(wo, wi);
-        let _cos_theta_i = wi.z().abs();
         let cos_theta_o = wo.z().abs();
 
         fresnel * d * g / (4.0 * cos_theta_o)

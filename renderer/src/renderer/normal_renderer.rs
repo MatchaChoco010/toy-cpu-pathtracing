@@ -2,7 +2,6 @@
 
 use color::{ColorSrgb, tone_map};
 use scene::{Intersection, SceneId};
-use spectrum::SampledWavelengths;
 
 use crate::{
     filter::Filter,
@@ -41,19 +40,12 @@ impl<'a, Id: SceneId, F: Filter> Renderer for NormalRenderer<'a, Id, F> {
             let uv = sampler.get_2d_pixel();
             let rs = camera.sample_ray(p, uv);
 
-            // dummyのlambda
-            let u = sampler.get_1d();
-            let _lambda = SampledWavelengths::new_uniform(u);
-
             let intersect = scene.intersect(&rs.ray, f32::MAX);
 
             let color = match intersect {
                 Some(intersect) => {
-                    let Intersection {
-                        interaction, wo, ..
-                    } = intersect;
+                    let Intersection { interaction, .. } = intersect;
                     let render_to_tangent = interaction.shading_transform();
-                    let _wo = &render_to_tangent * wo;
                     let shading_point = &render_to_tangent * &interaction;
 
                     if let Some(_bsdf) = interaction.material.as_bsdf_material() {

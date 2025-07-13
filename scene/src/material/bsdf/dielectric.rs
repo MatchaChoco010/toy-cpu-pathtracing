@@ -349,10 +349,9 @@ impl DielectricBsdf {
 
         let d = self.microfacet_distribution(wm);
         let g = self.masking_shadowing_g(wo, &wi);
-        let cos_theta_i = abs_cos_theta(&wi);
         let cos_theta_o = abs_cos_theta(wo);
 
-        let ft = transmission * d * g * wi.dot(wm).abs() * wo.dot(wm).abs() * cos_theta_i
+        let ft = transmission * d * g * wi.dot(wm).abs() * wo.dot(wm).abs()
             / (denom * cos_theta_o * etap * etap);
 
         Some(BsdfSample::new(
