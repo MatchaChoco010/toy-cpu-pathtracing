@@ -11,7 +11,7 @@ use crate::material::Material;
 /// マテリアル評価結果を表す構造体。
 #[derive(Debug, Clone)]
 pub struct MaterialEvaluationResult {
-    /// BSDF値
+    /// BSDF値（コサイン項込み）
     pub f: SampledSpectrum,
     /// 確率的評価を行うBSDFの評価確率密度関数値
     pub pdf: f32,
@@ -37,7 +37,7 @@ pub struct SpecularDirectionSample {
 /// マテリアルの方向サンプリング結果を表す構造体。
 #[derive(Debug, Clone)]
 pub struct MaterialSample {
-    /// BSDF値
+    /// BSDF値（コサイン項込み）
     pub f: SampledSpectrum,
     /// サンプルされた入射方向（シェーディング接空間）
     pub wi: Vector3<VertexNormalTangent>,

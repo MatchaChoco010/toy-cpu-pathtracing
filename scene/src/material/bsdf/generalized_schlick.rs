@@ -491,7 +491,7 @@ impl GeneralizedSchlickBsdf {
             return None;
         }
 
-        let f_value = fresnel * d * g / (4.0 * cos_theta_i * cos_theta_o);
+        let f_value = fresnel * d * g * cos_theta_i / (4.0 * cos_theta_o);
 
         Some(BsdfSample::new(
             f_value,
@@ -654,7 +654,7 @@ impl GeneralizedSchlickBsdf {
         let cos_theta_i = wi.z().abs();
         let cos_theta_o = wo.z().abs();
 
-        fresnel * d * g / (4.0 * cos_theta_i * cos_theta_o)
+        fresnel * d * g * cos_theta_i / (4.0 * cos_theta_o)
     }
 
     /// 透過BTDFを評価する。
