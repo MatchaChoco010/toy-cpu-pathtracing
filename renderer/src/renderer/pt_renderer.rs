@@ -78,9 +78,7 @@ impl RenderingStrategy for PtStrategy {
 
         // 無限光源の放射輝度をBSDFで重み付けして計算
         let radiance = scene.evaluate_infinite_light_radiance(&background_ray, lambda);
-        let cos_theta = material_sample.normal.dot(material_sample.wi).abs();
-        *sample_contribution +=
-            throughput * &material_sample.f * radiance * cos_theta / material_sample.pdf;
+        *sample_contribution += throughput * &material_sample.f * radiance / material_sample.pdf;
     }
 }
 

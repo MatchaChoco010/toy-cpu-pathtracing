@@ -59,8 +59,8 @@ impl NormalizedLambertBsdf {
             return None; // 同じ半球内でない場合は無効
         }
 
-        // BSDFの値を計算
-        let f = self.albedo.clone() / PI;
+        // BSDFの値を計算（cosine項を含む）
+        let f = self.albedo.clone() * wi_cos_n.abs() / PI;
 
         // PDFを計算
         let pdf = wi_cos_n.abs() / PI;
@@ -90,8 +90,8 @@ impl NormalizedLambertBsdf {
             return SampledSpectrum::zero();
         }
 
-        // BSDFの値を計算（標準ランバート）
-        self.albedo.clone() / PI
+        // BSDFの値を計算（cosine項を含む）
+        self.albedo.clone() * wi_cos_n.abs() / PI
     }
 
     /// BSDF PDFを計算する。

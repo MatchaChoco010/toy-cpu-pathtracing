@@ -158,7 +158,7 @@ impl BsdfSurfaceMaterial for PlasticMaterial {
             Some(result) => result,
             None => {
                 // BSDFサンプリング失敗の場合
-                return MaterialSample::failed(normal_map);
+                return MaterialSample::failed();
             }
         };
 
@@ -176,7 +176,6 @@ impl BsdfSurfaceMaterial for PlasticMaterial {
             wi_shading,
             bsdf_result.pdf,
             bsdf_result.sample_type,
-            normal_map,
         )
     }
 
@@ -223,11 +222,7 @@ impl BsdfSurfaceMaterial for PlasticMaterial {
             f *= color_spectrum;
         }
 
-        MaterialEvaluationResult {
-            f,
-            pdf: 1.0,
-            normal: normal_map,
-        }
+        MaterialEvaluationResult { f, pdf: 1.0 }
     }
 
     fn pdf(

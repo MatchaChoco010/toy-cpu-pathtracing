@@ -114,7 +114,6 @@ impl BsdfSurfaceMaterial for SimplePbrMaterial {
                 uv,
                 lambda,
                 &transform_inv,
-                normal_map,
             )
         } else if metallic_value <= 0.0 {
             // 完全非金属
@@ -127,7 +126,6 @@ impl BsdfSurfaceMaterial for SimplePbrMaterial {
                 uv,
                 lambda,
                 &transform_inv,
-                normal_map,
             )
         } else {
             // 金属と非金属をミックス
@@ -141,7 +139,6 @@ impl BsdfSurfaceMaterial for SimplePbrMaterial {
                 uv,
                 lambda,
                 &transform_inv,
-                normal_map,
             )
         }
     }
@@ -201,11 +198,7 @@ impl BsdfSurfaceMaterial for SimplePbrMaterial {
             metallic_f * metallic_value + dielectric_f * (1.0 - metallic_value)
         };
 
-        MaterialEvaluationResult {
-            f,
-            pdf: 1.0,
-            normal: normal_map,
-        }
+        MaterialEvaluationResult { f, pdf: 1.0 }
     }
 
     fn pdf(
@@ -283,7 +276,6 @@ impl SimplePbrMaterial {
         uv: glam::Vec2,
         lambda: &mut SampledWavelengths,
         transform_inv: &Transform<ShadingNormalTangent, VertexNormalTangent>,
-        normal_map: Normal<VertexNormalTangent>,
     ) -> MaterialSample {
         // 金属用GeneralizedSchlickBsdf
         let r0 = base_color.clone();
@@ -311,10 +303,9 @@ impl SimplePbrMaterial {
                     wi_shading,
                     bsdf_result.pdf,
                     bsdf_result.sample_type,
-                    normal_map,
                 )
             }
-            None => MaterialSample::failed(normal_map),
+            None => MaterialSample::failed(),
         }
     }
 
@@ -329,7 +320,6 @@ impl SimplePbrMaterial {
         uv: glam::Vec2,
         lambda: &mut SampledWavelengths,
         transform_inv: &Transform<ShadingNormalTangent, VertexNormalTangent>,
-        normal_map: Normal<VertexNormalTangent>,
     ) -> MaterialSample {
         // 非金属用GeneralizedSchlickBsdf（反射・透過）
         let r0_value = Self::compute_dielectric_r0(ior);
@@ -363,10 +353,9 @@ impl SimplePbrMaterial {
                         wi_shading,
                         bsdf_result.pdf * fresnel,
                         bsdf_result.sample_type,
-                        normal_map,
                     )
                 }
-                None => MaterialSample::failed(normal_map),
+                None => MaterialSample::failed(),
             }
         } else {
             // Diffuse反射をサンプリング
@@ -379,10 +368,9 @@ impl SimplePbrMaterial {
                         wi_shading,
                         bsdf_result.pdf * (1.0 - fresnel),
                         bsdf_result.sample_type,
-                        normal_map,
                     )
                 }
-                None => MaterialSample::failed(normal_map),
+                None => MaterialSample::failed(),
             }
         }
     }
@@ -399,19 +387,10 @@ impl SimplePbrMaterial {
         uv: glam::Vec2,
         lambda: &mut SampledWavelengths,
         transform_inv: &Transform<ShadingNormalTangent, VertexNormalTangent>,
-        normal_map: Normal<VertexNormalTangent>,
     ) -> MaterialSample {
         if uc <= metallic {
             // 金属として扱う
-            self.sample_metallic(
-                base_color,
-                alpha,
-                wo_normalmap,
-                uv,
-                lambda,
-                transform_inv,
-                normal_map,
-            )
+            self.sample_metallic(base_color, alpha, wo_normalmap, uv, lambda, transform_inv)
         } else {
             // 非金属として扱う
             self.sample_dielectric(
@@ -423,7 +402,6 @@ impl SimplePbrMaterial {
                 uv,
                 lambda,
                 transform_inv,
-                normal_map,
             )
         }
     }

@@ -11,12 +11,10 @@ use crate::material::Material;
 /// マテリアル評価結果を表す構造体。
 #[derive(Debug, Clone)]
 pub struct MaterialEvaluationResult {
-    /// BSDF値
+    /// BSDF値（コサイン項込み）
     pub f: SampledSpectrum,
     /// 確率的評価を行うBSDFの評価確率密度関数値
     pub pdf: f32,
-    /// 選択されたレイヤーの法線マップ（シェーディング接空間）
-    pub normal: Normal<VertexNormalTangent>,
 }
 
 use crate::material::bsdf::BsdfSampleType;
@@ -39,7 +37,7 @@ pub struct SpecularDirectionSample {
 /// マテリアルの方向サンプリング結果を表す構造体。
 #[derive(Debug, Clone)]
 pub struct MaterialSample {
-    /// BSDF値
+    /// BSDF値（コサイン項込み）
     pub f: SampledSpectrum,
     /// サンプルされた入射方向（シェーディング接空間）
     pub wi: Vector3<VertexNormalTangent>,
@@ -47,8 +45,6 @@ pub struct MaterialSample {
     pub pdf: f32,
     /// マテリアルサンプルのタイプ
     pub sample_type: BsdfSampleType,
-    /// 選択されたレイヤーの法線マップ（シェーディング接空間）
-    pub normal: Normal<VertexNormalTangent>,
     /// サンプリングが成功したかどうか
     pub is_sampled: bool,
 }
@@ -59,26 +55,23 @@ impl MaterialSample {
         wi: Vector3<VertexNormalTangent>,
         pdf: f32,
         sample_type: BsdfSampleType,
-        normal: Normal<VertexNormalTangent>,
     ) -> Self {
         Self {
             f,
             wi,
             pdf,
             sample_type,
-            normal,
             is_sampled: true,
         }
     }
 
     /// サンプリング失敗のMaterialSampleを作成する。
-    pub fn failed(normal: Normal<VertexNormalTangent>) -> Self {
+    pub fn failed() -> Self {
         Self {
             f: SampledSpectrum::zero(),
             wi: Vector3::new(0.0, 0.0, 1.0), // ダミー値
             pdf: 0.0,
             sample_type: BsdfSampleType::Diffuse, // ダミー値
-            normal,
             is_sampled: false,
         }
     }

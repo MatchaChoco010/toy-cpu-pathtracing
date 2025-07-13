@@ -42,7 +42,7 @@ pub enum ScatterMode {
 // Bsdfのサンプリング結果を表す構造体。
 #[derive(Debug, Clone)]
 pub struct BsdfSample {
-    /// BSDF値
+    /// BSDF値（コサイン項込み）
     pub f: spectrum::SampledSpectrum,
     /// サンプルされた入射方向（ノーマルマップ接空間）
     pub wi: math::Vector3<ShadingNormalTangent>,
