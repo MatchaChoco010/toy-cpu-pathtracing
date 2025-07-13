@@ -312,10 +312,10 @@ impl DielectricBsdf {
         }
         let pdf = self.visible_normal_distribution(wo, wm) / (4.0 * cos_theta_dot) * prob;
 
-        // BRDF値計算
+        // BRDF値計算（cosine項を含む）
         let d = self.microfacet_distribution(wm);
         let g = self.masking_shadowing_g(wo, &wi);
-        let f_value = fresnel * d * g / (4.0 * abs_cos_theta(&wi) * abs_cos_theta(wo));
+        let f_value = fresnel * d * g * abs_cos_theta(&wi) / (4.0 * abs_cos_theta(wo));
 
         Some(BsdfSample::new(
             f_value,
@@ -352,8 +352,8 @@ impl DielectricBsdf {
         let cos_theta_i = abs_cos_theta(&wi);
         let cos_theta_o = abs_cos_theta(wo);
 
-        let ft = transmission * d * g * wi.dot(wm).abs() * wo.dot(wm).abs()
-            / (denom * cos_theta_i * cos_theta_o * etap * etap);
+        let ft = transmission * d * g * wi.dot(wm).abs() * wo.dot(wm).abs() * cos_theta_i
+            / (denom * cos_theta_o * etap * etap);
 
         Some(BsdfSample::new(
             ft,
@@ -379,8 +379,7 @@ impl DielectricBsdf {
         let pdf = prob;
 
         // BTDF値（thin surfaceの特別な処理）
-        let wi_cos_n = abs_cos_theta(&wi);
-        let f_value = transmission / wi_cos_n;
+        let f_value = transmission;
 
         Some(BsdfSample::new(
             f_value,
@@ -453,7 +452,7 @@ impl DielectricBsdf {
                 if wo_cos_n.abs() < 1e-6 {
                     return None;
                 }
-                let f = fresnel / wo_cos_n.abs();
+                let f = fresnel;
                 Some(BsdfSample::new(
                     f,
                     wi,
@@ -470,7 +469,7 @@ impl DielectricBsdf {
 
                 // Thin surfaceの場合、放射輝度のスケーリングは不要（同じ媒質に戻るため）
                 let transmission = SampledSpectrum::one() - fresnel;
-                let f = transmission / wi_cos_n.abs();
+                let f = transmission;
                 Some(BsdfSample::new(
                     f,
                     wi,
@@ -490,7 +489,7 @@ impl DielectricBsdf {
                 if wo_cos_n.abs() < 1e-6 {
                     return None;
                 }
-                let f = fresnel / wo_cos_n.abs();
+                let f = fresnel;
                 Some(BsdfSample::new(
                     f,
                     wi,
@@ -510,7 +509,7 @@ impl DielectricBsdf {
                     }
 
                     let transmission = SampledSpectrum::one() - fresnel;
-                    let f = transmission / (etap_scalar.powi(2) * wt_cos_n.abs());
+                    let f = transmission / etap_scalar.powi(2);
                     Some(BsdfSample::new(
                         f,
                         wt,
@@ -588,15 +587,15 @@ impl DielectricBsdf {
             let d = self.microfacet_distribution(&wm);
             let g = self.masking_shadowing_g(wo, wi);
 
-            fresnel * d * g / (4.0 * abs_cos_theta(wi) * abs_cos_theta(wo))
+            fresnel * d * g * abs_cos_theta(wi) / (4.0 * abs_cos_theta(wo))
         } else {
             let denom = (wi.dot(wm) + wo.dot(wm) / eta_scalar).powi(2);
             let d = self.microfacet_distribution(&wm);
             let g = self.masking_shadowing_g(wo, wi);
             let transmission = SampledSpectrum::one() - fresnel;
 
-            transmission * d * g * wi.dot(wm).abs() * wo.dot(wm).abs()
-                / (denom * abs_cos_theta(wi) * abs_cos_theta(wo) * eta_scalar * eta_scalar)
+            transmission * d * g * wi.dot(wm).abs() * wo.dot(wm).abs() * abs_cos_theta(wi)
+                / (denom * abs_cos_theta(wo) * eta_scalar * eta_scalar)
         }
     }
 

@@ -283,8 +283,8 @@ impl ConductorBsdf {
         // Fresnel反射率を計算
         let fresnel = fresnel_complex(wi_cos_n.abs(), &self.eta, &self.k);
 
-        // BSDF値: F / |cos(theta_i)|
-        let f = fresnel / wi_cos_n.abs();
+        // BSDF値: F (Specularではcosine項の操作なし)
+        let f = fresnel;
 
         Some(BsdfSample::new(
             f,
@@ -346,8 +346,8 @@ impl ConductorBsdf {
         // マスキング・シャドウイング項: G(ωo, ωi)
         let masking_shadowing = self.masking_shadowing_g(wo, wi);
 
-        // Torrance-Sparrow BRDF: D(ωm) * F(ωo·ωm) * G(ωo, ωi) / (4 * cos θi * cos θo)
-        fresnel * distribution * masking_shadowing / (4.0 * cos_theta_i * cos_theta_o)
+        // Torrance-Sparrow BRDF（cosine項を含む）: D(ωm) * F(ωo·ωm) * G(ωo, ωi) * cos θi / (4 * cos θo)
+        fresnel * distribution * masking_shadowing * cos_theta_i / (4.0 * cos_theta_o)
     }
 
     /// BSDF値を評価する。

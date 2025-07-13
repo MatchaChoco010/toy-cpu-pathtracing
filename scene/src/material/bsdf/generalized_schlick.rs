@@ -262,8 +262,8 @@ impl GeneralizedSchlickBsdf {
                     return None;
                 }
 
-                // BSDF値: F / |cos(theta_i)|
-                let f = fresnel / wi_cos_n.abs();
+                // BSDF値: F (Specularではcosine項の操作なし)
+                let f = fresnel;
 
                 Some(BsdfSample::new(
                     f,
@@ -284,7 +284,7 @@ impl GeneralizedSchlickBsdf {
                     }
 
                     let transmission = SampledSpectrum::one() - fresnel;
-                    let f = transmission / wi_cos_n.abs();
+                    let f = transmission;
                     Some(BsdfSample::new(
                         f,
                         wi,
@@ -313,7 +313,7 @@ impl GeneralizedSchlickBsdf {
                         }
 
                         let transmission = SampledSpectrum::one() - fresnel;
-                        let f = transmission / (eta * eta * wt_cos_n.abs());
+                        let f = transmission / (eta * eta);
                         Some(BsdfSample::new(
                             f,
                             wt,
@@ -341,7 +341,7 @@ impl GeneralizedSchlickBsdf {
                         return None;
                     }
 
-                    let f = fresnel * (pr / (pr + pt)) / wi_cos_n.abs();
+                    let f = fresnel * (pr / (pr + pt));
                     Some(BsdfSample::new(
                         f,
                         wi,
@@ -358,7 +358,7 @@ impl GeneralizedSchlickBsdf {
                     }
 
                     let transmission = SampledSpectrum::one() - fresnel;
-                    let f = transmission * (pt / (pr + pt)) / wi_cos_n.abs();
+                    let f = transmission * (pt / (pr + pt));
                     Some(BsdfSample::new(
                         f,
                         wi,
@@ -389,7 +389,7 @@ impl GeneralizedSchlickBsdf {
                         }
 
                         let transmission = SampledSpectrum::one() - fresnel;
-                        let f = transmission * (pt / (pr + pt)) / (eta * eta * wt_cos_n.abs());
+                        let f = transmission * (pt / (pr + pt)) / (eta * eta);
                         Some(BsdfSample::new(
                             f,
                             wt,
@@ -521,8 +521,8 @@ impl GeneralizedSchlickBsdf {
             // PDF計算（簡単な透過の場合）
             let pdf = prob;
 
-            // BTDF値
-            let f_value = transmission / wi_cos_n.abs();
+            // BTDF値 (thin surfaceのspecular-like透過)
+            let f_value = transmission;
 
             Some(BsdfSample::new(
                 f_value,
@@ -672,8 +672,8 @@ impl GeneralizedSchlickBsdf {
             let fresnel = self.generalized_schlick_fresnel(wo.z().abs());
             let transmission = SampledSpectrum::one() - fresnel;
 
-            // 簡単なBTDF値
-            transmission / wi.z().abs()
+            // 簡単なBTDF値 (thin surfaceのspecular-like透過)
+            transmission
         } else {
             // 通常の誘電体：適切な屈折BTDF
             let eta_spectrum = if self.thin_surface {
@@ -699,8 +699,9 @@ impl GeneralizedSchlickBsdf {
             let d = self.microfacet_distribution(&wm);
             let g = self.masking_shadowing_g(wo, wi);
 
-            let numerator = d * transmission * g * wi.dot(wm).abs() * wo.dot(wm).abs();
-            let denominator = denom * abs_cos_theta(wi) * abs_cos_theta(wo);
+            let numerator =
+                d * transmission * g * wi.dot(wm).abs() * wo.dot(wm).abs() * abs_cos_theta(wi);
+            let denominator = denom * abs_cos_theta(wo);
 
             numerator / denominator / (eta_scalar * eta_scalar)
         }
