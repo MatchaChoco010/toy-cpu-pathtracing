@@ -43,7 +43,7 @@ impl<'a, Id: SceneId, F: Filter> Renderer for NormalRenderer<'a, Id, F> {
 
             // dummyのlambda
             let u = sampler.get_1d();
-            let mut lambda = SampledWavelengths::new_uniform(u);
+            let _lambda = SampledWavelengths::new_uniform(u);
 
             let intersect = scene.intersect(&rs.ray, f32::MAX);
 
@@ -53,14 +53,10 @@ impl<'a, Id: SceneId, F: Filter> Renderer for NormalRenderer<'a, Id, F> {
                         interaction, wo, ..
                     } = intersect;
                     let render_to_tangent = interaction.shading_transform();
-                    let wo = &render_to_tangent * wo;
+                    let _wo = &render_to_tangent * wo;
                     let shading_point = &render_to_tangent * &interaction;
 
-                    if let Some(bsdf) = interaction.material.as_bsdf_material() {
-                        let uc = sampler.get_1d();
-                        let uv = sampler.get_2d();
-                        let _material_sample =
-                            bsdf.sample(uc, uv, &mut lambda, &wo, &shading_point);
+                    if let Some(_bsdf) = interaction.material.as_bsdf_material() {
                         let normal = shading_point.shading_normal;
                         glam::Vec3::new(
                             normal.x() * 0.5 + 0.5,
