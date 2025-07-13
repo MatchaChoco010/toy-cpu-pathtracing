@@ -107,7 +107,7 @@ pub fn evaluate_area_light<Id: SceneId>(
         let material_result =
             bsdf.evaluate(lambda, &wo_tangent, &wi_tangent, &shading_point_tangent);
 
-        // 幾何項の計算（シェーディングポイント側のコサイン項はBSDFに含まれるため）
+        // 幾何項の計算（シェーディングポイント側のコサイン項はBSDFに含まれるため別途計算不要）
         let distance2 = distance_vector.length_squared();
         let light_normal = render_to_tangent * radiance.light_normal; // VertexNormalTangent座標系に変換
         let cos_light = light_normal.dot(-wi_tangent).abs(); // VertexNormalTangent座標系で統一
@@ -146,7 +146,7 @@ pub fn evaluate_area_light_with_mis<Id: SceneId>(
         let pdf = radiance.pdf;
         let material_result = bsdf.evaluate(lambda, &wo, &wi, &shading_point_tangent);
 
-        // 幾何項の計算（シェーディングポイント側のコサイン項はBSDFに含まれるため）
+        // 幾何項の計算（シェーディングポイント側のコサイン項はBSDFに含まれるため別途計算不要）
         let distance2 = distance_vector.length_squared();
         let light_normal = render_to_tangent * radiance.light_normal;
         let cos_light = light_normal.dot(-wi).abs();
