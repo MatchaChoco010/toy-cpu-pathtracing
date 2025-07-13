@@ -107,12 +107,11 @@ pub fn evaluate_area_light<Id: SceneId>(
         let material_result =
             bsdf.evaluate(lambda, &wo_tangent, &wi_tangent, &shading_point_tangent);
 
-        // 幾何項の計算
+        // 幾何項の計算（シェーディングポイント側のコサイン項はBSDFに含まれるため）
         let distance2 = distance_vector.length_squared();
         let light_normal = render_to_tangent * radiance.light_normal; // VertexNormalTangent座標系に変換
-        let cos_material = shading_point_tangent.shading_normal.dot(wi_tangent).abs(); // VertexNormalTangent座標系で統一
         let cos_light = light_normal.dot(-wi_tangent).abs(); // VertexNormalTangent座標系で統一
-        let g = cos_material * cos_light / distance2;
+        let g = cos_light / distance2;
 
         material_result.f * &radiance.radiance * g / (pdf * light_probability)
     } else {
@@ -147,12 +146,11 @@ pub fn evaluate_area_light_with_mis<Id: SceneId>(
         let pdf = radiance.pdf;
         let material_result = bsdf.evaluate(lambda, &wo, &wi, &shading_point_tangent);
 
-        // 幾何項の計算
+        // 幾何項の計算（シェーディングポイント側のコサイン項はBSDFに含まれるため）
         let distance2 = distance_vector.length_squared();
         let light_normal = render_to_tangent * radiance.light_normal;
-        let cos_material = shading_point_tangent.shading_normal.dot(wi).abs();
         let cos_light = light_normal.dot(-wi).abs();
-        let g = cos_material * cos_light / distance2;
+        let g = cos_light / distance2;
 
         // MISのウエイトを計算
         let pdf_light_dir = radiance.pdf_dir;
