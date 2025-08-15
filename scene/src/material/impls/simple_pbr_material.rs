@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use math::{Normal, ShadingNormalTangent, Transform, Vector3, VertexNormalTangent};
+use math::{Normal, Transform, Vector3, ShadingNormalTangent};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::{
@@ -80,8 +80,8 @@ impl BsdfSurfaceMaterial for SimplePbrMaterial {
         uc: f32,
         uv: glam::Vec2,
         lambda: &mut SampledWavelengths,
-        wo: &Vector3<VertexNormalTangent>,
-        shading_point: &SurfaceInteraction<VertexNormalTangent>,
+        wo: &Vector3<ShadingNormalTangent>,
+        shading_point: &SurfaceInteraction<ShadingNormalTangent>,
     ) -> MaterialSample {
         // パラメータをサンプリング
         let base_color_spectrum = self.base_color.sample(shading_point.uv).sample(lambda);
@@ -149,9 +149,9 @@ impl BsdfSurfaceMaterial for SimplePbrMaterial {
     fn evaluate(
         &self,
         lambda: &SampledWavelengths,
-        wo: &Vector3<VertexNormalTangent>,
-        wi: &Vector3<VertexNormalTangent>,
-        shading_point: &SurfaceInteraction<VertexNormalTangent>,
+        wo: &Vector3<ShadingNormalTangent>,
+        wi: &Vector3<ShadingNormalTangent>,
+        shading_point: &SurfaceInteraction<ShadingNormalTangent>,
     ) -> MaterialEvaluationResult {
         // パラメータをサンプリング
         let base_color_spectrum = self.base_color.sample(shading_point.uv).sample(lambda);
@@ -211,9 +211,9 @@ impl BsdfSurfaceMaterial for SimplePbrMaterial {
     fn pdf(
         &self,
         _lambda: &SampledWavelengths,
-        wo: &Vector3<VertexNormalTangent>,
-        wi: &Vector3<VertexNormalTangent>,
-        shading_point: &SurfaceInteraction<VertexNormalTangent>,
+        wo: &Vector3<ShadingNormalTangent>,
+        wi: &Vector3<ShadingNormalTangent>,
+        shading_point: &SurfaceInteraction<ShadingNormalTangent>,
     ) -> f32 {
         // パラメータをサンプリング
         let base_color_spectrum = self.base_color.sample(shading_point.uv).sample(_lambda);
@@ -282,8 +282,8 @@ impl SimplePbrMaterial {
         wo_normalmap: &Vector3<math::ShadingNormalTangent>,
         uv: glam::Vec2,
         lambda: &mut SampledWavelengths,
-        transform_inv: &Transform<ShadingNormalTangent, VertexNormalTangent>,
-        normal_map: Normal<VertexNormalTangent>,
+        transform_inv: &Transform<ShadingNormalTangent, ShadingNormalTangent>,
+        normal_map: Normal<ShadingNormalTangent>,
     ) -> MaterialSample {
         // 金属用GeneralizedSchlickBsdf
         let r0 = base_color.clone();
@@ -328,8 +328,8 @@ impl SimplePbrMaterial {
         uc: f32,
         uv: glam::Vec2,
         lambda: &mut SampledWavelengths,
-        transform_inv: &Transform<ShadingNormalTangent, VertexNormalTangent>,
-        normal_map: Normal<VertexNormalTangent>,
+        transform_inv: &Transform<ShadingNormalTangent, ShadingNormalTangent>,
+        normal_map: Normal<ShadingNormalTangent>,
     ) -> MaterialSample {
         // 非金属用GeneralizedSchlickBsdf（反射・透過）
         let r0_value = Self::compute_dielectric_r0(ior);
@@ -398,8 +398,8 @@ impl SimplePbrMaterial {
         uc: f32,
         uv: glam::Vec2,
         lambda: &mut SampledWavelengths,
-        transform_inv: &Transform<ShadingNormalTangent, VertexNormalTangent>,
-        normal_map: Normal<VertexNormalTangent>,
+        transform_inv: &Transform<ShadingNormalTangent, ShadingNormalTangent>,
+        normal_map: Normal<ShadingNormalTangent>,
     ) -> MaterialSample {
         if uc <= metallic {
             // 金属として扱う

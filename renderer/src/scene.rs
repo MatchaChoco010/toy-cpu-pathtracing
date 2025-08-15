@@ -41,3 +41,6 @@ pub use scene_16::load_scene_16;
 pub use scene_17::load_scene_17;
 pub use scene_18::load_scene_18;
 pub use scene_19::load_scene_19;
+
+mod scene_20;
+pub use scene_20::load_scene_20;

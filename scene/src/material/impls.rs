@@ -15,3 +15,6 @@ pub use metal_material::{MetalMaterial, MetalType};
 pub use plastic_material::PlasticMaterial;
 pub use simple_pbr_clearcoat_material::SimpleClearcoatPbrMaterial;
 pub use simple_pbr_material::SimplePbrMaterial;
+
+mod normal_mapping_material;
+pub use normal_mapping_material::NormalMappingMaterial;

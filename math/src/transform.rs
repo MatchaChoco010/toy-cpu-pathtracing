@@ -6,7 +6,6 @@ use util_macros::impl_binary_ops;
 
 use crate::{
     Bounds, CoordinateSystem, GeometryTangent, Normal, Point3, Ray, ShadingNormalTangent, Vector3,
-    VertexNormalTangent,
 };
 
 /// 座標系の変換を行う行列の構造体。
@@ -180,13 +179,13 @@ impl<C: CoordinateSystem> Transform<C, GeometryTangent> {
         Transform::from_matrix(matrix.inverse())
     }
 }
-impl<C: CoordinateSystem> Transform<C, VertexNormalTangent> {
+impl<C: CoordinateSystem> Transform<C, ShadingNormalTangent> {
     /// 任意の座標系CからVertexNormalTangent座標系への変換Transformを作成する。
-    /// シェーディング法線がZ軸になり、tangentの方向にX軸が向くような座標系に変換するTransform。
-    pub fn from_shading_normal_tangent(
+    /// 頂点法線がZ軸になり、tangentの方向にX軸が向くような座標系に変換するTransform。
+    pub fn from_vertex_normal_tangent(
         shading_normal: &Normal<C>,
         tangent: &Vector3<C>,
-    ) -> Transform<C, VertexNormalTangent> {
+    ) -> Transform<C, ShadingNormalTangent> {
         let shading_normal = shading_normal.to_vec3().normalize();
         let bitangent = shading_normal
             .normalize()
@@ -202,9 +201,8 @@ impl<C: CoordinateSystem> Transform<C, VertexNormalTangent> {
         Transform::from_matrix(matrix.inverse())
     }
 }
-impl Transform<VertexNormalTangent, ShadingNormalTangent> {
-    /// ノーマルマップの法線からVertexNormalTangent空間から
-    /// ShadingNormalTangent空間への基底変換Transformを作成する。
+impl Transform<ShadingNormalTangent, ShadingNormalTangent> {
+    /// ノーマルマップの法線で頂点法線を歪ませるTransformを作成する。
     ///
     /// 標準的なシェーディングタンジェント空間（Z+が法線）から、法線マップで変更されたタンジェント空間への変換。
     ///
@@ -212,10 +210,10 @@ impl Transform<VertexNormalTangent, ShadingNormalTangent> {
     /// - `normal_map_normal` - ノーマルマップから取得したシェーディングタンジェント空間での法線
     ///
     /// # Returns
-    /// シェーディングタンジェント空間からノーマルマップタンジェント空間への変換Transform
+    /// 頂点法線を歪めるTransform。
     pub fn from_normal_map(
-        normal_map_normal: &Normal<VertexNormalTangent>,
-    ) -> Transform<VertexNormalTangent, ShadingNormalTangent> {
+        normal_map_normal: &Normal<ShadingNormalTangent>,
+    ) -> Transform<ShadingNormalTangent, ShadingNormalTangent> {
         let perturbed_normal = normal_map_normal.to_vec3().normalize();
 
         // 新しい基底を構築：perturbed_normalをZ軸とする

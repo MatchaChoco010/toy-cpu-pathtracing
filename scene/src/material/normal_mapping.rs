@@ -4,212 +4,165 @@
 //! https://jo.dreggn.org/home/2017_normalmap.pdf
 //!
 //! This module implements Section 6.2 "Choosing a Specular Tangent Facet"
-//! with double-scattering calculations for energy conservation and symmetry.
-//!
-//! # Important Note on Direction Convention
-//!
-//! **Paper notation** vs **Our implementation**:
-//! - Paper: `ωi` = eye direction (camera), `ωo` = light direction
-//! - Our code: `wo` = camera direction, `wi` = light direction
-//!
-//! Therefore, when implementing paper equations:
-//! - Paper's `ωi` corresponds to our `wo`
-//! - Paper's `ωo` corresponds to our `wi`
-//! - Paper's `f(ωi, ωo)` becomes our `f(wo, wi)`
-//! - Paper's `⟨ωo, ωg⟩` becomes our `⟨wi, ωg⟩` (light cosine term)
+//! with random walk multi-scattering calculations.
 
-use math::{Normal, ShadingNormalTangent, Transform, Vector3, VertexNormalTangent};
-use spectrum::SampledSpectrum;
+use math::{Normal, Transform, Vector3, ShadingNormalTangent};
+use spectrum::{SampledSpectrum, SampledWavelengths};
 
-use crate::{BsdfSample, MaterialSample};
-
-// MicrofacetNormalMappingResult removed - evaluation is deterministic, not stochastic
+use crate::{BsdfSample, BsdfSurfaceMaterial, MaterialSample, SurfaceInteraction};
 
 /// Sample a direction using microfacet-based normal mapping
-///
-/// # Arguments
-/// * `wo` - Outgoing direction in VertexNormalTangent space
-/// * `uv` - Random sample for BSDF sampling
-/// * `uc` - Random sample for facet selection
-/// * `normal_map` - Perturbed normal from normal map
-/// * `geometry_normal` - Geometric normal (should be (0,0,1) in VertexNormalTangent space)
-/// * `base_bsdf_sample` - Closure to sample the base BSDF in ShadingNormalTangent space
-/// * `albedo` - Surface albedo
-pub fn sample_microfacet_normal_mapping<F>(
-    wo: &Vector3<VertexNormalTangent>,
-    uv: glam::Vec2,
+pub fn sample_microfacet_normal_mapping(
     uc: f32,
-    normal_map: &Normal<VertexNormalTangent>,
-    geometry_normal: &Normal<VertexNormalTangent>,
-    base_bsdf_sample: F,
-    _albedo: SampledSpectrum,
-) -> Option<MaterialSample>
-where
-    F: Fn(&Vector3<ShadingNormalTangent>, glam::Vec2) -> Option<BsdfSample>,
-{
-    // Check if normal map is identity (no change from geometric normal)
-    let perturbed_normal = Vector3::from(*normal_map);
-    let geometric_normal = Vector3::from(*geometry_normal);
-
-    let dot_pg = perturbed_normal.dot(geometric_normal);
-    if (dot_pg - 1.0).abs() < 1e-6 {
-        // No normal mapping, use regular BSDF with identity transform
-        let transform = Transform::from_normal_map(normal_map);
-        let wo_local = &transform * wo;
-
-        let bsdf_result = base_bsdf_sample(&wo_local, uv)?;
-        let wi_local = bsdf_result.wi;
-
-        let transform_inv = transform.inverse();
-        let wi = &transform_inv * &wi_local;
-
-        return Some(MaterialSample::new(
-            bsdf_result.f,
-            wi,
-            bsdf_result.pdf,
-            bsdf_result.sample_type,
-            *normal_map,
-        ));
+    uv: glam::Vec2,
+    lambda: &mut SampledWavelengths,
+    wo: &Vector3<ShadingNormalTangent>,
+    shading_point: &SurfaceInteraction<ShadingNormalTangent>,
+    wp: &Normal<ShadingNormalTangent>,
+    base_material: &dyn BsdfSurfaceMaterial,
+) -> MaterialSample {
+    if (wp.z() - 1.0).abs() < 1e-6 {
+        return base_material.sample(uc, uv, lambda, wo, shading_point);
     }
 
-    let tangent_normal = compute_tangent_facet_normal(&perturbed_normal, &geometric_normal)?;
+    // Use additional random numbers for Russian roulette - we need to reserve uc for different purpose
+    let mut rng_state = (uc * 1000000.0) as u32;
+    let mut next_random = || {
+        rng_state = rng_state.wrapping_mul(1664525).wrapping_add(1013904223);
+        (rng_state as f32) / (u32::MAX as f32)
+    };
 
-    let (lambda_p, _lambda_t) = compute_intersection_probabilities(
-        wo,
-        &perturbed_normal,
-        &tangent_normal,
-        &geometric_normal,
-    );
+    let wg = Normal::new(0.0, 0.0, 1.0);
+    let wt = wt(wp);
 
-    // Sample initial facet based on intersection probabilities
-    if uc < lambda_p {
-        // Start from perturbed facet
-        sample_from_perturbed_facet(
-            wo,
-            uv,
-            &perturbed_normal,
-            &tangent_normal,
-            &geometric_normal,
-            base_bsdf_sample,
-            *normal_map,
-            lambda_p,
-        )
-    } else {
-        // Start from tangent facet
-        sample_from_tangent_facet(
-            wo,
-            uv,
-            &perturbed_normal,
-            &tangent_normal,
-            &geometric_normal,
-            base_bsdf_sample,
-            *normal_map,
-        )
+    let mut i = 0;
+    let mut sample_type;
+    let mut wr = -*wo;
+    let mut weight = SampledSpectrum::one();
+
+    if next_random() > lambda_p(wp, wo) {
+        wr = reflect_vector(&wr, &wt);
+        i += 1;
     }
+
+    let max_scattering_iterations = 2;
+
+    loop {
+        if i > max_scattering_iterations {
+            return MaterialSample::failed(wg);
+        }
+
+        let uv = glam::vec2(next_random(), next_random());
+        let wi = -wr;
+
+        let material_sample = base_material.sample(uc, uv, lambda, &wi, shading_point);
+        if !material_sample.is_sampled {
+            return MaterialSample::failed(wg);
+        }
+
+        weight *= material_sample.f / material_sample.pdf;
+        sample_type = material_sample.sample_type;
+        if weight.is_zero() {
+            return MaterialSample::failed(wg);
+        }
+        wr = material_sample.wi;
+        let g1_ = g1(wp, &wr);
+        i += 1;
+
+        if next_random() < g1_ {
+            // if true {
+            break;
+        }
+        if i > max_scattering_iterations {
+            return MaterialSample::failed(*wp);
+        }
+        wr = reflect_vector(&wr, &wt);
+        let g1_ = g1(wp, &wr);
+        i += 1;
+
+        if next_random() <= g1_ {
+            // if next_random() < g1(&wt(wp), &wr) {
+            break;
+        }
+    }
+
+    let f = weight;
+    let wi = wr;
+    let pdf = 1.0;
+
+    if wo.z().signum() != wi.z().signum() {
+        // Geometric validity check failed
+        return MaterialSample::failed(wg);
+    }
+
+    MaterialSample::new(f, wi, pdf, sample_type, wg)
 }
 
+/// Evaluate microfacet-based normal mapping
 ///
 /// # Arguments
-/// * `wo` - Outgoing direction in VertexNormalTangent space
-/// * `wi` - Incoming direction in VertexNormalTangent space
+/// * `wo` - Camera Direction
+/// * `wi` - Light Direction
 /// * `normal_map` - Perturbed normal from normal map
-/// * `geometry_normal` - Geometric normal
-/// * `base_bsdf_eval` - Closure to evaluate the base BSDF in ShadingNormalTangent space
-pub fn evaluate_microfacet_normal_mapping<F>(
-    wo: &Vector3<VertexNormalTangent>,
-    wi: &Vector3<VertexNormalTangent>,
-    normal_map: &Normal<VertexNormalTangent>,
-    geometry_normal: &Normal<VertexNormalTangent>,
-    base_bsdf_eval: F,
+/// * `uc` - Random sample for facet selection
+/// * `base_bsdf_sample` - Closure to sample the base BSDF
+/// * `base_bsdf_eval` - Closure to evaluate the base BSDF
+pub fn evaluate_microfacet_normal_mapping<S, E>(
+    wo: &Vector3<ShadingNormalTangent>,
+    wi: &Vector3<ShadingNormalTangent>,
+    normal_map: &Normal<ShadingNormalTangent>,
+    uc: f32,
+    base_bsdf_sample: S,
+    base_bsdf_eval: E,
 ) -> SampledSpectrum
 where
-    F: Fn(&Vector3<ShadingNormalTangent>, &Vector3<ShadingNormalTangent>) -> SampledSpectrum,
+    S: Fn(&Vector3<ShadingNormalTangent>, glam::Vec2) -> Option<BsdfSample>,
+    E: Fn(&Vector3<ShadingNormalTangent>, &Vector3<ShadingNormalTangent>) -> SampledSpectrum,
 {
     // Check geometric validity
-    let wi_cos_geom = geometry_normal.dot(*wi);
-    let wo_cos_geom = geometry_normal.dot(*wo);
+    let wi_cos_geom = wi.z();
+    let wo_cos_geom = wo.z();
     if wi_cos_geom.signum() != wo_cos_geom.signum() {
         return SampledSpectrum::zero();
     }
 
-    let perturbed_normal = Vector3::from(*normal_map);
-    let geometric_normal = Vector3::from(*geometry_normal);
-
-    let dot_pg = perturbed_normal.dot(geometric_normal);
-    if (dot_pg - 1.0).abs() < 1e-6 {
+    if (normal_map.z() - 1.0).abs() < 1e-6 {
         // No normal mapping, use regular BSDF with identity transform
-        let transform = Transform::from_normal_map(normal_map);
+        let transform = Transform::from_normal_map(&Normal::new(0.0, 0.0, 1.0));
         let wo_local = &transform * wo;
         let wi_local = &transform * wi;
 
         return base_bsdf_eval(&wo_local, &wi_local);
     }
 
-    // Compute tangent facet normal
-    let tangent_normal = match compute_tangent_facet_normal(&perturbed_normal, &geometric_normal) {
-        Some(tn) => tn,
-        None => {
-            return SampledSpectrum::zero();
-        }
-    };
-
-    let (lambda_p, lambda_t) = compute_intersection_probabilities(
-        wo,
-        &perturbed_normal,
-        &tangent_normal,
-        &geometric_normal,
-    );
-
-    let cosine_weighted_f = evaluate_double_scattering_bsdf(
-        wi,
-        wo,
-        &perturbed_normal,
-        &tangent_normal,
-        &geometric_normal,
-        lambda_p,
-        lambda_t,
-        base_bsdf_eval,
-        normal_map,
-    );
-
-    let cos_wi_geom = wi.dot(*geometry_normal);
-    if cos_wi_geom > 1e-6 {
-        cosine_weighted_f / cos_wi_geom.max(1e-6)
-    } else {
-        SampledSpectrum::zero()
-    }
+    evaluate_multi_scattering_bsdf(wi, wo, normal_map, uc, base_bsdf_sample, base_bsdf_eval)
 }
 
 /// Compute PDF for microfacet-based normal mapping
 ///
 /// # Arguments
-/// * `wo` - Outgoing direction in VertexNormalTangent space
-/// * `wi` - Incoming direction in VertexNormalTangent space
+/// * `wo` - Eye direction in VertexNormalTangent space
+/// * `wi` - Light direction in VertexNormalTangent space
 /// * `normal_map` - Perturbed normal from normal map
 /// * `geometry_normal` - Geometric normal
-/// * `base_bsdf_pdf` - Closure to compute base BSDF PDF in ShadingNormalTangent space
+/// * `base_bsdf_pdf` - Closure to compute base BSDF PDF in VertexNormalTangent space
 pub fn pdf_microfacet_normal_mapping<F>(
-    wo: &Vector3<VertexNormalTangent>,
-    wi: &Vector3<VertexNormalTangent>,
-    normal_map: &Normal<VertexNormalTangent>,
-    geometry_normal: &Normal<VertexNormalTangent>,
+    wo: &Vector3<ShadingNormalTangent>,
+    wi: &Vector3<ShadingNormalTangent>,
+    normal_map: &Normal<ShadingNormalTangent>,
     base_bsdf_pdf: F,
 ) -> f32
 where
     F: Fn(&Vector3<ShadingNormalTangent>, &Vector3<ShadingNormalTangent>) -> f32,
 {
     // Check geometric validity
-    let wi_cos_geom = geometry_normal.dot(*wi);
-    let wo_cos_geom = geometry_normal.dot(*wo);
+    let wi_cos_geom = wi.z();
+    let wo_cos_geom = wo.z();
     if wi_cos_geom.signum() != wo_cos_geom.signum() {
         return 0.0;
     }
 
-    let perturbed_normal = Vector3::from(*normal_map);
-    let geometric_normal = Vector3::from(*geometry_normal);
-
-    let dot_pg = perturbed_normal.dot(geometric_normal);
-    if (dot_pg - 1.0).abs() < 1e-6 {
+    if (normal_map.z() - 1.0).abs() < 1e-6 {
         // No normal mapping, use regular BSDF PDF with identity transform
         let transform = Transform::from_normal_map(normal_map);
         let wo_local = &transform * wo;
@@ -217,385 +170,653 @@ where
 
         return base_bsdf_pdf(&wo_local, &wi_local);
     }
-
-    // Compute tangent facet normal
-    let tangent_normal = match compute_tangent_facet_normal(&perturbed_normal, &geometric_normal) {
-        Some(tn) => tn,
-        None => return 0.0,
-    };
-
-    let (lambda_p, _lambda_t) = compute_intersection_probabilities(
-        wo,
-        &perturbed_normal,
-        &tangent_normal,
-        &geometric_normal,
-    );
-
-    // Compute microfacet PDF
-    compute_microfacet_pdf(
-        wo,
-        wi,
-        &perturbed_normal,
-        &tangent_normal,
-        &geometric_normal,
-        lambda_p,
+    // Use double scattering pdf for estimate pdf instead of full multi scatterd pdf
+    compute_double_scattering_pdf(
+        wi, // Light direction
+        wo, // Eye direction
+        normal_map,
+        base_bsdf_pdf,
     )
 }
 
-//
-// Helper functions
-//
+fn wt(wp: &Normal<ShadingNormalTangent>) -> Normal<ShadingNormalTangent> {
+    // let dot_wp_wg = wp.dot(*wg);
+    // if (dot_wp_wg - 1.0).abs() < 1e-6 {
+    //     return None;
+    // }
 
-/// Compute tangent facet normal ωt from perturbed normal ωp and geometric normal ωg
-///
-/// Based on Section 4.1: "the other one is perpendicular to the geometric surface
-/// and its corresponding micro-normal ωt is tangent to the geometric surface"
-///
-/// The V-cavity model requires that the average normal equals the geometric normal:
-/// D(ωp)/⟨ωp,ωg⟩ + D(ωt) = 1, where D(ωt) is the area of tangent facet
-fn compute_tangent_facet_normal(
-    perturbed_normal: &Vector3<VertexNormalTangent>,
-    geometric_normal: &Vector3<VertexNormalTangent>,
-) -> Option<Vector3<VertexNormalTangent>> {
-    let dot_pg = perturbed_normal.dot(*geometric_normal);
-    if (dot_pg - 1.0).abs() < 1e-6 {
-        // ωp and ωg are parallel, no tangent facet needed
-        return None;
+    // // Use Normal::orthogonalize_vector to compute tangent direction
+    // let tangent_vec = wg.orthogonalize_vector(wp);
+    // if tangent_vec.length() < 1e-6 {
+    //     return None;
+    // }
+
+    // Some((-tangent_vec).to_normal())
+    let t = Vector3::new(-wp.x(), -wp.y(), 0.0);
+    if t.length_squared() == 0.0 {
+        return Normal::new(0.0, 0.0, 1.0);
     }
-
-    // For V-cavity model, ωt must be:
-    // 1. Tangent to geometric surface (ωt·ωg = 0)
-    // 2. Forms a V-cavity with ωp such that average normal = ωg
-    // 3. Perpendicular to the projection of ωp onto the tangent plane
-
-    // Project ωp onto tangent plane of geometric surface
-    let projected_p = *perturbed_normal - dot_pg * *geometric_normal;
-    let projected_length = projected_p.length();
-
-    if projected_length < 1e-6 {
-        // ωp is parallel to ωg, no meaningful tangent direction
-        return None;
-    }
-
-    // ωt is in tangent plane, opposing the projected direction
-    // This creates a V-cavity where the average normal equals ωg
-    let tangent_direction = -projected_p / projected_length;
-
-    Some(tangent_direction)
+    t.to_normal()
 }
 
-/// Compute projected areas and intersection probabilities
-/// Paper uses ωi (eye direction) which corresponds to our wo (camera direction)
-fn compute_intersection_probabilities(
-    paper_eye_dir: &Vector3<VertexNormalTangent>, // ωi in paper (eye direction = our wo)
-    perturbed_normal: &Vector3<VertexNormalTangent>,
-    tangent_normal: &Vector3<VertexNormalTangent>,
-    geometric_normal: &Vector3<VertexNormalTangent>,
-) -> (f32, f32) {
-    let dot_pg = perturbed_normal.dot(*geometric_normal);
-    let dot_eye_p = paper_eye_dir.dot(*perturbed_normal); // ⟨ωi, ωp⟩
-    let dot_eye_t = paper_eye_dir.dot(*tangent_normal); // ⟨ωi, ωt⟩
+fn lambda_p(wp: &Normal<ShadingNormalTangent>, wi: &Vector3<ShadingNormalTangent>) -> f32 {
+    // let dot_wp_wg = wp.dot(*wg);
+    // let dot_wi_wp = wi.dot(wp);
+    // let dot_wi_wt = wi.dot(wt);
 
-    // Projected areas (equations from Section 4.3)
-    // ap(ωi) = ⟨ωi, ωp⟩ / ⟨ωp, ωg⟩
-    // at(ωi) = ⟨ωi, ωt⟩√(1 - ⟨ωp, ωg⟩²) / ⟨ωp, ωg⟩
-    let a_p = (dot_eye_p / dot_pg).max(0.0);
-    let a_t = (dot_eye_t * (1.0 - dot_pg * dot_pg).sqrt() / dot_pg).max(0.0);
-    let denom = a_p + a_t;
+    // let a_p = dot_wi_wp / dot_wp_wg;
+    // let a_t = dot_wi_wt * (1.0 - dot_wp_wg * dot_wp_wg).sqrt() / dot_wp_wg;
 
-    if denom.abs() < 1e-6 {
-        return (0.5, 0.5);
-    }
+    // let a_p = a_p.max(0.0);
+    // let a_t = a_t.max(0.0);
 
-    // Intersection probabilities based on visible projected areas
-    let lambda_p = a_p / denom;
-    let lambda_t = a_t / denom;
+    // let denom = a_p + a_t;
 
-    (lambda_p, lambda_t)
-}
+    // if denom.abs() < 1e-8 {
+    //     return 0.5;
+    // }
 
-/// Compute masking function G1
-fn compute_masking_function(
-    w: &Vector3<VertexNormalTangent>,
-    m: &Vector3<VertexNormalTangent>,
-    perturbed_normal: &Vector3<VertexNormalTangent>,
-    tangent_normal: &Vector3<VertexNormalTangent>,
-    geometric_normal: &Vector3<VertexNormalTangent>,
-) -> f32 {
-    let dot_wm = w.dot(*m);
-    if dot_wm <= 0.0 {
-        return 0.0; // Heaviside function
-    }
+    // a_p / denom
 
-    let dot_pg = perturbed_normal.dot(*geometric_normal);
-    let dot_w_p = w.dot(*perturbed_normal);
-    let dot_w_t = w.dot(*tangent_normal);
-    let dot_wg = w.dot(*geometric_normal);
+    // let wi = -*wi;
 
-    // Projected areas (can be negative for backfacing facets)
-    let a_p = (dot_w_p / dot_pg).max(0.0);
-    let a_t = (dot_w_t * (1.0 - dot_pg * dot_pg).sqrt() / dot_pg).max(0.0);
-
-    // Total projected area (sum of all facet contributions)
-    let total_projected_area = a_p + a_t;
-    if total_projected_area.abs() < 1e-6 {
-        return 0.0; // Avoid division by zero
-    }
-
-    (dot_wg / total_projected_area).min(1.0).max(0.0)
-}
-
-/// Sample from perturbed facet (Section 6.2)
-fn sample_from_perturbed_facet<F>(
-    wo: &Vector3<VertexNormalTangent>,
-    uv: glam::Vec2,
-    perturbed_normal: &Vector3<VertexNormalTangent>,
-    tangent_normal: &Vector3<VertexNormalTangent>,
-    geometric_normal: &Vector3<VertexNormalTangent>,
-    base_bsdf_sample: F,
-    normal_map: Normal<VertexNormalTangent>,
-    lambda_p: f32,
-) -> Option<MaterialSample>
-where
-    F: Fn(&Vector3<ShadingNormalTangent>, glam::Vec2) -> Option<BsdfSample>,
-{
-    // Create coordinate transform for perturbed facet
-    let transform = Transform::from_normal_map(&normal_map);
-
-    // Transform wo to perturbed facet local space
-    let wo_local = &transform * wo;
-
-    // Sample BSDF in perturbed facet local space
-    let bsdf_result = base_bsdf_sample(&wo_local, uv)?;
-    let wi_local = bsdf_result.wi;
-
-    // Transform wi back to VertexNormalTangent space
-    let transform_inv = transform.inverse();
-    let wi = &transform_inv * &wi_local;
-
-    // Compute masking functions
-    let g1_wo = compute_masking_function(
-        wo,
-        perturbed_normal,
-        perturbed_normal,
-        tangent_normal,
-        geometric_normal,
-    );
-    let g1_wi = compute_masking_function(
-        &wi,
-        perturbed_normal,
-        perturbed_normal,
-        tangent_normal,
-        geometric_normal,
-    );
-
-    let f = bsdf_result.f * g1_wo * g1_wi;
-
-    // PDF needs to be adjusted by the probability of choosing this facet
-    let adjusted_pdf = lambda_p * bsdf_result.pdf;
-
-    Some(MaterialSample::new(
-        f,
-        wi,
-        adjusted_pdf,
-        bsdf_result.sample_type,
-        normal_map,
-    ))
-}
-
-/// Sample from tangent facet (Section 6.2)
-fn sample_from_tangent_facet<F>(
-    wo: &Vector3<VertexNormalTangent>,
-    uv: glam::Vec2,
-    perturbed_normal: &Vector3<VertexNormalTangent>,
-    tangent_normal: &Vector3<VertexNormalTangent>,
-    geometric_normal: &Vector3<VertexNormalTangent>,
-    base_bsdf_sample: F,
-    normal_map: Normal<VertexNormalTangent>,
-) -> Option<MaterialSample>
-where
-    F: Fn(&Vector3<ShadingNormalTangent>, glam::Vec2) -> Option<BsdfSample>,
-{
-    // Create coordinate transform for perturbed facet
-    let transform = Transform::from_normal_map(&normal_map);
-
-    // Reflect wo about tangent facet
-    let wo_reflected = reflect_vector(wo, tangent_normal);
-
-    // Transform reflected wo to perturbed facet local space
-    let wo_reflected_local = &transform * &wo_reflected;
-
-    // Sample from perturbed facet using reflected direction
-    let bsdf_result = base_bsdf_sample(&wo_reflected_local, uv)?;
-    let wi_local = bsdf_result.wi;
-
-    // Transform wi back to VertexNormalTangent space
-    let transform_inv = transform.inverse();
-    let wi = &transform_inv * &wi_local;
-
-    // Apply masking and compute contribution
-    let g1_wo = compute_masking_function(
-        wo,
-        tangent_normal,
-        perturbed_normal,
-        tangent_normal,
-        geometric_normal,
-    );
-    let g1_wi = compute_masking_function(
-        &wi,
-        perturbed_normal,
-        perturbed_normal,
-        tangent_normal,
-        geometric_normal,
-    );
-
-    let f = bsdf_result.f * g1_wo * g1_wi;
-
-    Some(MaterialSample::new(
-        f,
-        wi,
-        bsdf_result.pdf,
-        bsdf_result.sample_type,
-        normal_map,
-    ))
-}
-
-fn evaluate_double_scattering_bsdf<F>(
-    paper_light_dir: &Vector3<VertexNormalTangent>, // ωo in paper (light direction)
-    paper_eye_dir: &Vector3<VertexNormalTangent>,   // ωi in paper (eye direction)
-    perturbed_normal: &Vector3<VertexNormalTangent>,
-    tangent_normal: &Vector3<VertexNormalTangent>,
-    geometric_normal: &Vector3<VertexNormalTangent>,
-    lambda_p: f32,
-    lambda_t: f32,
-    base_bsdf_eval: F,
-    normal_map: &Normal<VertexNormalTangent>,
-) -> SampledSpectrum
-where
-    F: Fn(&Vector3<ShadingNormalTangent>, &Vector3<ShadingNormalTangent>) -> SampledSpectrum,
-{
-    // Create coordinate transform for perturbed facet
-    let transform = Transform::from_normal_map(normal_map);
-
-    // Transform directions to perturbed facet local space
-    // paper_eye_dir (ωi) goes to wo_local for BSDF evaluation
-    // paper_light_dir (ωo) goes to wi_local for BSDF evaluation
-    let wo_local = &transform * paper_eye_dir; // ωi → wo for BSDF
-    let wi_local = &transform * paper_light_dir; // ωo → wi for BSDF
-
-    // f_2(ωi, ωo)⟨ωo, ωg⟩ =
-    //   λ_p(ωi) * f_p(ωi, ωo)⟨ωo, ωp⟩ * G_1(ωo, ωp) +
-    //   λ_p(ωi) * f_p(ωi, ωo')⟨ωo', ωp⟩ * (1 - G_1(ωo', ωp)) * G_1(ωo, ωt) +
-    //   λ_t(ωi) * f_p(ωi', ωo)⟨ωo, ωp⟩ * G_1(ωo, ωp)
-
-    // Term 1: Single scattering ωi → p → ωo
-    let cos_light_p = paper_light_dir.dot(*perturbed_normal); // ⟨ωo, ωp⟩
-    let g1_light_p = compute_masking_function(
-        paper_light_dir, // ωo
-        perturbed_normal,
-        perturbed_normal,
-        tangent_normal,
-        geometric_normal,
-    );
-    let term1 = lambda_p * base_bsdf_eval(&wo_local, &wi_local) * cos_light_p * g1_light_p;
-
-    // Term 2: Double scattering ωi → p → t → ωo
-    // Paper's ωo' = reflect(ωo, ωt) (light direction reflected by tangent)
-    let light_reflected_by_tangent = reflect_vector(paper_light_dir, tangent_normal);
-    let light_reflected_local = &transform * &light_reflected_by_tangent;
-    let cos_light_reflected_p = light_reflected_by_tangent.dot(*perturbed_normal); // ⟨ωo', ωp⟩
-
-    // Masking: G1(ωo, ωt) for tangent facet visibility from light direction
-    let g1_light_tangent = compute_masking_function(
-        paper_light_dir, // ωo
-        tangent_normal,
-        perturbed_normal,
-        tangent_normal,
-        geometric_normal,
-    );
-
-    // Masking: G1(ωo', ωp) for perturbed facet visibility from reflected light direction
-    let g1_light_reflected_perturbed = compute_masking_function(
-        &light_reflected_by_tangent, // ωo'
-        perturbed_normal,
-        perturbed_normal,
-        tangent_normal,
-        geometric_normal,
-    );
-
-    let term2 = lambda_p
-        * base_bsdf_eval(&wo_local, &light_reflected_local)  // f_p(ωi, ωo')
-        * cos_light_reflected_p  // ⟨ωo', ωp⟩
-        * (1.0 - g1_light_reflected_perturbed)  // (1 - G_1(ωo', ωp))
-        * g1_light_tangent; // G_1(ωo, ωt)
-
-    // Term 3: Double scattering ωi → t → p → ωo
-    // Paper's ωi' = reflect(ωi, ωt) (eye direction reflected by tangent)
-    let eye_reflected_by_tangent = reflect_vector(paper_eye_dir, tangent_normal);
-    let eye_reflected_local = &transform * &eye_reflected_by_tangent;
-    let cos_light_p_term3 = paper_light_dir.dot(*perturbed_normal); // ⟨ωo, ωp⟩
-
-    // Masking: G1(ωo, ωp) for perturbed facet visibility from light direction
-    let g1_light_perturbed_term3 = compute_masking_function(
-        paper_light_dir, // ωo
-        perturbed_normal,
-        perturbed_normal,
-        tangent_normal,
-        geometric_normal,
-    );
-
-    let term3 = lambda_t
-        * base_bsdf_eval(&eye_reflected_local, &wi_local)  // f_p(ωi', ωo)
-        * cos_light_p_term3  // ⟨ωo, ωp⟩
-        * g1_light_perturbed_term3; // G_1(ωo, ωp) - Only this G1 as per paper
-
-    term1 + term2 + term3
-}
-
-/// Compute microfacet PDF
-fn compute_microfacet_pdf(
-    _wo: &Vector3<VertexNormalTangent>,
-    wi: &Vector3<VertexNormalTangent>,
-    perturbed_normal: &Vector3<VertexNormalTangent>,
-    _tangent_normal: &Vector3<VertexNormalTangent>,
-    _geometric_normal: &Vector3<VertexNormalTangent>,
-    lambda_p: f32,
-) -> f32 {
-    // For Section 6.2 specular tangent facet approach,
-    // PDF is primarily determined by the perturbed facet
-    let wi_cos_p = wi.dot(*perturbed_normal);
-    if wi_cos_p <= 0.0 {
+    let i_dot_p = wp.dot(wi).max(0.0);
+    if i_dot_p == 0.0 {
         return 0.0;
     }
 
-    // For Section 6.2 with specular tangent facet:
-    // - Perturbed facet contributes normal cosine-weighted PDF
-    // - Tangent facet is specular, so it doesn't contribute to PDF in the usual sense
-    // The total PDF is weighted by the probability of choosing the perturbed facet
-    let pdf_p = compute_cosine_hemisphere_pdf(wi, perturbed_normal);
+    let sin_theta_wp = (1.0 - wp.z() * wp.z()).max(0.0).sqrt();
 
-    // Since tangent facet is specular, the effective PDF is just from perturbed facet
-    // weighted by the probability of sampling from it
-    lambda_p * pdf_p
+    i_dot_p / (i_dot_p + wi.dot(wt(wp)).max(0.0) * sin_theta_wp)
 }
 
-/// Compute cosine hemisphere PDF
-fn compute_cosine_hemisphere_pdf(
-    w: &Vector3<VertexNormalTangent>,
-    normal: &Vector3<VertexNormalTangent>,
-) -> f32 {
-    let cos_theta = w.dot(*normal);
-    if cos_theta <= 0.0 {
-        0.0
-    } else {
-        cos_theta / std::f32::consts::PI
+fn g1(wp: &Normal<ShadingNormalTangent>, w: &Vector3<ShadingNormalTangent>) -> f32 {
+    // let dot_wm = wi.dot(m);
+
+    // // Heaviside function
+    // if dot_wm <= 0.0 {
+    //     return 0.0;
+    // }
+
+    // let dot_wp_wg = wp.dot(*wg);
+    // let dot_wi_wp = wi.dot(wp);
+    // let dot_wi_wt = wi.dot(wt);
+    // let dot_wi_wg = wi.dot(wg);
+
+    // let a_p = dot_wi_wp / dot_wp_wg;
+    // let a_t = dot_wi_wt * (1.0 - dot_wp_wg * dot_wp_wg).sqrt() / dot_wp_wg;
+
+    // let a_p = a_p.max(0.0);
+    // let a_t = a_t.max(0.0);
+
+    // let denom = a_p + a_t;
+    // if denom.abs() < 1e-8 {
+    //     return 0.0;
+    // }
+
+    // (dot_wi_wg / denom).min(1.0).max(0.0)
+
+    // return (wi.z().max(0.0) * wm.z().max(0.0)
+    //     / (wi.dot(wm).max(0.0) + wi.dot(wt).max(0.0) * (1.0 - wm.z() * wm.z()).sqrt()))
+    // .min(1.0);
+
+    // let w = -*w;
+
+    // let dot_w_wm = w.dot(wp);
+
+    // // Heaviside function
+    // if dot_w_wm <= 0.0 {
+    //     return 0.0;
+    // }
+
+    // let dot_wp_wg = wp.z();
+    // let dot_w_wp = w.dot(wp);
+    // let dot_w_wt = w.dot(wt(wp));
+    // let dot_w_wg = w.z();
+
+    // let a_p = dot_w_wp / dot_wp_wg;
+    // let a_t = dot_w_wt * (1.0 - dot_wp_wg * dot_wp_wg).sqrt() / dot_wp_wg;
+
+    // let a_p = a_p.max(0.0);
+    // let a_t = a_t.max(0.0);
+
+    // let denom = a_p + a_t;
+    // if denom.abs() < 1e-8 {
+    //     return 0.0;
+    // }
+
+    // (dot_w_wg / denom).min(1.0).max(0.0)
+
+    // return (wi.z().max(0.0) * wm.z().max(0.0)
+    //     / (wi.dot(wm).max(0.0) + wi.dot(wt).max(0.0) * (1.0 - wm.z() * wm.z()).sqrt()))
+    // .min(1.0);
+
+    let num = wp.z().max(0.0) * w.z().max(0.0);
+    if num == 0.0 {
+        return 0.0;
     }
+
+    let sin_theta_wp = (1.0 - wp.z() * wp.z()).max(0.0).sqrt();
+    let denom = w.dot(wp).max(0.0) + w.dot(wt(wp)).max(0.0) * sin_theta_wp;
+
+    if denom > 0.0 {
+        (num / denom).min(1.0)
+    } else {
+        0.0
+    }
+}
+
+fn sample_multi_scattering<S, P>(
+    wi: &Vector3<ShadingNormalTangent>, // Eye direction
+    wp: &Normal<ShadingNormalTangent>,  // Perturbed normal
+    uc: f32,
+    mut base_bsdf_sample: S,
+    base_bsdf_pdf: P,
+) -> MaterialSample
+where
+    S: FnMut(&Vector3<ShadingNormalTangent>, glam::Vec2) -> Option<BsdfSample>,
+    P: Fn(&Vector3<ShadingNormalTangent>, &Vector3<ShadingNormalTangent>) -> f32,
+{
+    // Use additional random numbers for Russian roulette - we need to reserve uc for different purpose
+    let mut rng_state = (uc * 1000000.0) as u32;
+    let mut next_random = || {
+        rng_state = rng_state.wrapping_mul(1664525).wrapping_add(1013904223);
+        (rng_state as f32) / (u32::MAX as f32)
+    };
+
+    // Create coordinate transform for perturbed facet
+    let transform_wp = Transform::from_normal_map(wp);
+    let transform_wp_inv = transform_wp.inverse();
+
+    // let mut i = 0;
+    // let mut sample_type = super::BsdfSampleType::SpecularReflection;
+    // let mut wr = *wi;
+    // let mut weight = SampledSpectrum::one();
+
+    // let mut d = next_random() < lambda_p(wp, wi);
+
+    // if !d {
+    //     wr = reflect_vector(&-wr, &wt(wp));
+    //     // weight *= g1(&wr, wt, wp, wt, wg);
+    //     d = !d;
+    //     i += 1;
+    // }
+
+    // loop {
+    //     let wm = if d { wp } else { &wt(wp) };
+
+    //     if d {
+    //         let wr_local = &transform * wr;
+    //         let Some(bsdf_result) =
+    //             base_bsdf_sample(&-wr_local, glam::vec2(next_random(), next_random()))
+    //         else {
+    //             return MaterialSample::failed(*wp);
+    //         };
+    //         wr = &transform_inv * &bsdf_result.wi;
+    //         sample_type = bsdf_result.sample_type;
+    //         weight = bsdf_result.f * wr.dot(*wp) / bsdf_result.pdf;
+
+    //         if next_random() < g1(wm, &wr) {
+    //             break;
+    //         }
+    //     } else {
+    //         wr = reflect_vector(&wr, &wt(wp));
+
+    //         if next_random() < g1(wm, &wr) {
+    //             break;
+    //         }
+
+    //         wr = -wr;
+    //     }
+
+    //     d = !d; // Switch between paths
+
+    //     if weight.is_zero() {
+    //         break; // Stop if BSDF value becomes zero
+    //     }
+
+    //     i += 1;
+    //     if i > 100 {
+    //         break;
+    //     }
+    // }
+
+    // let f = weight / wr.z().abs().max(1e-6);
+    // let wo = wr;
+    // let pdf = 1.0;
+
+    // if wo.z().signum() != wi.z().signum() {
+    //     // Geometric validity check failed
+    //     return MaterialSample::failed(*wp);
+    // }
+
+    // // let pdf = compute_double_scattering_pdf(&wo, wi, wp, base_bsdf_pdf);
+
+    // // if pdf == 0.0 {
+    // //     return MaterialSample::failed(*wp);
+    // // }
+
+    // MaterialSample::new(f, wo, pdf, sample_type, Normal::new(0.0, 0.0, 1.0))
+
+    // ==============================================================
+
+    // let wg = Normal::new(0.0, 0.0, 1.0);
+    // let transform = math::Transform::from_normal_map(&wp);
+    // let transform_inv = transform.inverse();
+    // let wo_local = &transform * wi;
+    // let uv = glam::vec2(next_random(), next_random());
+    // let Some(bsdf_sample) = base_bsdf_sample(&wo_local, uv) else {
+    //     // let Some(bsdf_sample) = bsdf.sample(&wo_local, uv) else {
+    //     return MaterialSample::failed(wg);
+    // };
+    // let wo = transform_inv * bsdf_sample.wi;
+    // if wo.z().signum() != wi.z().signum() {
+    //     return MaterialSample::failed(wg);
+    // }
+    // let weight = bsdf_sample.f / bsdf_sample.pdf;
+    // return MaterialSample::new(weight, wo, 1.0, bsdf_sample.sample_type, wg);
+
+    let wt = wt(wp);
+    // let transform_wt = Transform::from_normal_map(&wt);
+    // let transform_wt_inv = transform_wt.inverse();
+
+    let mut i = 0;
+    let mut sample_type;
+    let mut wr = -*wi;
+    let mut weight = SampledSpectrum::one();
+
+    if next_random() > lambda_p(wp, wi) {
+        wr = reflect_vector(&wr, &wt);
+        i += 1;
+    }
+
+    let max_scattering_iterations = 2;
+
+    loop {
+        if i > max_scattering_iterations {
+            return MaterialSample::failed(*wp);
+        }
+
+        let uv = glam::vec2(next_random(), next_random());
+        let wi_local = &transform_wp * -wr;
+        let Some(bsdf_result) = base_bsdf_sample(&wi_local, uv) else {
+            return MaterialSample::failed(*wp);
+        };
+        weight *= bsdf_result.f / bsdf_result.pdf;
+        // wr = &transform_wp_inv * &bsdf_result.wi;
+        // weight *= bsdf_result.f * wp.dot(&wr).max(0.0) / bsdf_result.pdf;
+        // weight *= bsdf_result.f / bsdf_result.pdf;
+        sample_type = bsdf_result.sample_type;
+        if weight.is_zero() {
+            return MaterialSample::failed(*wp);
+        }
+        wr = &transform_wp_inv * &bsdf_result.wi;
+        let g1_ = g1(wp, &wr);
+        i += 1;
+
+        if next_random() < g1_ {
+            // if true {
+            break;
+        }
+        if i > max_scattering_iterations {
+            return MaterialSample::failed(*wp);
+        }
+        wr = reflect_vector(&wr, &wt);
+        let g1_ = g1(wp, &wr);
+        i += 1;
+
+        if next_random() <= g1_ {
+            // if next_random() < g1(&wt(wp), &wr) {
+            break;
+        }
+
+        // return MaterialSample::failed(*wp);
+
+        // wr = -wr;
+
+        // if weight.is_zero() {
+        //     return MaterialSample::failed(*wp);
+        // }
+
+        // if i > 100 {
+        //     return MaterialSample::failed(*wp);
+        // }
+    }
+
+    let f = weight;
+    let wo = wr;
+    let pdf = 1.0;
+
+    if wo.z().signum() != wi.z().signum() {
+        // Geometric validity check failed
+        return MaterialSample::failed(*wp);
+    }
+
+    // let pdf = compute_double_scattering_pdf(&wo, wi, wp, base_bsdf_pdf);
+
+    // if pdf == 0.0 {
+    //     return MaterialSample::failed(*wp);
+    // }
+
+    MaterialSample::new(f, wo, pdf, sample_type, Normal::new(0.0, 0.0, 1.0))
+
+    // ==============================================================
+
+    // if uc < lambda_p {
+    //     let wi_local = &transform * wi;
+    //     let Some(bsdf_result) = base_bsdf_sample(&wi_local, uv) else {
+    //         return MaterialSample::failed(*wp);
+    //     };
+    //     let wo_local = bsdf_result.wi;
+    //     let transform_inv = transform.inverse();
+    //     wo = &transform_inv * &wo_local;
+    //     sample_type = bsdf_result.sample_type;
+
+    //     // f = bsdf_result.f;
+    //     let dot_wo_wp = wo.dot(*wp);
+    //     f = bsdf_result.f * dot_wo_wp;
+
+    //     let g1_wo_wp = compute_masking_function(&wo, wp, wp, wt, wg);
+    //     if next_random() > g1_wo_wp {
+    //         wo = reflect_vector(&wo, wt);
+    //         let g1_wo_wp = compute_masking_function(&wo, wp, wp, wt, wg);
+    //         f *= g1_wo_wp;
+    //     }
+    // } else {
+    //     let wi_reflected = reflect_vector(wi, wt);
+    //     let wi_local = &transform * &wi_reflected;
+    //     let Some(bsdf_result) = base_bsdf_sample(&wi_local, uv) else {
+    //         return MaterialSample::failed(*wp);
+    //     };
+    //     let wo_local = bsdf_result.wi;
+    //     let transform_inv = transform.inverse();
+    //     wo = &transform_inv * &wo_local;
+    //     sample_type = bsdf_result.sample_type;
+    //     // f = bsdf_result.f;
+    //     let dot_wo_wp = wo.dot(*wp);
+    //     f = bsdf_result.f * dot_wo_wp;
+    // }
+
+    // let mut wo;
+    // let mut f; // Initialize wo to wi
+
+    // if uc < lambda_p {
+    //     let wi_local = &transform * wi;
+    //     let Some(bsdf_result) =
+    //         base_bsdf_sample(&wi_local, glam::vec2(next_random(), next_random()))
+    //     else {
+    //         return MaterialSample::failed(*wp);
+    //     };
+    //     let wo_local = bsdf_result.wi;
+    //     let transform_inv = transform.inverse();
+    //     wo = &transform_inv * &wo_local;
+    //     sample_type = bsdf_result.sample_type;
+
+    //     let g1_wo_wp = g1(&wo, wp, wp, wt, wg);
+
+    //     if next_random() < g1_wo_wp {
+    //         // Path (a): i→p→o
+    //         let dot_wo_wp = wo.dot(*wp);
+    //         f = &bsdf_result.f * dot_wo_wp;
+    //     } else {
+    //         // let g1_wo_wt = compute_masking_function(&wo, wt, wp, wt, wg);
+
+    //         // Path (b): i→p→t→o
+    //         let wo_prime = wo;
+    //         wo = reflect_vector(&wo, wt);
+
+    //         // let g1_wo_wt = compute_masking_function(&wo, wt, wp, wt, wg);
+
+    //         let g1_wo_wp = g1(&wo, wp, wp, wt, wg);
+
+    //         let dot_wo_prime_wp = wo_prime.dot(*wp);
+    //         // f = &bsdf_result.f * dot_wo_prime_wp * g1_wo_wt;
+    //         f = &bsdf_result.f * dot_wo_prime_wp * g1_wo_wp;
+    //         // f = &bsdf_result.f * dot_wo_prime_wp;
+    //         // f = SampledSpectrum::zero();
+    //     }
+    // } else {
+    //     let wi_prime = reflect_vector(wi, wt);
+
+    //     let wi_local = &transform * &wi_prime; // Convert to outgoing for BSDF
+    //     let Some(bsdf_result) =
+    //         base_bsdf_sample(&wi_local, glam::vec2(next_random(), next_random()))
+    //     else {
+    //         return MaterialSample::failed(*wp);
+    //     };
+    //     let wo_local = bsdf_result.wi;
+    //     let transform_inv = transform.inverse();
+    //     wo = &transform_inv * &wo_local;
+    //     sample_type = bsdf_result.sample_type;
+
+    //     // Path (c): i→t→p→o
+    //     let g1_wo_wp = g1(&wo, wp, wp, wt, wg);
+    //     let dot_wo_wp = wo.dot(*wp);
+    //     // f = bsdf_result.f * dot_wo_wp;
+    //     f = bsdf_result.f * dot_wo_wp * g1_wo_wp;
+    // }
+
+    // if wg.dot(wo).signum() != wg.dot(*wi).signum() {
+    //     // Geometric validity check failed
+    //     return MaterialSample::failed(*wp);
+    // }
+
+    // let pdf = compute_double_scattering_pdf(&wo, wi, wp, wt, wg, lambda_p, base_bsdf_pdf);
+
+    // // Convert to pure BSDF: f = cosine_weighted_f / cos_geom
+    // f /= wg.dot(wo).abs().max(1e-6);
+
+    // return MaterialSample::new(f, wo, pdf, sample_type, *wg);
+}
+
+/// Random-Walk BRDF evaluation using specular tangent facet
+fn evaluate_multi_scattering_bsdf<S, E>(
+    wo: &Vector3<ShadingNormalTangent>, // Light direction
+    wi: &Vector3<ShadingNormalTangent>, // Eye direction
+    wp: &Normal<ShadingNormalTangent>,  // Perturbed normal
+    uc: f32,                           // Random sample
+    base_bsdf_sample: S,
+    base_bsdf_eval: E,
+) -> SampledSpectrum
+where
+    S: Fn(&Vector3<ShadingNormalTangent>, glam::Vec2) -> Option<BsdfSample>,
+    E: Fn(&Vector3<ShadingNormalTangent>, &Vector3<ShadingNormalTangent>) -> SampledSpectrum,
+{
+    // Random number generator state
+    let mut rng_state = (uc * 1000000.0) as u32;
+    let mut next_random = || {
+        rng_state = rng_state.wrapping_mul(1664525).wrapping_add(1013904223);
+        (rng_state as f32) / (u32::MAX as f32)
+    };
+
+    // Create coordinate transform for perturbed facet
+    let transform = Transform::from_normal_map(wp);
+    let transform_inv = transform.inverse();
+
+    let wo_local = &transform * wo;
+
+    let wt = wt(wp);
+    let wo_reflected = reflect_vector(wo, &wt);
+    let wo_reflected_local = &transform * &wo_reflected;
+
+    let mut i = 0;
+    let mut f = SampledSpectrum::zero();
+    let mut wr = *wi;
+    let mut weight = SampledSpectrum::one();
+
+    let shadowing = g1(wp, wo);
+    let not_shadowed_wp_mirror = 1.0 - g1(wp, &wo_reflected);
+
+    if next_random() > lambda_p(wp, wi) {
+        wr = reflect_vector(&wr, &wt);
+        i += 1;
+    }
+
+    loop {
+        let wr_local = &transform * &wr;
+
+        f += &weight * base_bsdf_eval(&wr_local, &wo_local) * wo.dot(&wp) * shadowing;
+        i += 1;
+
+        f += &weight
+            * base_bsdf_eval(&wr_local, &wo_reflected_local)
+            * wo_reflected.dot(&wp)
+            * shadowing
+            * not_shadowed_wp_mirror;
+        i += 1;
+
+        let Some(bsdf_result) =
+            base_bsdf_sample(&wr_local, glam::vec2(next_random(), next_random()))
+        else {
+            break;
+        };
+        wr = &transform_inv * bsdf_result.wi;
+        weight *= bsdf_result.f * wr.dot(&wp) / bsdf_result.pdf;
+        // weight *= bsdf_result.f / bsdf_result.pdf;
+
+        if weight.is_zero() {
+            break;
+        }
+
+        if next_random() < g1(wp, &wr) {
+            // if true {
+            break;
+        }
+
+        wr = reflect_vector(&wr, &wt);
+        i += 1;
+        if next_random() < g1(wp, &wr) {
+            break;
+        }
+
+        if i > 100 {
+            f = SampledSpectrum::zero();
+            break;
+        }
+    }
+
+    f / wo.z().abs().max(1e-6)
+
+    // let wo_local = &transform * wo;
+    // let wi_local = &transform * wi;
+
+    // // Term 1: Single scattering wi → p → wo
+    // let term1 = {
+    //     let dot_wo_wp = wo.dot(*wp); // ⟨wo, wp⟩
+    //     let g1_wo_wp = g1(wp, wo);
+    //     lambda_p(wp, wi) * base_bsdf_eval(&wi_local, &wo_local) * dot_wo_wp * g1_wo_wp
+    // };
+
+    // // Term 2: Double scattering wi → p → t → wo
+    // let term2 = {
+    //     let wo_prime = wo;
+    //     let wo = reflect_vector(wo_prime, &wt(wp));
+    //     let g1_wo_prime_wp = g1(&wp, &wo_prime);
+    //     let g1_wo_wt = g1(&wp, &wo);
+    //     let wo_local = &transform * &wo;
+    //     let dot_wo_prime_wp = wo_prime.dot(*wp);
+    //     lambda_p(wp, wi)
+    //         * base_bsdf_eval(&wi_local, &wo_local)
+    //         * dot_wo_prime_wp
+    //         * (1.0 - g1_wo_prime_wp)
+    //         * g1_wo_wt
+    // };
+
+    // // Term 3: Double scattering wi → t → p → wo
+    // let term3 = {
+    //     let wi_prime = reflect_vector(wi, &wt(wp));
+    //     let wi_prime_local = &transform * &wi_prime;
+    //     let dot_wo_wp = wo.dot(*wp);
+    //     let g1_wo_wp = g1(wp, wo);
+    //     (1.0 - lambda_p(wp, wi)) * base_bsdf_eval(&wi_prime_local, &wo_local) * dot_wo_wp * g1_wo_wp
+    //     // lambda_t * base_bsdf_eval(&wi_prime_local, &wo_local) * dot_wo_wp
+    // };
+
+    // (term1 + term2 + term3) / wo.z().abs().max(1e-6)
+    // // (term2) / wg.dot(wo).abs().max(1e-6)
+    // // fallback_term
+}
+
+fn compute_double_scattering_pdf<F>(
+    wo: &Vector3<ShadingNormalTangent>, // Light direction
+    wi: &Vector3<ShadingNormalTangent>, // Eye direction
+    wp: &Normal<ShadingNormalTangent>,  // Perturbed normal
+    base_bsdf_pdf: F,
+) -> f32
+where
+    F: Fn(&Vector3<ShadingNormalTangent>, &Vector3<ShadingNormalTangent>) -> f32,
+{
+    // // Create coordinate transform for perturbed facet
+    // let transform = Transform::from_normal_map(wp);
+
+    // let wi_local = &transform * wi;
+    // let wo_local = &transform * wo;
+
+    // let mut pdf = 0.0;
+
+    // if lambda_p > 0.0 {
+    //     pdf += lambda_p * base_bsdf_pdf(&wi_local, &wo_local);
+
+    //     if wo.dot(wt) > 1e-6 {
+    //         let wo_reflected = reflect_vector(wo, wt);
+    //         let wo_reflected_local = &transform * &wo_reflected;
+    //         pdf += lambda_p
+    //             * base_bsdf_pdf(&wi_local, &wo_reflected_local)
+    //             * (1.0 - g1(&wo_reflected, wp, wp, wt, wg));
+    //     }
+    // }
+
+    // if lambda_p < 1.0 && wi.dot(wt) > 1e-6 {
+    //     let wi_reflected = reflect_vector(wi, wt);
+    //     let wi_reflected_local = &transform * &wi_reflected;
+    //     pdf += (1.0 - lambda_p) * base_bsdf_pdf(&wi_reflected_local, &wo_local);
+    // }
+
+    // pdf *= g1(wo, wp, wp, wt, wg);
+
+    // pdf
+
+    if wi.z().signum() != wo.z().signum() {
+        return 0.0;
+    }
+
+    let transform = Transform::from_normal_map(wp);
+    let mut pdf = 0.0;
+
+    let wi_local = &transform * wi;
+    let wo_local = &transform * wo;
+
+    let wt = wt(wp);
+
+    let probability_wp = lambda_p(wp, wi);
+
+    if probability_wp > 0.0 {
+        pdf += probability_wp * base_bsdf_pdf(&wi_local, &wo_local);
+    }
+
+    if probability_wp > 0.0 && wo.dot(wt) > 1e-6 {
+        let wo_reflected = reflect_vector(wo, &wt);
+        let wo_reflected_local = &transform * &wo_reflected;
+        pdf += probability_wp
+            * base_bsdf_pdf(&wi_local, &wo_reflected_local)
+            * (1.0 - g1(wp, &wo_reflected));
+    }
+
+    if probability_wp < 1.0 && wi.dot(wt) > 1e-6 {
+        let wi_reflected = reflect_vector(&wi, &wt);
+        let wi_reflected_local = &transform * wi_reflected;
+        pdf += (1.0 - probability_wp) * base_bsdf_pdf(&wi_reflected_local, &wo_local);
+    }
+
+    // assert!(pdf != 0.0);
+
+    pdf
 }
 
 /// Reflect vector about a normal
 fn reflect_vector(
-    incident: &Vector3<VertexNormalTangent>,
-    normal: &Vector3<VertexNormalTangent>,
-) -> Vector3<VertexNormalTangent> {
-    *incident - 2.0 * incident.dot(*normal) * *normal
+    incident: &Vector3<ShadingNormalTangent>,
+    normal: &Normal<ShadingNormalTangent>,
+) -> Vector3<ShadingNormalTangent> {
+    *incident - 2.0 * incident.dot(normal) * Vector3::from(*normal)
 }

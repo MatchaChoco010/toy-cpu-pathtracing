@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use math::{Normal, Transform, Vector3, VertexNormalTangent};
+use math::{Normal, Transform, Vector3, ShadingNormalTangent};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::SpectrumParameter;
@@ -124,8 +124,8 @@ impl BsdfSurfaceMaterial for PlasticMaterial {
         uc: f32,
         uv: glam::Vec2,
         lambda: &mut SampledWavelengths,
-        wo: &Vector3<VertexNormalTangent>,
-        shading_point: &SurfaceInteraction<VertexNormalTangent>,
+        wo: &Vector3<ShadingNormalTangent>,
+        shading_point: &SurfaceInteraction<ShadingNormalTangent>,
     ) -> MaterialSample {
         let eta = self.get_eta(lambda);
 
@@ -183,9 +183,9 @@ impl BsdfSurfaceMaterial for PlasticMaterial {
     fn evaluate(
         &self,
         lambda: &SampledWavelengths,
-        wo: &Vector3<VertexNormalTangent>,
-        wi: &Vector3<VertexNormalTangent>,
-        shading_point: &SurfaceInteraction<VertexNormalTangent>,
+        wo: &Vector3<ShadingNormalTangent>,
+        wi: &Vector3<ShadingNormalTangent>,
+        shading_point: &SurfaceInteraction<ShadingNormalTangent>,
     ) -> MaterialEvaluationResult {
         // プラスチックの光学特性を取得
         let eta = self.get_eta(lambda);
@@ -233,9 +233,9 @@ impl BsdfSurfaceMaterial for PlasticMaterial {
     fn pdf(
         &self,
         lambda: &SampledWavelengths,
-        wo: &Vector3<VertexNormalTangent>,
-        wi: &Vector3<VertexNormalTangent>,
-        shading_point: &SurfaceInteraction<VertexNormalTangent>,
+        wo: &Vector3<ShadingNormalTangent>,
+        wi: &Vector3<ShadingNormalTangent>,
+        shading_point: &SurfaceInteraction<ShadingNormalTangent>,
     ) -> f32 {
         // プラスチックの光学特性を取得
         let eta = self.get_eta(lambda);

@@ -253,11 +253,11 @@ impl<Id: SceneId> PrimitiveAreaLight<Id> for EmissiveTriangleMesh<Id> {
             // Tangentが指定されている場合は、正規直交化する
             let raw_tangent = &self.local_to_render
                 * triangle_mesh.tangents[triangle_mesh.indices[index] as usize];
-            shading_normal.orthogonalize_vector(&raw_tangent)
+            shading_normal.orthogonalize_vector(raw_tangent)
         };
 
         // Render空間からサンプルした点のTangent空間への変換Transformを計算する。
-        let render_to_tangent = Transform::from_shading_normal_tangent(&shading_normal, &tangent);
+        let render_to_tangent = Transform::from_vertex_normal_tangent(&shading_normal, &tangent);
 
         // シェーディングポイントに対する光源の方向ベクトルを計算する。
         let wi = shading_point.position.vector_to(p).normalize();

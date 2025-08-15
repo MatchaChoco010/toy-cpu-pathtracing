@@ -1,7 +1,7 @@
 //! NEEを組み込んだレンダラーを実装するモジュール。
 
 use color::{ColorSrgb, tone_map::ToneMap};
-use math::{Render, Transform, VertexNormalTangent};
+use math::{Render, Transform, ShadingNormalTangent};
 use scene::{Intersection, LightIntensity, MaterialSample, SceneId};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
@@ -19,7 +19,7 @@ fn evaluate_next_event_estimation<Id: SceneId, S: Sampler>(
     scene: &scene::Scene<Id>,
     lambda: &spectrum::SampledWavelengths,
     sampler: &mut S,
-    render_to_tangent: &Transform<Render, VertexNormalTangent>,
+    render_to_tangent: &Transform<Render, ShadingNormalTangent>,
     current_hit_info: &Intersection<Id, Render>,
 ) -> SampledSpectrum {
     let shading_point = &current_hit_info.interaction;
@@ -110,7 +110,7 @@ impl RenderingStrategy for NeeStrategy {
         scene: &scene::Scene<Id>,
         lambda: &SampledWavelengths,
         sampler: &mut S,
-        render_to_tangent: &Transform<Render, VertexNormalTangent>,
+        render_to_tangent: &Transform<Render, ShadingNormalTangent>,
         current_hit_info: &Intersection<Id, Render>,
         sample_contribution: &mut SampledSpectrum,
         throughout: &SampledSpectrum,
@@ -153,7 +153,7 @@ impl RenderingStrategy for NeeStrategy {
         _lambda: &SampledWavelengths,
         _material_sample: &MaterialSample,
         _throughput: &SampledSpectrum,
-        _render_to_tangent: &Transform<Render, VertexNormalTangent>,
+        _render_to_tangent: &Transform<Render, ShadingNormalTangent>,
         _current_hit_info: &Intersection<Id, Render>,
         _sampler: &mut S,
         _sample_contribution: &mut SampledSpectrum,

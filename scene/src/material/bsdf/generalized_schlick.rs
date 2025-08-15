@@ -1,6 +1,6 @@
 //! Adobe Fresnel Modelの一般化されたSchlick BSDF実装。
 
-use math::{ShadingNormalTangent, Vector3};
+use math::{Vector3, ShadingNormalTangent};
 use rand::{prelude::*, rng};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
@@ -747,11 +747,7 @@ impl GeneralizedSchlickBsdf {
 
     /// BSDF PDFを計算する。
     /// 完全鏡面の場合は0、マイクロファセットの場合は実際のPDF値を返す。
-    pub fn pdf(
-        &self,
-        wo: &Vector3<ShadingNormalTangent>,
-        wi: &Vector3<ShadingNormalTangent>,
-    ) -> f32 {
+    pub fn pdf(&self, wo: &Vector3<ShadingNormalTangent>, wi: &Vector3<ShadingNormalTangent>) -> f32 {
         if self.effectively_smooth() {
             // 完全鏡面反射の場合、PDF()は常に0を返す（デルタ関数のため）
             0.0

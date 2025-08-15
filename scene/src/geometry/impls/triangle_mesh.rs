@@ -92,7 +92,7 @@ impl<Id: SceneId> BvhItem<Local> for Triangle<Id> {
             shading_normal.generate_tangent()
         } else {
             // 既存のtangentを正規直交化する
-            shading_normal.orthogonalize_vector(&data.tangents[self.triangle_index as usize])
+            shading_normal.orthogonalize_vector(data.tangents[self.triangle_index as usize])
         };
 
         Some(HitInfo {

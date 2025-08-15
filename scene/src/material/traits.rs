@@ -1,6 +1,6 @@
 //! マテリアルトレイト階層を定義するモジュール。
 
-use math::{Vector3, VertexNormalTangent};
+use math::{ShadingNormalTangent, Vector3};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 use std::sync::Arc;
 
@@ -40,8 +40,8 @@ pub trait BsdfSurfaceMaterial {
         uc: f32,
         uv: glam::Vec2,
         lambda: &mut SampledWavelengths,
-        wo: &Vector3<VertexNormalTangent>,
-        shading_point: &SurfaceInteraction<VertexNormalTangent>,
+        wo: &Vector3<ShadingNormalTangent>,
+        shading_point: &SurfaceInteraction<ShadingNormalTangent>,
     ) -> MaterialSample;
 
     /// BSDF値を評価する。
@@ -54,9 +54,9 @@ pub trait BsdfSurfaceMaterial {
     fn evaluate(
         &self,
         lambda: &SampledWavelengths,
-        wo: &Vector3<VertexNormalTangent>,
-        wi: &Vector3<VertexNormalTangent>,
-        shading_point: &SurfaceInteraction<VertexNormalTangent>,
+        wo: &Vector3<ShadingNormalTangent>,
+        wi: &Vector3<ShadingNormalTangent>,
+        shading_point: &SurfaceInteraction<ShadingNormalTangent>,
     ) -> MaterialEvaluationResult;
 
     /// BSDF PDFを計算する。
@@ -69,9 +69,9 @@ pub trait BsdfSurfaceMaterial {
     fn pdf(
         &self,
         lambda: &SampledWavelengths,
-        wo: &Vector3<VertexNormalTangent>,
-        wi: &Vector3<VertexNormalTangent>,
-        shading_point: &SurfaceInteraction<VertexNormalTangent>,
+        wo: &Vector3<ShadingNormalTangent>,
+        wi: &Vector3<ShadingNormalTangent>,
+        shading_point: &SurfaceInteraction<ShadingNormalTangent>,
     ) -> f32;
 
     /// Albedoスペクトルをサンプリングする。
@@ -94,8 +94,8 @@ pub trait EmissiveSurfaceMaterial {
     fn radiance(
         &self,
         lambda: &SampledWavelengths,
-        wo: Vector3<VertexNormalTangent>,
-        light_sample_point: &SurfaceInteraction<VertexNormalTangent>,
+        wo: Vector3<ShadingNormalTangent>,
+        light_sample_point: &SurfaceInteraction<ShadingNormalTangent>,
     ) -> SampledSpectrum;
 
     /// 平均強度を計算する。

@@ -1,6 +1,6 @@
 //! レンダラー間で共通して使用される関数を提供するモジュール。
 
-use math::{Ray, Render, Transform, VertexNormalTangent};
+use math::{Ray, Render, Transform, ShadingNormalTangent};
 use scene::{
     AreaLightSampleRadiance, BsdfSurfaceMaterial, DeltaDirectionalLightIntensity,
     DeltaPointLightIntensity, InfiniteLightSampleRadiance, SceneId, SurfaceInteraction,
@@ -27,7 +27,7 @@ pub fn evaluate_delta_point_light<Id: SceneId>(
     bsdf: &dyn BsdfSurfaceMaterial,
     lambda: &spectrum::SampledWavelengths,
     wo: &math::Vector3<Render>,
-    render_to_tangent: &Transform<Render, VertexNormalTangent>,
+    render_to_tangent: &Transform<Render, ShadingNormalTangent>,
     light_probability: f32,
 ) -> SampledSpectrum {
     // シャドウレイを飛ばして可視性を確認
@@ -62,7 +62,7 @@ pub fn evaluate_delta_directional_light<Id: SceneId>(
     bsdf: &dyn BsdfSurfaceMaterial,
     lambda: &spectrum::SampledWavelengths,
     wo: &math::Vector3<Render>,
-    render_to_tangent: &Transform<Render, VertexNormalTangent>,
+    render_to_tangent: &Transform<Render, ShadingNormalTangent>,
     light_probability: f32,
 ) -> SampledSpectrum {
     // シャドウレイを飛ばして可視性を確認
@@ -92,7 +92,7 @@ pub fn evaluate_area_light<Id: SceneId>(
     bsdf: &dyn BsdfSurfaceMaterial,
     lambda: &spectrum::SampledWavelengths,
     wo: &math::Vector3<Render>,
-    render_to_tangent: &Transform<Render, VertexNormalTangent>,
+    render_to_tangent: &Transform<Render, ShadingNormalTangent>,
     light_probability: f32,
 ) -> SampledSpectrum {
     // シャドウレイを飛ばして可視性を確認
@@ -134,7 +134,7 @@ pub fn evaluate_area_light_with_mis<Id: SceneId>(
     bsdf: &dyn BsdfSurfaceMaterial,
     lambda: &spectrum::SampledWavelengths,
     wo: &math::Vector3<Render>,
-    render_to_tangent: &Transform<Render, VertexNormalTangent>,
+    render_to_tangent: &Transform<Render, ShadingNormalTangent>,
     light_probability: f32,
 ) -> NeeResult {
     // シャドウレイを飛ばして可視性を確認
@@ -186,7 +186,7 @@ pub fn evaluate_infinite_light<Id: SceneId>(
     bsdf: &dyn BsdfSurfaceMaterial,
     lambda: &spectrum::SampledWavelengths,
     wo: &math::Vector3<Render>,
-    render_to_tangent: &Transform<Render, VertexNormalTangent>,
+    render_to_tangent: &Transform<Render, ShadingNormalTangent>,
     light_probability: f32,
 ) -> SampledSpectrum {
     // シャドウレイを飛ばして可視性を確認
@@ -217,7 +217,7 @@ pub fn evaluate_infinite_light_with_mis<Id: SceneId>(
     bsdf: &dyn BsdfSurfaceMaterial,
     lambda: &spectrum::SampledWavelengths,
     wo: &math::Vector3<Render>,
-    render_to_tangent: &Transform<Render, VertexNormalTangent>,
+    render_to_tangent: &Transform<Render, ShadingNormalTangent>,
     light_probability: f32,
 ) -> NeeResult {
     // シャドウレイを飛ばして可視性を確認

@@ -231,10 +231,10 @@ impl<Id: SceneId> PrimitiveAreaLight<Id> for EmissiveSingleTriangle<Id> {
         let tangent = tangent.normalize();
 
         // tangentを再度正規直交化する。
-        let tangent = shading_normal.orthogonalize_vector(&tangent);
+        let tangent = shading_normal.orthogonalize_vector(tangent);
 
         // Render空間からサンプルした点のTangent空間への変換Transformを計算する。
-        let render_to_tangent = Transform::from_shading_normal_tangent(&shading_normal, &tangent);
+        let render_to_tangent = Transform::from_vertex_normal_tangent(&shading_normal, &tangent);
 
         // シェーディングポイントに対する光源の方向ベクトルを計算する。
         let wi = shading_point.position.vector_to(p).normalize();

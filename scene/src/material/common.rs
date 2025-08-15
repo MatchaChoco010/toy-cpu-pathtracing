@@ -1,6 +1,6 @@
 //! BSDFで共通して使用される汎用的な計算関数群。
 
-use math::{ShadingNormalTangent, Vector3};
+use math::{CoordinateSystem, Vector3, ShadingNormalTangent};
 use spectrum::SampledSpectrum;
 
 /// 球面座標計算
@@ -57,11 +57,13 @@ pub fn half_vector(
 }
 
 /// 反射ベクトルを計算
-pub fn reflect(
-    wo: &Vector3<ShadingNormalTangent>,
-    n: &Vector3<ShadingNormalTangent>,
-) -> Vector3<ShadingNormalTangent> {
-    *n * (2.0 * wo.dot(n)) - *wo
+pub fn reflect<C: CoordinateSystem>(
+    wo: impl AsRef<Vector3<C>>,
+    n: &impl AsRef<Vector3<C>>,
+) -> Vector3<C> {
+    let wo = wo.as_ref().normalize();
+    let n = n.as_ref().normalize();
+    n * (2.0 * wo.dot(n)) - wo
 }
 
 /// 二つのベクトルが同じ半球にあるかチェック

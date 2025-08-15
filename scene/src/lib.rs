@@ -12,10 +12,9 @@ pub use light_sampler::{LightSample, LightSampler};
 pub use material::{
     BsdfSample, BsdfSampleType, BsdfSurfaceMaterial, ConductorBsdf, DielectricBsdf,
     EmissiveMaterial, EmissiveSurfaceMaterial, FloatParameter, GlassMaterial, GlassType,
-    LambertMaterial, Material, MetalMaterial, MetalType, NormalParameter, NormalizedLambertBsdf,
-    PlasticMaterial, SimpleClearcoatPbrMaterial, SimplePbrMaterial, SpectrumParameter,
-    SurfaceMaterial, UniformEdf, evaluate_microfacet_normal_mapping, pdf_microfacet_normal_mapping,
-    sample_microfacet_normal_mapping,
+    LambertMaterial, Material, MetalMaterial, MetalType, NormalMappingMaterial, NormalParameter,
+    NormalizedLambertBsdf, PlasticMaterial, SimpleClearcoatPbrMaterial, SimplePbrMaterial,
+    SpectrumParameter, SurfaceMaterial, UniformEdf,
 };
 pub use primitive::{CreatePrimitiveDesc, Intersection, PrimitiveBvh, PrimitiveIndex};
 pub use samples::{

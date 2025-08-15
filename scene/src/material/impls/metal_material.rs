@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use math::{Normal, Transform, Vector3, VertexNormalTangent};
+use math::{Normal, Transform, Vector3, ShadingNormalTangent};
 use spectrum::{SampledWavelengths, presets};
 
 use crate::{
@@ -120,8 +120,8 @@ impl BsdfSurfaceMaterial for MetalMaterial {
         _uc: f32,
         uv: glam::Vec2,
         lambda: &mut SampledWavelengths,
-        wo: &Vector3<VertexNormalTangent>,
-        shading_point: &SurfaceInteraction<VertexNormalTangent>,
+        wo: &Vector3<ShadingNormalTangent>,
+        shading_point: &SurfaceInteraction<ShadingNormalTangent>,
     ) -> MaterialSample {
         // 金属の光学特性を取得
         let eta = self.get_eta(lambda);
@@ -179,9 +179,9 @@ impl BsdfSurfaceMaterial for MetalMaterial {
     fn evaluate(
         &self,
         lambda: &SampledWavelengths,
-        wo: &Vector3<VertexNormalTangent>,
-        wi: &Vector3<VertexNormalTangent>,
-        shading_point: &SurfaceInteraction<VertexNormalTangent>,
+        wo: &Vector3<ShadingNormalTangent>,
+        wi: &Vector3<ShadingNormalTangent>,
+        shading_point: &SurfaceInteraction<ShadingNormalTangent>,
     ) -> MaterialEvaluationResult {
         // 金属の光学特性を取得
         let eta = self.get_eta(lambda);
@@ -231,9 +231,9 @@ impl BsdfSurfaceMaterial for MetalMaterial {
     fn pdf(
         &self,
         lambda: &SampledWavelengths,
-        wo: &Vector3<VertexNormalTangent>,
-        wi: &Vector3<VertexNormalTangent>,
-        shading_point: &SurfaceInteraction<VertexNormalTangent>,
+        wo: &Vector3<ShadingNormalTangent>,
+        wi: &Vector3<ShadingNormalTangent>,
+        shading_point: &SurfaceInteraction<ShadingNormalTangent>,
     ) -> f32 {
         // 金属の光学特性を取得
         let eta = self.get_eta(lambda);

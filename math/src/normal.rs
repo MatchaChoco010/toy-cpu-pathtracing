@@ -43,10 +43,10 @@ impl<C: CoordinateSystem> Normal<C> {
 
     /// 指定したベクトルをこのNormalに対して正規直交化する。
     #[inline(always)]
-    pub fn orthogonalize_vector(&self, vector: &Vector3<C>) -> Vector3<C> {
+    pub fn orthogonalize_vector(&self, vector: impl AsRef<Vector3<C>>) -> Vector3<C> {
         // NormalとVectorの線形結合で投影を減算
-        let projection_magnitude = self.dot(vector);
-        let orthogonal = *vector - self.vec * projection_magnitude;
+        let projection_magnitude = self.dot(vector.as_ref());
+        let orthogonal = *vector.as_ref() - self.vec * projection_magnitude;
         orthogonal.normalize()
     }
 
@@ -61,7 +61,7 @@ impl<C: CoordinateSystem> Normal<C> {
             glam::Vec3::X
         };
         let candidate_vector = Vector3::from(candidate);
-        self.orthogonalize_vector(&candidate_vector)
+        self.orthogonalize_vector(candidate_vector)
     }
 
     /// 3つのNormalをbarycentric座標で補間する。

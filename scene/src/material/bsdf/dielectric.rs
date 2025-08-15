@@ -1,6 +1,6 @@
 //! 誘電体BSDFの実装。
 
-use math::{ShadingNormalTangent, Vector3};
+use math::{Vector3, ShadingNormalTangent};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
 use crate::material::{
@@ -542,11 +542,7 @@ impl DielectricBsdf {
     /// BSDF PDFを計算する。
     /// 完全鏡面の場合は常に0を返す（デルタ関数のため）。
     /// マイクロファセットの場合は実際のPDF値を計算する。
-    pub fn pdf(
-        &self,
-        wo: &Vector3<ShadingNormalTangent>,
-        wi: &Vector3<ShadingNormalTangent>,
-    ) -> f32 {
+    pub fn pdf(&self, wo: &Vector3<ShadingNormalTangent>, wi: &Vector3<ShadingNormalTangent>) -> f32 {
         if self.effectively_smooth() {
             0.0 // 完全鏡面の場合は0
         } else {

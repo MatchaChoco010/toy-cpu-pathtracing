@@ -31,19 +31,9 @@ impl CoordinateSystem for Render {}
 pub struct GeometryTangent;
 impl CoordinateSystem for GeometryTangent {}
 
-/// VertexNormalタンジェント座標系を表す構造体。
+/// ShadingNormalタンジェント座標系を表す構造体。
 ///
-/// VertexNormal計算時に行うVertexNormal点の基本タンジェント空間の座標系。
-/// Z軸がVertexNormalに揃うような座標系。
-#[derive(Debug, Clone, Copy)]
-pub struct VertexNormalTangent;
-impl CoordinateSystem for VertexNormalTangent {}
-
-/// ノーマルマップタンジェント座標系を表す構造体。
-///
-/// ノーマルマップによってシェーディング法線が変更された後の
-/// シェーディング用のタンジェント空間の座標系。
-/// Z軸がノーマルマップで変更された法線に揃うような座標系。
+/// Z軸がShadingNormalに揃うような座標系。
 #[derive(Debug, Clone, Copy)]
 pub struct ShadingNormalTangent;
 impl CoordinateSystem for ShadingNormalTangent {}

@@ -1,7 +1,7 @@
 //! 純粋なパストレーサーによるレンダラーを実装するモジュール。
 
 use color::{ColorSrgb, tone_map::ToneMap};
-use math::{Ray, Render, Transform, VertexNormalTangent};
+use math::{Ray, Render, Transform, ShadingNormalTangent};
 use scene::{Intersection, MaterialSample, SceneId};
 use spectrum::{SampledSpectrum, SampledWavelengths};
 
@@ -22,7 +22,7 @@ impl RenderingStrategy for PtStrategy {
         _scene: &scene::Scene<Id>,
         _lambda: &SampledWavelengths,
         _sampler: &mut S,
-        _render_to_tangent: &Transform<Render, VertexNormalTangent>,
+        _render_to_tangent: &Transform<Render, ShadingNormalTangent>,
         _current_hit_info: &Intersection<Id, Render>,
         _sample_contribution: &mut SampledSpectrum,
         _throughout: &SampledSpectrum,
@@ -53,7 +53,7 @@ impl RenderingStrategy for PtStrategy {
         lambda: &SampledWavelengths,
         material_sample: &MaterialSample,
         throughput: &SampledSpectrum,
-        render_to_tangent: &Transform<Render, VertexNormalTangent>,
+        render_to_tangent: &Transform<Render, ShadingNormalTangent>,
         current_hit_info: &Intersection<Id, Render>,
         _sampler: &mut S,
         sample_contribution: &mut SampledSpectrum,
